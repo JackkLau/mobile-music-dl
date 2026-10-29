@@ -1,7 +1,7 @@
 # 听屿 · mobile-music-dl
 
 Android 原生音频播放器，包名 `app.tingyu`，源码版本 **0.1.4（versionCode 5）**。解析哔哩哔哩链接、在线播放、下载兼容 AAC 音轨并重封装为 M4A，保存到 `Music/听屿/` 后离线收听；也可以找回、导入和管理手机中已有的音频。
-正式版下载：[0.1.3 APK](https://github.com/JackkLau/mobile-music-dl/releases/download/v0.1.3/tingyu-0.1.3-release.apk) · [GitHub Release（含 AAB 和校验文件）](https://github.com/JackkLau/mobile-music-dl/releases/tag/v0.1.3)。该版本已由 GitHub Actions 编译、签名并发布，沿用 0.1.1 正式证书。
+正式版下载：[0.1.4 APK](https://github.com/JackkLau/mobile-music-dl/releases/download/v0.1.4/tingyu-0.1.4-release.apk) · [GitHub Release（含 AAB 和校验文件）](https://github.com/JackkLau/mobile-music-dl/releases/tag/v0.1.4)。该版本已由 GitHub Actions 编译、签名并发布，沿用 0.1.1 正式证书。
 
 
 **实际工程入口是本目录的 `settings.gradle.kts`，应用源码在 `app/src/`。** 本轮将误放在 `app/app/src/` 的恢复版合入实际工程；嵌套目录保留为历史来源，不参与构建。合并前备份在 `artifacts/before-handoff-merge-20261028.zip`。交接的 ChatGPT Library 压缩包本轮无法读取，因此以本机恢复源码和交接清单补齐，不能声称与远端压缩包逐字相同。
@@ -77,7 +77,7 @@ bash scripts/check-device.sh
 
 ## 管理已有的本地音乐
 
-- 使用同一正式签名覆盖升级到 0.1.2，原数据库、下载记录和音乐文件保留。不要卸载旧正式版来完成升级。
+- 使用同一正式签名覆盖升级到新版，原数据库、下载记录和音乐文件保留。不要卸载旧正式版来完成升级。
 - 打开应用会查找当前已获准访问的 `Music/听屿/` 音频。“音乐库 → 扫描已下载音乐”可申请音频访问权限，找回旧安装或数据库中遗漏的文件；只扫描这个目录，不收集整部手机的音乐。
 - “导入本地音频”打开系统文件选择器，可多选其他目录里的音频。文件继续留在原位置，不复制、不转码；需要保留系统提供的读取授权。本地格式以 Android 媒体组件实际可读取的音频为准，不改变网络下载仅支持兼容 AAC/M4A 的范围。
 - 扫描和导入保留已有曲目信息并去重；支持标题/作者搜索、单曲或全部播放、播放队列和确认删除。权限被拒绝或文件暂时无法读取不会清空音乐库。

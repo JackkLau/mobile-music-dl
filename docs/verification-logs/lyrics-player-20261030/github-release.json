@@ -1,0 +1,26 @@
+{
+  "package": "app.tingyu",
+  "versionName": "0.1.4",
+  "versionCode": 5,
+  "certificateSha256": "ba4e5c4ba00be09d10421edac7f276f44393f52950623e64096f93c864b81911",
+  "commit": "ce428d4d18afb1ec081cfc3f17603cc54ed4dc8b",
+  "assets": [
+    {
+      "file": "tingyu-0.1.4-release.apk",
+      "bytes": 51522164,
+      "sha256": "7a2f1e23302d0ab6463881ae3b1d2e120a5e23303917368fcc0ff221c816eb43"
+    },
+    {
+      "file": "tingyu-0.1.4-release.aab",
+      "bytes": 14817762,
+      "sha256": "83f7c4c8841b2f78f3267c354cbd92c07432cf96127b0c28a75e6ed653cfbf6f"
+    }
+  ],
+  "validation": [
+    "APK signature and identity",
+    "APK non-debuggable and no probe entry",
+    "APK ZIP alignment",
+    "AAB manifest identity",
+    "all AAB payload signatures"
+  ]
+}

@@ -42,7 +42,7 @@
 - 应用 debug／release JVM 各 228 项、0 失败，是同一套测试，不相加。PC 共用工具 128 项、0 失败，与应用部分重叠。
 - 最终构建在 API 37 模拟器通过全部 49 项设备测试，包括本地文件管理、图片解码与离线读取、实际媒体播放、歌词选项、版本选择和固定底部控制。直接测试后只读核对原用户恢复后的音乐库仍为 1 首。
 - 脚本 41 项、结构检查 108 项通过。debug lint 0 错误／24 警告；release 0 错误／23 警告。设计契约检查 0 条问题，designmd 0 错误／7 条既有警告；静态工具不证明原生界面运行正确。
-- 最终 debug APK、测试 APK、正式 APK／AAB 构建通过；正式包身份、原证书签名、非调试标记、无诊断 Activity、APK 对齐及 AAB 全部载荷签名校验通过。云端构建和公开附件仍在后续发布步骤验证。
+- 最终 debug APK、测试 APK、正式 APK／AAB 构建通过；正式包身份、原证书签名、非调试标记、无诊断 Activity、APK 对齐及 AAB 全部载荷签名校验通过。云端构建和公开附件复核也已完成，见下方发布结果。
 - 窄屏大字与横屏尺寸各 5 项底部控制回归通过，包含滚动歌词／长标题后主控位置不变、按钮可点、进度可操作、短屏保留至少 48 dp 歌词区域。这两轮与完整设备套件重叠。
 
 首轮完整模拟器运行 46 项，45 通过、1 失败。失败测试用只改变 `cid` 的对象模拟“切到另一首”，但曲目标识实际由 BV 与分 P 构成；已修正为不同 BV 的真实切歌场景。另补歌词文档变化时关闭旧移除确认，避免确认目标漂移。
@@ -71,6 +71,19 @@ TINGYU_TEST_CLASSES='app.tingyu.ui.PlayerBottomControlsTest' \
 ```
 
 横屏尺寸 2400×1080／540 dpi（约 711×320 dp）、1.5 倍字体下的 5 项固定控制回归通过；竖屏 1080×2400／540 dpi（宽 320 dp）、1.5 倍字体的同 5 项也通过。使用直接测试入口，运行后应用仍安装。
+
+## GitHub 正式发布
+
+[v0.1.4 Release](https://github.com/JackkLau/mobile-music-dl/releases/tag/v0.1.4) 已由 [Actions 40917912487](https://github.com/JackkLau/mobile-music-dl/actions/runs/40917912487) 在 GitHub 完成编译、原证书签名和发布，来源提交 `ce428d4d18afb1ec081cfc3f17603cc54ed4dc8b`。同提交的两轮 Android verification 均成功。
+
+公开 APK／AAB、SHA256SUMS、release.json 下载后，与 GitHub 附件 digest、清单、源提交逐项核对一致；本机再次通过包名 `app.tingyu`、版本 `0.1.4 (5)`、原正式证书、非调试／无诊断入口、APK 对齐与 AAB 全部载荷签名校验。
+
+| 文件 | 字节数 | SHA-256 |
+|---|---:|---|
+| tingyu-0.1.4-release.apk | 51522164 | `7a2f1e23302d0ab6463881ae3b1d2e120a5e23303917368fcc0ff221c816eb43` |
+| tingyu-0.1.4-release.aab | 14817762 | `83f7c4c8841b2f78f3267c354cbd92c07432cf96127b0c28a75e6ed653cfbf6f` |
+
+发布附件保留在忽略目录 `artifacts/github-published-0.1.4/`，公开校验记录见本轮日志目录的 `github-release.json` 和 `github-release-verified.json`。未安装到物理手机。
 
 ## 仍需实际使用核对
 

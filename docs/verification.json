@@ -422,7 +422,30 @@
     },
     "localSignedRelease": "verified original certificate",
     "cloudRelease": {
-      "status": "pending"
+      "status": "published-and-independently-verified",
+      "runId": 40917912487,
+      "sourceCommit": "ce428d4d18afb1ec081cfc3f17603cc54ed4dc8b",
+      "releaseUrl": "https://github.com/JackkLau/mobile-music-dl/releases/tag/v0.1.4",
+      "certificateSha256": "ba4e5c4ba00be09d10421edac7f276f44393f52950623e64096f93c864b81911",
+      "assets": [
+        {
+          "file": "tingyu-0.1.4-release.apk",
+          "bytes": 51522164,
+          "sha256": "7a2f1e23302d0ab6463881ae3b1d2e120a5e23303917368fcc0ff221c816eb43"
+        },
+        {
+          "file": "tingyu-0.1.4-release.aab",
+          "bytes": 14817762,
+          "sha256": "83f7c4c8841b2f78f3267c354cbd92c07432cf96127b0c28a75e6ed653cfbf6f"
+        }
+      ],
+      "publicDownloadDigestsMatched": true,
+      "publicDownloadSignaturesAndIdentityVerified": true,
+      "verificationWorkflowRuns": [
+        40917912370,
+        40917899658
+      ],
+      "allWorkflowConclusions": "success"
     },
     "limitations": [
       "Physical phone not connected; signed upgrade and TalkBack remain unverified",
