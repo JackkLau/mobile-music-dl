@@ -78,6 +78,15 @@ class LyricsRepositoryTest {
         assertNull(server.takeRequest().requestUrl!!.queryParameter("duration"))
     }
 
+    @Test fun emptyTimestampLinesAreNotReportedAsFoundLyrics() = runBlocking {
+        server.enqueue(json(record(plain = "", synced = "[00:00]\n[00:01]   \n[00:02]", instrumental = false)))
+        assertNull(repository.find(track))
+        server.enqueue(json(record(plain = "", synced = "[00:00]\n[00:01]", instrumental = true)))
+        assertTrue(repository.find(track)!!.instrumental)
+        server.enqueue(json(record(plain = "", synced = "[00:00]\n[00:01]合成歌词\n[00:02]")))
+        assertNotNull(repository.find(track))
+    }
+
     @Test fun missingArtistRequiresUserCorrectionWithoutNetwork() = runBlocking {
         expectIo { repository.find(track.copy(artist = "")) }
         assertEquals(0, server.requestCount)

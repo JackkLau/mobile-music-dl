@@ -1,0 +1,28 @@
+{
+  "debug": {
+    "tests": 228,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "release": {
+    "tests": 228,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "probe": {
+    "tests": 128,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "lintdebug": {
+    "Error": 0,
+    "Warning": 24
+  },
+  "lintrelease": {
+    "Error": 0,
+    "Warning": 23
+  }
+}

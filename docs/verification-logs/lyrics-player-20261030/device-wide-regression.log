@@ -1,0 +1,21 @@
+
+app.tingyu.ui.PlayerBottomControlsTest:
+Error in lyricsKeepAReadableViewportAndOptionsReachableOnShortScreens(app.tingyu.ui.PlayerBottomControlsTest):
+java.lang.AssertionError: At least one full lyric touch target must fit above the fixed controls: 123.0px
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at app.tingyu.ui.PlayerBottomControlsTest.lyricsKeepAReadableViewportAndOptionsReachableOnShortScreens(PlayerBottomControlsTest.kt:122)
+....
+
+Time: 30.251
+There was 1 failure:
+1) lyricsKeepAReadableViewportAndOptionsReachableOnShortScreens(app.tingyu.ui.PlayerBottomControlsTest)
+java.lang.AssertionError: At least one full lyric touch target must fit above the fixed controls: 123.0px
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at app.tingyu.ui.PlayerBottomControlsTest.lyricsKeepAReadableViewportAndOptionsReachableOnShortScreens(PlayerBottomControlsTest.kt:122)
+
+FAILURES!!!
+Tests run: 5,  Failures: 1
+
+

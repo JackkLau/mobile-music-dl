@@ -1,0 +1,8 @@
+{
+  "structural_checks": 108,
+  "passed": 108,
+  "failures": [],
+  "kotlin_unit_tests_written": 228,
+  "android_tests_written": 49,
+  "limitation": "No Kotlin type checking, dependency resolution, APK build, media playback or Android runtime execution is performed by this script."
+}

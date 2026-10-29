@@ -15,6 +15,8 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import app.tingyu.auth.LoginActivity
+import app.tingyu.catalog.ArtworkCandidate
+import app.tingyu.catalog.LyricCandidate
 import app.tingyu.data.bili.UserAgentProfile
 import app.tingyu.data.local.DeleteResult
 import app.tingyu.debug.AudioUaMode
@@ -55,6 +57,8 @@ class AppViewModel(application: Application, private val savedStateHandle: Saved
     private var parseJob: Job? = null
     private var lyricsJob: Job? = null
     private var lyricsVersion = 0
+    private var coverJob: Job? = null
+    private var coverVersion = 0
     private var requestVersion = 0
     private val debugGate = DebugModeGate(container.debugSettings.available)
     private var probeJob: Job? = null
@@ -196,17 +200,22 @@ class AppViewModel(application: Application, private val savedStateHandle: Saved
     override fun showPlayer(show: Boolean) { mutable.update { it.copy(playerVisible = show) } }
     override fun showQueue(show: Boolean) { mutable.update { it.copy(queueVisible = show) } }
     override fun showMusicEditor(show: Boolean) {
+        if (!show && !mutable.value.musicSaving) cancelCoverSearch()
         if (!mutable.value.musicSaving) mutable.update { it.copy(musicEditorVisible = show,
-            musicEditorTrack = if (show) it.playback.track else null, musicError = null) }
+            musicEditorTrack = if (show) it.playback.track else null, musicError = null,
+            coverSource = if (show) it.playback.track?.let { track -> container.songDetails.details(track.id)?.coverSource }.orEmpty() else "") }
     }
 
     override fun saveMusicInfo(track: Track, title: String, artist: String) {
         if (mutable.value.musicSaving) return
         cancelLyrics()
+        cancelCoverSearch()
         mutable.update { it.copy(musicSaving = true, musicError = null) }
         viewModelScope.launch {
             try {
+                val oldCover = container.songDetails.details(track.id)?.coverUri
                 container.songDetails.edit(track, title, artist)
+                if (oldCover != container.songDetails.details(track.id)?.coverUri) withContext(Dispatchers.IO) { container.songFiles.deleteOwnedCover(oldCover) }
                 mutable.update { it.copy(musicEditorVisible = false, musicEditorTrack = null, message = "歌曲信息已保存") }
             } catch (error: CancellationException) { throw error }
             catch (error: Exception) { mutable.update { it.songFailure(track, if (error is IllegalArgumentException) error.message ?: "请检查歌名和歌手" else "歌曲信息未能保存，请检查存储空间后重试") } }
@@ -226,7 +235,9 @@ class AppViewModel(application: Application, private val savedStateHandle: Saved
                 val result = container.lyrics.find(snapshot)
                 if (version == lyricsVersion && mutable.value.playback.track?.id == track.id) {
                     if (result == null) mutable.update { it.copy(lyricsError = "没有找到匹配的歌词。可修正歌名、歌手，或导入本地歌词。") }
-                    else if (!container.songDetails.saveLyrics(track, result)) mutable.update { it.copy(lyricsError = "歌曲信息已改变，请重新查找歌词") }
+                    else if (!container.songDetails.saveLyrics(snapshot, result)) mutable.update {
+                        if (version == lyricsVersion) it.copy(lyricsError = "歌曲信息已改变，请重新查找歌词") else it
+                    }
                 }
             } catch (error: CancellationException) { throw error }
             catch (error: Exception) {
@@ -239,7 +250,124 @@ class AppViewModel(application: Application, private val savedStateHandle: Saved
         lyricsVersion++
         lyricsJob?.cancel()
         lyricsJob = null
-        mutable.update { it.copy(lyricsLoading = false) }
+        mutable.update { it.copy(lyricsLoading = false, lyricsChoiceTrack = null, lyricsCandidates = emptyList()) }
+    }
+
+    override fun findLyricVersions() {
+        if (mutable.value.musicSaving || mutable.value.lyricsLoading) return
+        val player = mutable.value.playback
+        val track = player.track ?: return
+        val snapshot = track.copy(durationMs = player.durationMs.takeIf { it > 0 } ?: track.durationMs)
+        cancelLyrics()
+        val version = ++lyricsVersion
+        mutable.update { it.copy(lyricsChoiceTrack = snapshot, lyricsCandidates = emptyList(), lyricsLoading = true, lyricsError = null) }
+        lyricsJob = viewModelScope.launch {
+            try {
+                val candidates = container.catalog.lyricCandidates(snapshot)
+                if (version == lyricsVersion) mutable.update { it.copy(lyricsCandidates = candidates,
+                    lyricsError = if (candidates.isEmpty()) "没有找到可选版本。可核对歌名和歌手，或导入歌词。" else null) }
+            } catch (error: CancellationException) { throw error }
+            catch (error: Exception) { if (version == lyricsVersion) mutable.update { it.copy(lyricsError = userMessage(error, "歌词版本查询失败，请重试")) } }
+            finally { if (version == lyricsVersion) mutable.update { it.copy(lyricsLoading = false) } }
+        }
+    }
+
+    override fun useLyricVersion(candidate: LyricCandidate) {
+        val state = mutable.value
+        val target = state.lyricsChoiceTrack ?: return
+        if (state.musicSaving || state.lyricsLoading || candidate !in state.lyricsCandidates) return
+        val version = ++lyricsVersion
+        mutable.update { it.copy(lyricsLoading = true, lyricsError = null) }
+        lyricsJob = viewModelScope.launch {
+            try {
+                val document = container.catalog.lyrics(candidate)
+                if (version == lyricsVersion && mutable.value.playback.track?.id == target.id) {
+                    if (document == null) mutable.update { it.copy(lyricsError = "这个版本暂无歌词，可选其他版本或导入本地歌词。") }
+                    else {
+                        val saved = container.songDetails.saveLyrics(target, document)
+                        if (version == lyricsVersion) mutable.update {
+                            if (saved) it.copy(lyricsChoiceTrack = null, lyricsCandidates = emptyList(), message = "歌词已保存，请试听核对时间")
+                            else it.copy(lyricsError = "歌曲信息已改变，请重新查找歌词")
+                        }
+                    }
+                }
+            } catch (error: CancellationException) { throw error }
+            catch (error: Exception) { if (version == lyricsVersion) mutable.update { it.copy(lyricsError = userMessage(error, "这个版本的歌词暂时无法加载")) } }
+            finally { if (version == lyricsVersion) mutable.update { it.copy(lyricsLoading = false) } }
+        }
+    }
+
+    override fun adjustLyricsOffset(track: Track, deltaMs: Long) = updateLyricsTiming(track, deltaMs)
+    override fun resetLyricsOffset(track: Track) = updateLyricsTiming(track, null)
+
+    private fun updateLyricsTiming(track: Track, deltaMs: Long?) {
+        if (mutable.value.musicSaving || mutable.value.lyricsLoading) return
+        val playback = mutable.value.playback
+        val snapshot = if (playback.track?.id == track.id && playback.durationMs > 0) track.copy(durationMs = playback.durationMs) else track
+        mutable.update { it.copy(musicSaving = true, lyricsError = null) }
+        viewModelScope.launch {
+            try {
+                val saved = if (deltaMs == null) container.songDetails.resetLyricsOffset(snapshot)
+                else container.songDetails.adjustLyricsOffset(snapshot, deltaMs)
+                if (!saved) mutable.update { it.songFailure(track, "歌词或歌曲信息已改变，请重新打开歌词", lyrics = true) }
+            } catch (error: CancellationException) { throw error }
+            catch (_: Exception) { mutable.update { it.songFailure(track, "歌词时间未能保存，请重试", lyrics = true) } }
+            finally { mutable.update { it.copy(musicSaving = false) } }
+        }
+    }
+
+    override fun findSongCover(track: Track) {
+        if (mutable.value.musicSaving || mutable.value.coverLoading) return
+        cancelCoverSearch()
+        val snapshot = container.songDetails.apply(track)
+        val version = ++coverVersion
+        mutable.update { it.copy(coverSearchTrack = snapshot, coverLoading = true, coverCandidates = emptyList(), coverError = null) }
+        coverJob = viewModelScope.launch {
+            try {
+                val candidates = container.catalog.artwork(snapshot)
+                if (version == coverVersion) mutable.update { it.copy(coverCandidates = candidates,
+                    coverError = if (candidates.isEmpty()) "没有找到匹配封面。可修正歌名、歌手，或选择自己的图片。" else null) }
+            } catch (error: CancellationException) { throw error }
+            catch (error: Exception) { if (version == coverVersion) mutable.update { it.copy(coverError = userMessage(error, "封面查找失败，请稍后重试")) } }
+            finally { if (version == coverVersion) mutable.update { it.copy(coverLoading = false) } }
+        }
+    }
+
+    override fun cancelCoverSearch() {
+        if (mutable.value.musicSaving) return
+        coverVersion++
+        coverJob?.cancel()
+        coverJob = null
+        mutable.update { it.copy(coverSearchTrack = null, coverCandidates = emptyList(), coverLoading = false, coverError = null) }
+    }
+
+    override fun useSongCover(candidate: ArtworkCandidate) {
+        val state = mutable.value
+        val target = state.coverSearchTrack ?: return
+        if (state.musicSaving || state.coverLoading || candidate !in state.coverCandidates) return
+        mutable.update { it.copy(musicSaving = true, coverError = null) }
+        coverJob = viewModelScope.launch {
+            var savedUri: String? = null
+            try {
+                val bytes = container.catalog.image(candidate)
+                val old = container.songDetails.details(target.id)?.coverUri
+                withContext(Dispatchers.IO) {
+                    savedUri = Uri.fromFile(container.songFiles.cover(bytes)).toString()
+                    if (!container.songDetails.saveMatchedCover(target, savedUri!!, candidate.source, candidate.sourceUrl))
+                        throw java.io.IOException("歌曲信息已改变，请重新查找封面")
+                    container.songFiles.deleteOwnedCover(old)
+                }
+                mutable.update { it.copy(coverSearchTrack = null, coverCandidates = emptyList(), coverError = null,
+                    message = "封面已保存：${target.title}") }
+            } catch (error: CancellationException) { throw error }
+            catch (error: Exception) { mutable.update { it.copy(coverError = userMessage(error, "封面未能保存，请重试")) } }
+            finally {
+                // A cancellation may arrive after the atomic store commit; keep that committed file.
+                if (savedUri != null && container.songDetails.details(target.id)?.coverUri != savedUri)
+                    withContext(kotlinx.coroutines.NonCancellable + Dispatchers.IO) { container.songFiles.deleteOwnedCover(savedUri) }
+                mutable.update { it.copy(musicSaving = false) }
+            }
+        }
     }
 
     override fun clearLyrics() {
@@ -257,7 +385,11 @@ class AppViewModel(application: Application, private val savedStateHandle: Saved
     override fun selectSongCover(track: Track) = Unit
     fun beginSongFile(kind: String, track: Track): Boolean {
         if (mutable.value.musicSaving || mutable.value.lyricsLoading || savedStateHandle.get<String>("song_file_$kind") != null) return false
-        savedStateHandle["song_file_$kind"] = Json.encodeToString(container.songDetails.apply(track))
+        val playback = mutable.value.playback
+        val snapshot = container.songDetails.apply(track).let {
+            if (kind == "lyrics" && playback.track?.id == track.id && playback.durationMs > 0) it.copy(durationMs = playback.durationMs) else it
+        }
+        savedStateHandle["song_file_$kind"] = Json.encodeToString(snapshot)
         return true
     }
     fun finishSongFile(kind: String, uri: Uri?) {
@@ -320,7 +452,8 @@ class AppViewModel(application: Application, private val savedStateHandle: Saved
                 downloads = state.downloads.map { it.copy(track = container.songDetails.apply(it.track)) },
                 playback = playback.copy(track = current, queue = playback.queue.map(container.songDetails::apply)),
                 musicEditorTrack = state.musicEditorTrack?.let(container.songDetails::apply),
-                lyrics = current?.let { container.songDetails.details(it.id)?.lyrics },
+                lyrics = current?.let { container.songDetails.lyricsFor(it.copy(durationMs = playback.durationMs.takeIf { value -> value > 0 } ?: it.durationMs)) },
+                coverSource = state.musicEditorTrack?.let { container.songDetails.details(it.id)?.coverSource }.orEmpty(),
             )
         }
     }
@@ -541,7 +674,7 @@ class AppViewModel(application: Application, private val savedStateHandle: Saved
         }
         val error = player.playerError?.let { userMessage(it, "音频加载失败，请检查网络或重新解析") }
         mutable.update { it.copy(playback = PlaybackState(current, queue, player.currentMediaItemIndex.coerceAtLeast(0), player.isPlaying, player.playbackState == Player.STATE_BUFFERING && player.playWhenReady, player.currentPosition.coerceAtLeast(0), duration, mode, error),
-            lyrics = current?.let { track -> container.songDetails.details(track.id)?.lyrics },
+            lyrics = current?.let { track -> container.songDetails.lyricsFor(track.copy(durationMs = duration)) },
             lyricsError = if (changed) null else it.lyricsError,
             musicError = if (changed && !it.musicEditorVisible) null else it.musicError) }
     }

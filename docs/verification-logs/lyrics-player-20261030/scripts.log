@@ -1,0 +1,46 @@
+test_explicit_device_and_user_required_before_any_adb (test_device_checks.DeviceChecksTest) ... ok
+test_failure_markers_or_missing_nonempty_success_fail_even_with_adb_exit_zero (test_device_checks.DeviceChecksTest) ... ok
+test_install_failure_does_not_start_instrumentation (test_device_checks.DeviceChecksTest) ... ok
+test_instrument_process_failure_overrides_printed_success (test_device_checks.DeviceChecksTest) ... ok
+test_missing_apk_rejected_before_any_adb (test_device_checks.DeviceChecksTest) ... ok
+test_optional_arguments_cannot_inject_remote_shell_commands (test_device_checks.DeviceChecksTest) ... ok
+test_owner_or_invalid_user_rejected_before_any_adb (test_device_checks.DeviceChecksTest) ... ok
+test_project_device_entry_points_use_safe_runner (test_device_checks.DeviceChecksTest) ... ok
+test_single_test_success_with_crlf_is_accepted (test_device_checks.DeviceChecksTest) ... ok
+test_success_installs_and_runs_only_for_selected_user_without_cleanup (test_device_checks.DeviceChecksTest) ... ok
+test_user_switch_during_install_prevents_instrumentation (test_device_checks.DeviceChecksTest) ... ok
+test_wrong_or_unreadable_current_user_cannot_install_or_run (test_device_checks.DeviceChecksTest) ... ok
+test_bad_branch_rejected_before_tools (test_probe_bili_download.ProbeScriptTest) ... ok
+test_build_failure_stops_before_install (test_probe_bili_download.ProbeScriptTest) ... ok
+test_install_failure_stops_before_start (test_probe_bili_download.ProbeScriptTest) ... ok
+test_invalid_timeout_rejected_before_build (test_probe_bili_download.ProbeScriptTest) ... ok
+test_missing_or_unauthorized_device_stops_before_build (test_probe_bili_download.ProbeScriptTest) ... ok
+test_pc_runs_shared_cli_and_propagates_failure (test_probe_bili_download.ProbeScriptTest) ... ok
+test_phone_failed_probe_returns_failure (test_probe_bili_download.ProbeScriptTest) ... ok
+test_phone_keeps_data_and_filters_historical_logs (test_probe_bili_download.ProbeScriptTest) ... ok
+test_termination_cancels_active_phone_probe (test_probe_bili_download.ProbeScriptTest) ... ok
+test_timeout_cancels_current_probe_without_stopping_app (test_probe_bili_download.ProbeScriptTest) ... ok
+test_existing_signing_file_is_never_overwritten (test_release_tools.PrepareSigningTest) ... ok
+test_invalid_base64_fails_without_echoing_values (test_release_tools.PrepareSigningTest) ... ok
+test_keytool_error_is_redacted_and_cleaned (test_release_tools.PrepareSigningTest) ... ok
+test_missing_secrets_fail_without_creating_files (test_release_tools.PrepareSigningTest) ... ok
+test_success_writes_private_permissions_and_escaped_properties (test_release_tools.PrepareSigningTest) ... ok
+test_wrong_certificate_removes_temporary_key_and_does_not_write_passwords (test_release_tools.PrepareSigningTest) ... ok
+test_apk_metadata_detects_debuggable_and_wrong_certificate (test_release_tools.ReleaseBoundaryTest) ... ok
+test_bundle_debug_flag_and_probe_entry_are_rejected (test_release_tools.ReleaseBoundaryTest) ... ok
+test_bundle_metadata_is_read_from_actual_protobuf_structure (test_release_tools.ReleaseBoundaryTest) ... ok
+test_malformed_or_duplicate_bundle_fields_fail_closed (test_release_tools.ReleaseBoundaryTest) ... ok
+test_only_master_or_matching_release_tag_is_allowed (test_release_tools.ReleaseBoundaryTest) ... ok
+test_password_serialization_cannot_add_properties (test_release_tools.ReleaseBoundaryTest) ... ok
+test_version_source_requires_one_literal_identity (test_release_tools.ReleaseBoundaryTest) ... ok
+test_failed_transfer_preserves_partial_and_existing_archive (test_toolchain_download.ToolchainDownloadTest) ... ok
+test_metadata_is_replaced_instead_of_resumed (test_toolchain_download.ToolchainDownloadTest) ... ok
+test_resumes_a_partial_from_an_earlier_invocation (test_toolchain_download.ToolchainDownloadTest) ... ok
+test_server_without_ranges_restarts_cleanly (test_toolchain_download.ToolchainDownloadTest) ... ok
+test_slow_transfer_completes_across_timeouts (test_toolchain_download.ToolchainDownloadTest) ... ok
+test_unsatisfiable_range_restarts_cleanly (test_toolchain_download.ToolchainDownloadTest) ... ok
+
+----------------------------------------------------------------------
+Ran 41 tests in 21.021s
+
+OK

@@ -4,6 +4,8 @@ import app.tingyu.debug.AudioUaMode
 import app.tingyu.debug.DebugSettings
 import app.tingyu.data.bili.UserAgentProfile
 import app.tingyu.lyrics.LyricsDocument
+import app.tingyu.catalog.ArtworkCandidate
+import app.tingyu.catalog.LyricCandidate
 
 data class AppUiState(
     val input: String = "",
@@ -28,10 +30,17 @@ data class AppUiState(
     val lyrics: LyricsDocument? = null,
     val lyricsLoading: Boolean = false,
     val lyricsError: String? = null,
+    val lyricsChoiceTrack: Track? = null,
+    val lyricsCandidates: List<LyricCandidate> = emptyList(),
     val musicEditorVisible: Boolean = false,
     val musicEditorTrack: Track? = null,
     val musicSaving: Boolean = false,
     val musicError: String? = null,
+    val coverSource: String = "",
+    val coverSearchTrack: Track? = null,
+    val coverCandidates: List<ArtworkCandidate> = emptyList(),
+    val coverLoading: Boolean = false,
+    val coverError: String? = null,
     val debugAvailable: Boolean = false,
     val debugSettings: DebugSettings = DebugSettings(),
     val developerVisible: Boolean = false,
@@ -63,6 +72,13 @@ interface AppActions {
     fun clearLyrics()
     fun selectSongCover(track: Track)
     fun resetSongCover(track: Track)
+    fun findSongCover(track: Track) {}
+    fun cancelCoverSearch() {}
+    fun useSongCover(candidate: ArtworkCandidate) {}
+    fun adjustLyricsOffset(track: Track, deltaMs: Long) {}
+    fun resetLyricsOffset(track: Track) {}
+    fun findLyricVersions() {}
+    fun useLyricVersion(candidate: LyricCandidate) {}
     fun cancelDownload(id: String)
     fun retryDownload(id: String)
     fun login()

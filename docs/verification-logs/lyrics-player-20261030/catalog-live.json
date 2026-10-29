@@ -1,0 +1,384 @@
+{
+  "checkedAtLocal": "2026-10-30 Asia/Hong_Kong",
+  "client": "Tingyu/0.1.4 (https://github.com/JackkLau/mobile-music-dl)",
+  "credentials": "No Cookie, Authorization or Bili credentials",
+  "copyrightBodiesStored": false,
+  "liveRepositoryBeforeMimeFix": [
+    {
+      "title": "海阔天空",
+      "artist": "Beyond",
+      "durationMs": 326000,
+      "lyrics": null,
+      "artworkCount": 8,
+      "artworks": [
+        {
+          "source": "网易云音乐",
+          "kind": "专辑封面",
+          "album": "华纳廿三周年纪念精选系列 - B﻿eyond",
+          "imageHost": "p1.music.126.net",
+          "sourceUrl": "https://music.163.com/album?id=78372827",
+          "imageError": "封面返回内容不是图片"
+        },
+        {
+          "source": "网易云音乐",
+          "kind": "专辑封面",
+          "album": "华纳超极品音色系列",
+          "imageHost": "p1.music.126.net",
+          "sourceUrl": "https://music.163.com/album?id=78372154"
+        },
+        {
+          "source": "网易云音乐",
+          "kind": "专辑封面",
+          "album": "海阔天空",
+          "imageHost": "p1.music.126.net",
+          "sourceUrl": "https://music.163.com/album?id=34209"
+        },
+        {
+          "source": "网易云音乐",
+          "kind": "专辑封面",
+          "album": "华纳我爱经典系列 Beyond",
+          "imageHost": "p1.music.126.net",
+          "sourceUrl": "https://music.163.com/album?id=34545841"
+        },
+        {
+          "source": "网易云音乐",
+          "kind": "专辑封面",
+          "album": "华纳极品音色系列 (特别版)",
+          "imageHost": "p1.music.126.net",
+          "sourceUrl": "https://music.163.com/album?id=34541955"
+        },
+        {
+          "source": "网易云音乐",
+          "kind": "专辑封面",
+          "album": "乐坛班霸",
+          "imageHost": "p1.music.126.net",
+          "sourceUrl": "https://music.163.com/album?id=512090"
+        },
+        {
+          "source": "网易云音乐",
+          "kind": "专辑封面",
+          "album": "Words & Music: Final Live With 家驹",
+          "imageHost": "p1.music.126.net",
+          "sourceUrl": "https://music.163.com/album?id=34218"
+        },
+        {
+          "source": "网易云音乐",
+          "kind": "歌手照片",
+          "album": "",
+          "imageHost": "p1.music.126.net",
+          "sourceUrl": "https://music.163.com/artist?id=11127",
+          "imageError": "封面返回内容不是图片"
+        }
+      ]
+    },
+    {
+      "title": "Yellow",
+      "artist": "Coldplay",
+      "durationMs": 266000,
+      "lyrics": null,
+      "artworkCount": 8,
+      "artworks": [
+        {
+          "source": "网易云音乐",
+          "kind": "专辑封面",
+          "album": "Yellow",
+          "imageHost": "p2.music.126.net",
+          "sourceUrl": "https://music.163.com/album?id=1582613",
+          "imageError": "封面返回内容不是图片"
+        },
+        {
+          "source": "网易云音乐",
+          "kind": "专辑封面",
+          "album": "Now That's What I Call Music, Vol. 6",
+          "imageHost": "p2.music.126.net",
+          "sourceUrl": "https://music.163.com/album?id=34922051"
+        },
+        {
+          "source": "网易云音乐",
+          "kind": "专辑封面",
+          "album": "Now (That's What I Call Music) Vol. 6",
+          "imageHost": "p2.music.126.net",
+          "sourceUrl": "https://music.163.com/album?id=2557150"
+        },
+        {
+          "source": "网易云音乐",
+          "kind": "专辑封面",
+          "album": "99X Live X 10: Recently & Relived",
+          "imageHost": "p2.music.126.net",
+          "sourceUrl": "https://music.163.com/album?id=2552255"
+        },
+        {
+          "source": "网易云音乐",
+          "kind": "专辑封面",
+          "album": "Parachutes",
+          "imageHost": "p2.music.126.net",
+          "sourceUrl": "https://music.163.com/album?id=1582605"
+        },
+        {
+          "source": "网易云音乐",
+          "kind": "专辑封面",
+          "album": "Cold Live at the Chapel 2",
+          "imageHost": "p2.music.126.net",
+          "sourceUrl": "https://music.163.com/album?id=2549350"
+        },
+        {
+          "source": "网易云音乐",
+          "kind": "专辑封面",
+          "album": "100 Greatest Driving Songs",
+          "imageHost": "p2.music.126.net",
+          "sourceUrl": "https://music.163.com/album?id=280622729"
+        },
+        {
+          "source": "网易云音乐",
+          "kind": "歌手照片",
+          "album": "",
+          "imageHost": "p2.music.126.net",
+          "sourceUrl": "https://music.163.com/artist?id=89365",
+          "imageError": "封面返回内容不是图片"
+        }
+      ]
+    },
+    {
+      "title": "晴天",
+      "artist": "周杰伦",
+      "durationMs": 269000,
+      "lyrics": null,
+      "artworkCount": 2,
+      "artworks": [
+        {
+          "source": "QQ 音乐",
+          "kind": "专辑封面",
+          "album": "叶惠美",
+          "imageHost": "y.gtimg.cn",
+          "sourceUrl": "https://y.qq.com/n/ryqq_v2/albumDetail/000MkMni19ClKG",
+          "downloadBytes": 54232,
+          "validatedImage": true
+        },
+        {
+          "source": "QQ 音乐",
+          "kind": "歌手照片",
+          "album": "",
+          "imageHost": "y.gtimg.cn",
+          "sourceUrl": "https://y.qq.com/n/ryqq_v2/singer/0025NhlN2yWrP4",
+          "downloadBytes": 19224,
+          "validatedImage": true
+        }
+      ]
+    }
+  ],
+  "rawFieldChecks": [
+    {
+      "title": "孤勇者",
+      "artist": "陈奕迅",
+      "searchUrl": "https://music.163.com/api/search/get/web?s=%E5%AD%A4%E5%8B%87%E8%80%85+%E9%99%88%E5%A5%95%E8%BF%85&type=1&limit=20&offset=0",
+      "matches": [
+        {
+          "id": 1901371647,
+          "title": "孤勇者",
+          "artists": [
+            "陈奕迅"
+          ],
+          "durationMs": 256000,
+          "imageScheme": "https"
+        }
+      ],
+      "imageResponse": {
+        "status": 200,
+        "contentType": "image/jpg",
+        "prefixHex": "89504e470d0a1a0a0000000d"
+      }
+    },
+    {
+      "title": "I Want to Live",
+      "artist": "Borislav Slavov",
+      "searchUrl": "https://music.163.com/api/search/get/web?s=I+Want+to+Live+Borislav+Slavov&type=1&limit=20&offset=0",
+      "matches": [
+        {
+          "id": 2071573930,
+          "title": "I Want To Live",
+          "artists": [
+            "Borislav Slavov"
+          ],
+          "durationMs": 233281,
+          "imageScheme": "https"
+        },
+        {
+          "id": 2078672512,
+          "title": "I Want to Live",
+          "artists": [
+            "Borislav Slavov"
+          ],
+          "durationMs": 233281,
+          "imageScheme": "https"
+        }
+      ],
+      "imageResponse": {
+        "status": 200,
+        "contentType": "image/jpg",
+        "prefixHex": "ffd8ffe000104a4649460001"
+      }
+    }
+  ],
+  "sourceChecks": [
+    {
+      "source": "网易云音乐",
+      "kind": "first-party undocumented publicly readable endpoints; no official open API contract found",
+      "search": "https://music.163.com/api/search/get/web",
+      "detail": "https://music.163.com/api/song/detail",
+      "lyrics": "https://music.163.com/api/song/lyric",
+      "artist": "https://music.163.com/api/artist/6452",
+      "status": 200,
+      "businessCode": 200,
+      "notes": "The direct id=186016 test is not evidence that search discovered 晴天. Real search on the repository returned no exact match."
+    },
+    {
+      "source": "QQ音乐",
+      "search": "https://c.y.qq.com/soso/fcgi-bin/client_search_cp",
+      "status": 200,
+      "businessCode": 0,
+      "lyrics": "https://c.y.qq.com/lyric/fcgi-bin/fcg_query_lyric_new.fcg?songmid=001Sdket2oRaC1&format=json&nobase64=1",
+      "lyricHttpStatus": 200,
+      "lyricBusinessCode": -1310,
+      "notes": "No retry or alternate headers/parameters to evade rejection. Lyrics not integrated; metadata and album/artist cover fallback verified."
+    },
+    {
+      "source": "豆瓣",
+      "legacyApi": "https://api.douban.com/v2/music/search?q=%E5%91%A8%E6%9D%B0%E4%BC%A6&count=1",
+      "status": 404,
+      "publicReference": "https://search.douban.com/music/subject_search?search_text=%E6%99%B4%E5%A4%A9%20%E5%91%A8%E6%9D%B0%E4%BC%A6&cat=1003",
+      "publicReferenceHttpStatus": 200,
+      "terms": "https://www.douban.com/about/legal",
+      "decision": "External reference only, no automatic content harvesting. Current first-party terms require permission for reuse."
+    },
+    {
+      "source": "iTunes",
+      "officialDocumentation": "https://developer.apple.com/library/archive/documentation/AudioVideo/Conceptual/iTuneSearchAPI/",
+      "decision": "Not integrated. Official art use is tied to promoting store content and a linked store badge."
+    },
+    {
+      "source": "MusicBrainz/Cover Art Archive",
+      "officialDocumentation": "https://musicbrainz.org/doc/MusicBrainz_API",
+      "coverDocumentation": "https://musicbrainz.org/doc/Cover_Art_Archive/API",
+      "coverPolicy": "https://musicbrainz.org/doc/Cover_Art_Archive",
+      "decision": "Alternative researched, not integrated. MusicBrainz identifies app and caps calls at 1/sec; CAA serves release covers but not a lyric catalog or universal image reuse license."
+    }
+  ],
+  "limitations": [
+    "Network samples are not a guarantee of Chinese/English catalog coverage",
+    "Catalog identity and duration do not prove video audio synchronization",
+    "These first-party consumer endpoints may change or reject requests; fail-safe local import remains available"
+  ],
+  "finalLiveRepository": [
+    {
+      "title": "孤勇者",
+      "artist": "陈奕迅",
+      "durationMs": 256000,
+      "lyrics": {
+        "source": "网易云音乐",
+        "sourceUrl": "https://music.163.com/song?id=1901371647",
+        "plainLines": 79,
+        "syncedLines": 78
+      },
+      "artworkCount": 2,
+      "artworks": [
+        {
+          "source": "网易云音乐",
+          "kind": "专辑封面",
+          "album": "孤勇者",
+          "imageHost": "p2.music.126.net",
+          "sourceUrl": "https://music.163.com/album?id=137142551",
+          "downloadBytes": 6822036,
+          "validatedImage": true
+        },
+        {
+          "source": "网易云音乐",
+          "kind": "歌手照片",
+          "album": "",
+          "imageHost": "p2.music.126.net",
+          "sourceUrl": "https://music.163.com/artist?id=2116",
+          "downloadBytes": 270539,
+          "validatedImage": true
+        }
+      ]
+    },
+    {
+      "title": "I Want to Live",
+      "artist": "Borislav Slavov",
+      "durationMs": 233281,
+      "lyrics": null,
+      "manualVersionCount": 2,
+      "explicitVersionProbe": {
+        "album": "Baldur's Gate 3 Original Soundtrack",
+        "sourceUrl": "https://music.163.com/song?id=2071573930",
+        "durationMs": 233281,
+        "plainLines": 83,
+        "syncedLines": 43
+      },
+      "artworkCount": 3,
+      "artworks": [
+        {
+          "source": "网易云音乐",
+          "kind": "专辑封面",
+          "album": "Baldur's Gate 3 Original Soundtrack",
+          "imageHost": "p1.music.126.net",
+          "sourceUrl": "https://music.163.com/album?id=171813543",
+          "downloadBytes": 700517,
+          "validatedImage": true
+        },
+        {
+          "source": "网易云音乐",
+          "kind": "专辑封面",
+          "album": "Baldur's Gate 3 (Original Game Soundtrack)",
+          "imageHost": "p1.music.126.net",
+          "sourceUrl": "https://music.163.com/album?id=173842710"
+        },
+        {
+          "source": "网易云音乐",
+          "kind": "歌手照片",
+          "album": "",
+          "imageHost": "p2.music.126.net",
+          "sourceUrl": "https://music.163.com/artist?id=193980",
+          "downloadBytes": 13868,
+          "validatedImage": true
+        }
+      ]
+    },
+    {
+      "title": "晴天",
+      "artist": "周杰伦",
+      "durationMs": 269000,
+      "lyrics": null,
+      "artworkCount": 2,
+      "artworks": [
+        {
+          "source": "QQ 音乐",
+          "kind": "专辑封面",
+          "album": "叶惠美",
+          "imageHost": "y.gtimg.cn",
+          "sourceUrl": "https://y.qq.com/n/ryqq_v2/albumDetail/000MkMni19ClKG",
+          "downloadBytes": 54232,
+          "validatedImage": true
+        },
+        {
+          "source": "QQ 音乐",
+          "kind": "歌手照片",
+          "album": "",
+          "imageHost": "y.gtimg.cn",
+          "sourceUrl": "https://y.qq.com/n/ryqq_v2/singer/0025NhlN2yWrP4",
+          "downloadBytes": 19224,
+          "validatedImage": true
+        }
+      ]
+    }
+  ],
+  "finalLiveRepositoryMethod": "Standalone Java calls to the actual compiled app debug MusicCatalogRepository class, runBlocking; no mocked transport or hard-coded discovery IDs. I Want to Live explicitly exercises selecting a returned candidate, not automatic attachment.",
+  "compiledRepositorySha256": "7e296f713176c3908e31e641f618e740e50234c77e9ee449a53fa4cc4d6b23af",
+  "mimeFix": "NetEase images really returned image/jpg; actual bodies were PNG/JPEG. Added this alias while retaining signature validation and downstream image decoding. HTML and arbitrary/octet-stream MIME remain rejected.",
+  "httpImagePolicy": "Only already allowlisted official http:80 image URLs are upgraded to https:443; credentials, custom ports, non-official hosts and redirects remain rejected. Final successful samples all arrived as https.",
+  "results": {
+    "chineseAutomaticLyrics": "孤勇者 / 陈奕迅 / 256000ms: 79 plain lines, 78 synced timestamps",
+    "englishExplicitVersionLyrics": "I Want to Live / Borislav Slavov: automatic is ambiguous and returns null; 2 returned exact candidates; explicitly chosen 233281ms version has 83 plain lines and 43 synced timestamps",
+    "qqCoverFallback": "晴天 / 周杰伦: no exact NetEase search hit; QQ album and artist photos both downloaded and validated",
+    "providerSuccessNotTimingGuarantee": true
+  }
+}

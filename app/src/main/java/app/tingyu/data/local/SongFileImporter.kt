@@ -31,7 +31,11 @@ class SongFileImporter(private val context: Context) {
     }
 
     fun cover(uri: Uri): File {
-        val bytes = readBounded(uri, 12 * 1024 * 1024)
+        return cover(readBounded(uri, 12 * 1024 * 1024))
+    }
+
+    fun cover(bytes: ByteArray): File {
+        if (bytes.isEmpty() || bytes.size > 12 * 1024 * 1024) throw IOException("封面文件无法读取或过大")
         val bitmap = ImageDecoder.decodeBitmap(ImageDecoder.createSource(ByteBuffer.wrap(bytes))) { decoder, info, _ ->
             val scale = minOf(1.0, 1024.0 / maxOf(info.size.width, info.size.height))
             decoder.setTargetSize((info.size.width * scale).toInt().coerceAtLeast(1), (info.size.height * scale).toInt().coerceAtLeast(1))

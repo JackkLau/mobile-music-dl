@@ -8,6 +8,8 @@ import android.provider.MediaStore
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.tingyu.lyrics.LrcParser
+import app.tingyu.model.Track
+import kotlinx.coroutines.runBlocking
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.UUID
@@ -56,6 +58,28 @@ class SongFilesIntegrationTest {
             importer.deleteOwnedCover(Uri.fromFile(cover).toString())
             assertFalse(cover!!.exists())
         } finally { cover?.delete() }
+    }
+
+    @Test fun fetchedArtworkBytesAreSavedWithSourceAndReadableOffline() = runBlocking {
+        val bitmap = Bitmap.createBitmap(1200, 600, Bitmap.Config.ARGB_8888).apply { eraseColor(android.graphics.Color.BLUE) }
+        val bytes = ByteArrayOutputStream().also { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }.toByteArray()
+        bitmap.recycle()
+        val directory = File(context.cacheDir, "artwork-record-${UUID.randomUUID()}")
+        val cover = importer.cover(bytes)
+        try {
+            val track = Track("BV1test000001", 1, "合成测试歌曲", "合成歌手", metadataVersion = 1)
+            val store = SongDetailsStore(directory)
+            assertTrue(store.saveMatchedCover(track, Uri.fromFile(cover).toString(), "测试来源", "https://example.invalid/album"))
+            val reopened = SongDetailsStore(directory).also { it.load() }
+            assertEquals(Uri.fromFile(cover).toString(), reopened.apply(track).coverUrl)
+            assertEquals("测试来源", reopened.details(track.id)?.coverSource)
+            val image = BitmapFactory.decodeFile(cover.absolutePath)
+            assertEquals(1024, image.width)
+            assertEquals(512, image.height)
+            image.recycle()
+            assertTrue(runCatching { importer.cover("<html>error</html>".toByteArray()) }.isFailure)
+            assertTrue(cover.exists())
+        } finally { cover.delete(); directory.deleteRecursively() }
     }
 
     private fun withDocument(mime: String, bytes: ByteArray, block: (Uri) -> Unit) {

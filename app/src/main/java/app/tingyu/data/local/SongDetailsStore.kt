@@ -1,6 +1,7 @@
 package app.tingyu.data.local
 
 import app.tingyu.lyrics.LyricsDocument
+import app.tingyu.lyrics.LrcParser
 import app.tingyu.model.MusicMetadata
 import app.tingyu.model.Track
 import java.io.File
@@ -26,7 +27,32 @@ data class SongDetails(
     val artist: String? = null,
     val coverUri: String? = null,
     val lyrics: LyricsDocument? = null,
+    val lyricsIdentity: SongSignature? = null,
+    val coverSource: String = "",
+    val coverSourceUrl: String = "",
+    val coverIdentity: SongSignature? = null,
 )
+
+/** Signature of the audio used to select lyrics; unknown legacy fields do not invent certainty. */
+@Serializable
+data class SongSignature(
+    val title: String,
+    val artist: String,
+    val bvid: String,
+    val cid: Long,
+    val page: Int,
+    val durationMs: Long,
+) {
+    fun matches(track: Track): Boolean = title == track.title && artist == track.artist &&
+        bvid == track.bvid && page == track.page &&
+        (cid <= 0 || track.cid <= 0 || cid == track.cid) &&
+        (durationMs <= 0 || track.durationMs <= 0 ||
+            kotlin.math.abs(durationMs.toDouble() - track.durationMs.toDouble()) <= 2000.0)
+
+    companion object {
+        fun from(track: Track): SongSignature = SongSignature(track.title, track.artist, track.bvid, track.cid, track.page, track.durationMs)
+    }
+}
 
 class SongDetailsStore(private val directory: File) {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
@@ -53,19 +79,40 @@ class SongDetailsStore(private val directory: File) {
 
     fun details(id: String): SongDetails? = mutable.value[id]
 
+    fun lyricsFor(track: Track): LyricsDocument? {
+        val current = apply(track)
+        val detail = details(current.id) ?: return null
+        // v0.1.3 records have no query signature. Keep those readable; their original
+        // lookup identity cannot be reconstructed, so a fresh lookup adds provenance.
+        return detail.lyrics?.takeIf { detail.lyricsIdentity?.matches(current) != false }
+            ?.let { it.copy(offsetMs = LrcParser.clampOffset(it.offsetMs)) }
+    }
+
     fun apply(track: Track): Track {
         val normalized = MusicMetadata.normalize(track)
         val detail = details(track.id) ?: return normalized
-        return normalized.copy(title = detail.title ?: normalized.title, artist = detail.artist ?: normalized.artist,
-            coverUrl = detail.coverUri ?: normalized.coverUrl)
+        val current = normalized.copy(title = detail.title ?: normalized.title, artist = detail.artist ?: normalized.artist)
+        val signature = detail.coverIdentity
+        val staleCover = detail.coverSource.isNotBlank() && signature != null &&
+            (signature.title != current.title || signature.artist != current.artist)
+        // A caller may already hold a decorated Track with the previous artwork URI.
+        // Never fall back to that stale URI after the song identity has changed.
+        return current.copy(coverUrl = if (staleCover) "" else detail.coverUri ?: current.coverUrl)
     }
 
     suspend fun edit(track: Track, title: String, artist: String) {
         require(title.trim().isNotEmpty() && title.length <= 200 && artist.length <= 200) { "请填写歌名，歌名和歌手各不超过 200 字" }
         update(track.id) { old ->
             val current = apply(track)
+            val changed = current.title != title.trim() || current.artist != artist.trim()
+            val clearMatchedCover = changed && old.coverSource.isNotBlank()
             old.copy(title = title.trim(), artist = artist.trim(),
-                lyrics = old.lyrics.takeIf { current.title == title.trim() && current.artist == artist.trim() })
+                lyrics = old.lyrics.takeUnless { changed },
+                lyricsIdentity = old.lyricsIdentity.takeUnless { changed },
+                coverUri = if (clearMatchedCover) "" else old.coverUri,
+                coverSource = if (clearMatchedCover) "" else old.coverSource,
+                coverSourceUrl = if (clearMatchedCover) "" else old.coverSourceUrl,
+                coverIdentity = old.coverIdentity.takeUnless { clearMatchedCover })
         }
     }
 
@@ -75,13 +122,53 @@ class SongDetailsStore(private val directory: File) {
             val current = apply(track)
             // Editing a song while a lookup/import is in flight must not attach old lyrics.
             if (current.title != track.title || current.artist != track.artist) old
-            else old.copy(lyrics = lyrics).also { saved = true }
+            else {
+                val oldMatches = old.lyricsIdentity?.matches(current) != false
+                val unchanged = oldMatches && old.lyrics?.copy(offsetMs = 0) == lyrics.copy(offsetMs = 0)
+                val offset = if (unchanged) old.lyrics?.offsetMs ?: 0 else lyrics.offsetMs
+                old.copy(lyrics = lyrics.copy(offsetMs = LrcParser.clampOffset(offset)),
+                    lyricsIdentity = SongSignature.from(current)).also { saved = true }
+            }
         }
         return saved
     }
 
-    suspend fun clearLyrics(id: String) = update(id) { it.copy(lyrics = null) }
-    suspend fun setCover(id: String, uri: String?) = update(id) { it.copy(coverUri = uri) }
+    suspend fun adjustLyricsOffset(track: Track, deltaMs: Long): Boolean = changeLyricsOffset(track) {
+        // Limiting the delta before addition avoids overflow without changing the clamped result.
+        LrcParser.clampOffset(it + deltaMs.coerceIn(-2 * LrcParser.MAX_OFFSET_MS, 2 * LrcParser.MAX_OFFSET_MS))
+    }
+
+    suspend fun resetLyricsOffset(track: Track): Boolean = changeLyricsOffset(track) { 0 }
+
+    private suspend fun changeLyricsOffset(track: Track, transform: (Long) -> Long): Boolean {
+        var changed = false
+        update(track.id) { old ->
+            val current = apply(track)
+            val lyrics = old.lyrics
+            if (lyrics == null || current.title != track.title || current.artist != track.artist ||
+                old.lyricsIdentity?.matches(current) == false) old
+            else old.copy(lyrics = lyrics.copy(offsetMs = transform(LrcParser.clampOffset(lyrics.offsetMs))),
+                lyricsIdentity = old.lyricsIdentity ?: SongSignature.from(current)).also { changed = true }
+        }
+        return changed
+    }
+
+    suspend fun clearLyrics(id: String) = update(id) { it.copy(lyrics = null, lyricsIdentity = null) }
+    suspend fun setCover(id: String, uri: String?, source: String = "", sourceUrl: String = "") =
+        update(id) { it.copy(coverUri = uri, coverSource = source, coverSourceUrl = sourceUrl, coverIdentity = null) }
+
+    suspend fun saveMatchedCover(track: Track, uri: String, source: String, sourceUrl: String): Boolean {
+        // The caller verifies/copies image bytes into its owned private artwork directory first.
+        require(uri.startsWith("file://") && source.isNotBlank() && sourceUrl.startsWith("https://")) { "封面来源不受支持" }
+        var saved = false
+        update(track.id) { old ->
+            val current = apply(track)
+            if (current.title != track.title || current.artist != track.artist) old
+            else old.copy(coverUri = uri, coverSource = source, coverSourceUrl = sourceUrl,
+                coverIdentity = SongSignature.from(current)).also { saved = true }
+        }
+        return saved
+    }
 
     private suspend fun update(id: String, transform: (SongDetails) -> SongDetails) = withContext(Dispatchers.IO) {
         mutex.withLock {

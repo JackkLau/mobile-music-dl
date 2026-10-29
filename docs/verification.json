@@ -344,5 +344,92 @@
       "Real-song lyric coverage and timing remain unverified"
     ],
     "report": "docs/SONG-DETAILS-VERIFICATION.md"
+  },
+  "lyrics_player_0_1_4": {
+    "date": "2026-10-30",
+    "versionName": "0.1.4",
+    "versionCode": 5,
+    "applicationJVM": {
+      "debug": {
+        "tests": 228,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "release": {
+        "tests": 228,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "sameSuite": true
+    },
+    "sharedPcJVM": {
+      "tests": 128,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "overlapsApplication": true
+    },
+    "scripts": 41,
+    "structural": 108,
+    "lint": {
+      "debug": {
+        "Error": 0,
+        "Warning": 24
+      },
+      "release": {
+        "Error": 0,
+        "Warning": 23
+      }
+    },
+    "android": {
+      "api": 37,
+      "narrow320dpFont1_5": {
+        "tests": 5,
+        "failures": 0
+      },
+      "wide711x320dpFont1_5": {
+        "tests": 5,
+        "failures": 0
+      },
+      "additionalChecksOverlap": true,
+      "tests": 49,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "runner": "scripts/check-device.sh"
+    },
+    "liveCatalog": {
+      "report": "docs/verification-logs/lyrics-player-20261030/catalog-live.json",
+      "neteaseLyrics": true,
+      "neteaseAlbumAndArtistArtwork": true,
+      "qqFallbackArtwork": true,
+      "qqLyricsIntegrated": false,
+      "doubanAutomaticFetching": false,
+      "lyricsBodiesAndImagesStored": false
+    },
+    "emulatorTestIncident": {
+      "trigger": "Gradle UTP uninstalled app across users after the 9-test narrow run",
+      "ownerPrivateDatabaseQueueSettingsDeleted": true,
+      "sharedAudioFilesPreserved": 1,
+      "rescannedLibraryTracks": 1,
+      "recoveredDataBackedUpLocally": true,
+      "originalQueueAndSettingsRecovered": false,
+      "physicalPhoneAffected": false,
+      "mitigation": "Direct instrumentation runner requires explicit serial and active nonzero user; never uninstalls or clears data. Shared package updates still affect all users.",
+      "ownerLibraryTracksRecheckedAfterDirectTests": 1
+    },
+    "localSignedRelease": "verified original certificate",
+    "cloudRelease": {
+      "status": "pending"
+    },
+    "limitations": [
+      "Physical phone not connected; signed upgrade and TalkBack remain unverified",
+      "No word-level karaoke or audio fingerprinting",
+      "Matching does not prove timing for edited videos",
+      "Third-party public endpoints may reject requests or change"
+    ],
+    "report": "docs/LYRICS-PLAYER-VERIFICATION.md"
   }
 }

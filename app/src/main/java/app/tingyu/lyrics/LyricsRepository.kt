@@ -86,7 +86,7 @@ class LyricsRepository internal constructor(
         }
         val lines = try { LrcParser.parse(synced) }
         catch (_: IllegalArgumentException) { throw IOException("歌词时间标记过多，请改用本地歌词文件") }
-        if (!instrumental && plain.isBlank() && lines.isEmpty()) return@withLock null
+        if (!instrumental && plain.isBlank() && lines.none { it.text.isNotBlank() }) return@withLock null
         val id = (root["id"] as? JsonPrimitive)?.longOrNull?.takeIf { it > 0 }
         LyricsDocument(
             plainText = plain.ifBlank { lines.joinToString("\n") { it.text } },

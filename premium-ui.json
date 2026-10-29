@@ -9,7 +9,7 @@
   "requiredCommands": ["unit", "ui", "build", "design"],
   "commands": {
     "unit": "gradle :app:testDebugUnitTest",
-    "ui": "gradle :app:connectedDebugAndroidTest",
+    "ui": "bash scripts/check-device.sh",
     "build": "gradle :app:assembleDebug",
     "design": "npx -p @google/design.md designmd lint DESIGN.md"
   },

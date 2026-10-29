@@ -10,4 +10,4 @@ if ! command -v gradle >/dev/null 2>&1; then
   exit 2
 fi
 gradle --no-daemon :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest :probe:test :probe:installDist
-if [[ "${1:-}" == "--device" ]]; then gradle --no-daemon :app:connectedDebugAndroidTest; fi
+if [[ "${1:-}" == "--device" ]]; then bash scripts/check-device.sh; fi

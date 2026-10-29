@@ -33,7 +33,9 @@
 | Toast | TingYuApp SnackbarHost | AppUiState.message | 短暂操作反馈 | UI fixture / native semantics |
 | CRUD | LibraryScreen + AppActions | local LibraryStore | 本地删除确认、失败保留 | UI confirmation + storage tests |
 | Song details | SongDetailsDialog + SongDetailsStore | Track 来源字段与本地歌曲信息 | 歌名/歌手修正、系统封面选择 | store + UI tests |
-| Lyrics | LyricsPanel + LyricsRepository + SongDetailsStore | 本地 LRC/TXT 或 LRCLIB 响应 | 滚动、纯文本、纯音乐、空/错/等待 | parser/client/store + UI tests |
+| Lyrics | LyricsPanel + LyricsLookup + MusicCatalogRepository + LyricsRepository + SongDetailsStore | 本地 LRC/TXT、网易公开响应、LRCLIB | 自动精确匹配／手选版本、偏移、滚动、纯文本、纯音乐、空/错/等待 | parser/client/store + UI tests |
+| Artwork lookup | SongDetailsDialog + MusicCatalogRepository + SongFileImporter | 网易／QQ 公开目录与用户明确选择 | 专辑封面、歌手照片；本地缓存 | catalog + store + device tests |
+| Player transport | PlayerControls | PlaybackState / AppActions | 固定底部；短屏紧凑 | PlayerBottomControlsTest |
 
 ## Component behavior
 
@@ -92,12 +94,16 @@ TrackRow 点击播放；Checkbox 仅选择；下载图标仅触发下载。已�
 ## Verification
 
 - 构建：`gradle :app:assembleDebug`。
-- UI 交互：`gradle :app:connectedDebugAndroidTest`，包括空态、搜索、删除确认、重试和播放入口。
+- UI 交互：先构建 debug 应用／测试 APK，再显式设置 `TINGYU_TEST_DEVICE` 和 `TINGYU_TEST_USER`，运行 `bash scripts/check-device.sh`；包括空态、搜索、删除确认、重试和播放入口。设备必须已经切换到本次测试的非零临时用户，脚本拒绝 user 0 或当前用户不符，不自动创建、切换、清除或删除用户。
 - 单元检查：`gradle :app:testDebugUnitTest`。
 - 设计格式：`npx -p @google/design.md designmd lint DESIGN.md`。
 - 静态项目契约：`audit_project.py . --mode strict`；该脚本只识别 Web 源后缀，因此 native Compose 的通过只证明契约文件完整，不能证明 Kotlin 可编译或运行行为。
 - 真机矩阵：Android 10 与较新 Android、320dp 窄屏、字体放大、TalkBack、横竖屏、前后台、锁屏、无网络、失效登录、长标题。
 - 当前验证状态以 `docs/verification.json` 为准。独立 Kotlin 编译和 JVM 测试不等于 APK 构建或真机 UI 验收；尚未运行的项必须保留为待验证。
+
+设备测试统一通过 `check-device.sh` 直接安装并运行指定用户的 instrumentation；`check.sh --device` 和 `premium-ui.json` 使用同一入口，不使用 Gradle connected 设备测试的自动安装／卸载生命周期。必须选择可丢弃的专用模拟器，并先备份或保存快照；非零用户不是完整隔离保证，Android 包代码仍由不同用户共享，覆盖安装和测试本身仍可能改变设备状态。脚本必须检查实际 instrumentation 成功结果，不能把 adb 退出码 0 或测试进程结束等同于测试通过。
+
+2026-10-30 曾在窄屏测试结束后发生 Gradle UTP 跨用户卸载事故，原模拟器 user 0 的应用私有数据库、队列和设置被清除。共享音频仍在，已通过扫描恢复 1 首并备份；没有备份的队列和设置无法恢复。手机当时未连接、未受影响。事故不能被后续测试通过抵消，具体范围与处理见 [本轮事故记录](docs/LYRICS-PLAYER-VERIFICATION.md#设备测试事故与入口修复)。
 
 ## 本轮网络调试入口补齐
 
@@ -127,3 +133,13 @@ debug 构建的“我的”提供“网络调试”，首次进入沿用桌面 U
 - 可从系统文件选择器导入 UTF-8 或带 BOM 的 UTF-16 LRC/TXT，最多 256 KB、3000 行。导入后私有保存，可离线显示。LRC 支持多时间戳、offset、翻译同行及间奏；无时间戳按纯文本展示，不假装同步。
 - 切歌取消旧查询；编辑后的迟到歌词不能覆盖新信息。文件选择固定原曲目，迟到结果不串到当前曲目。局部错误按目标 id 归属，跨曲目操作反馈明确歌名。
 - 元数据、歌词、封面写盘成功后才公布状态；原文件不重命名、不转码。曲目信息更新保留媒体 URI/configuration，不重新加载正在播放的音频。删除已保存歌词需确认，保留音频和原始导入文件。
+
+## 歌词完善与固定播放区（0.1.4，覆盖上节旧交互）
+
+- 主控区固定在底部，始终保留进度、前后 10 秒、模式、上一首、播放暂停、下一首与队列；中部滚动不能移动控件。完整标题仍在封面页可滚动查看。短高宽屏合并顶部页签并横排底控；歌词工具收拢到选项，保留正文空间。
+- 明确触发后先查网易，失败或无唯一精确匹配时使用 LRCLIB；所有请求无账号 Cookie、有界读取、取消、超时与限流处理。自动查询仍要求歌名、歌手、时长匹配，搜索首项不是默认正确答案。
+- “歌词选项 → 选择歌词版本”仅展示歌名和歌手精确匹配的网易版本，最多 8 项；明确标注专辑、来源和时长差，选中并确认后才取词并保存。加载可取消；无歌词、服务拒绝或写盘失败保留原歌词。切歌／编辑使旧查询失效。
+- 点歌词按校准后的时间跳转。提前／延后 0.5 秒、重置提供无需拖动的操作，范围 ±30 秒；与内嵌 LRC offset 叠加，当前句高亮使用相同时间基准。偏移随歌词离线保存，不改变原歌词文件。
+- 新歌词缓存记录歌名、歌手、BV、P、cid 与时长签名，已知音源或时长变化拒绝旧缓存。旧 0.1.3 缓存没有签名，只能兼容读取，重新查询／校准后补签名，不能追溯证明旧身份正确。
+- 在线封面先网易、无结果用 QQ；只呈现精确名称匹配的专辑或唯一艺人图片。预览标注来源和类型，用户确认后下载受限官方 HTTPS 图片，解码缩小后保存私有目录。失败保留原图，改名清除联网匹配图，手选图保留。重新解析身份变化时，联网图签名不匹配则展示默认封套。
+- 外部平台按钮打开浏览器搜索，不自动抓取豆瓣。QQ 歌词拒绝结果不绕过。外部来源可能变化，不宣称完整复制成熟平台的曲库覆盖或逐字卡拉 OK。

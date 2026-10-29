@@ -9,6 +9,8 @@ import app.tingyu.data.local.LocalMusicManager
 import app.tingyu.data.local.SongDetailsStore
 import app.tingyu.data.local.SongFileImporter
 import app.tingyu.lyrics.LyricsRepository
+import app.tingyu.lyrics.LyricsLookup
+import app.tingyu.catalog.MusicCatalogRepository
 import java.io.File
 import app.tingyu.download.DownloadCoordinator
 import app.tingyu.debug.DebugSettingsStore
@@ -26,7 +28,9 @@ class AppContainer(context: Context) {
     val library = LibraryStore(context)
     val songDetails = SongDetailsStore(File(context.filesDir, "song-details"))
     val songFiles = SongFileImporter(context)
-    val lyrics = LyricsRepository(BuildConfig.VERSION_NAME)
+    val catalog = MusicCatalogRepository(BuildConfig.VERSION_NAME)
+    private val lrclib = LyricsRepository(BuildConfig.VERSION_NAME)
+    val lyrics = LyricsLookup(catalog::lyrics, lrclib::find)
     val localMusic = LocalMusicManager(context, library)
     val downloads = DownloadCoordinator(context, bilibili, library)
 }

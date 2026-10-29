@@ -1,0 +1,17 @@
+Performing Streamed Install
+Success
+Performing Streamed Install
+Success
+
+app.tingyu.data.local.LocalMusicIntegrationTest:...........
+app.tingyu.data.local.SongFilesIntegrationTest:....
+app.tingyu.debug.DebugSettingsStoreTest:.
+app.tingyu.playback.PlaybackIntegrationTest:.
+app.tingyu.ui.PlayerBottomControlsTest:.....
+app.tingyu.ui.TingYuUiTest:...........................
+
+Time: 159.933
+
+OK (49 tests)
+
+
