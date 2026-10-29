@@ -46,6 +46,8 @@ class MainActivity : ComponentActivity() {
         }
     }
     private val localDeleteLaunchers = mutableMapOf<String, ActivityResultLauncher<IntentSenderRequest>>()
+    private val lyricsFile = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> model.finishSongFile("lyrics", uri) }
+    private val coverFile = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> model.finishSongFile("cover", uri) }
 
     private fun deleteLauncher(operationId: String): ActivityResultLauncher<IntentSenderRequest> =
         localDeleteLaunchers.getOrPut(operationId) {
@@ -73,6 +75,16 @@ class MainActivity : ComponentActivity() {
             }
         }
         val actions = object : AppActions by model {
+            override fun importLyrics(track: Track) {
+                if (!model.beginSongFile("lyrics", track)) return
+                try { lyricsFile.launch(arrayOf("text/*", "application/x-subrip", "application/octet-stream")) }
+                catch (_: Exception) { model.finishSongFile("lyrics", null); model.localPickerUnavailable() }
+            }
+            override fun selectSongCover(track: Track) {
+                if (!model.beginSongFile("cover", track)) return
+                try { coverFile.launch(arrayOf("image/*")) }
+                catch (_: Exception) { model.finishSongFile("cover", null); model.localPickerUnavailable() }
+            }
             override fun scanLocalMusic() {
                 val permission = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE
                 if (checkSelfPermission(permission) == android.content.pm.PackageManager.PERMISSION_GRANTED) model.scanLocalMusic()

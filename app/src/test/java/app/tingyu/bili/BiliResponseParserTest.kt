@@ -16,7 +16,8 @@ class BiliResponseParserTest {
         assertEquals(1, result.tracks.size)
         assertEquals(12L, result.tracks.single().cid)
         assertEquals(180_000L, result.tracks.single().durationMs)
-        assertEquals("https://i0.hdslb.com/a.jpg", result.tracks.single().coverUrl)
+        assertEquals("", result.tracks.single().coverUrl)
+        assertEquals("https://i0.hdslb.com/a.jpg", result.tracks.single().videoCoverUrl)
     }
 
     @Test fun favoritesKeepPaginationEvenWhenPageContainsNoSupportedVideos() {

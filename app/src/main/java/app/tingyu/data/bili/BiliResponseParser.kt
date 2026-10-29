@@ -3,6 +3,7 @@ package app.tingyu.data.bili
 import app.tingyu.model.AudioStream
 import app.tingyu.model.ParseResult
 import app.tingyu.model.Track
+import app.tingyu.model.MusicMetadata
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -59,16 +60,17 @@ internal object BiliResponseParser {
             val cid = part.long("cid")
             if (cid <= 0) return@mapNotNull null
             val page = part.int("page").coerceAtLeast(1)
-            Track(
+            MusicMetadata.normalize(Track(
                 bvid = bvid, cid = cid,
-                title = if (pages.size > 1) "$title · P$page ${part.string("part")}" else title,
+                title = if (pages.size > 1) MusicMetadata.partTitle(title, part.string("part"), page) else title,
                 artist = owner, coverUrl = cover,
                 durationMs = part.long("duration") * 1000L,
                 page = page,
-            )
+                sourceTitle = title,
+            ))
         }.ifEmpty {
             val cid = data.long("cid")
-            if (cid > 0) listOf(Track(bvid, cid, title, owner, cover, data.long("duration") * 1000)) else emptyList()
+            if (cid > 0) listOf(MusicMetadata.normalize(Track(bvid, cid, title, owner, cover, data.long("duration") * 1000))) else emptyList()
         }
         val selected = if (requestedPage != null) all.filter { it.page == requestedPage } else all
         if (selected.isEmpty()) throw BiliException("未找到此视频的分 P 或可用音轨信息")
@@ -82,13 +84,13 @@ internal object BiliResponseParser {
             val bvid = media.string("bvid").ifEmpty { media.string("bv_id") }
             if (!Regex("BV[0-9A-Za-z]{10}").matches(bvid)) return@mapNotNull null
             // cid=0 represents a list entry. resolveAudio fetches current video details before use.
-            Track(
+            MusicMetadata.normalize(Track(
                 bvid = bvid, cid = media.obj("ugc").long("first_cid"),
                 title = media.string("title").ifBlank { "失效视频" },
                 artist = media.obj("upper").string("name"),
                 coverUrl = secureImageUrl(media.string("cover")),
                 durationMs = 0L, // Collection duration may cover all parts; do not compare it to part 1.
-            )
+            ))
         }
         return ParseResult(title, tracks, id, if (data.bool("has_more")) page + 1 else null)
     }

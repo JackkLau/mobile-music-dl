@@ -16,6 +16,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import app.tingyu.MainActivity
 import app.tingyu.MusicApp
 import app.tingyu.data.local.LocalMusicRules
+import app.tingyu.data.local.SongDetailsStore
 import app.tingyu.model.LocalTrack
 import app.tingyu.model.Track
 import com.google.common.util.concurrent.ListenableFuture
@@ -91,11 +92,27 @@ class PlaybackIntegrationTest {
             }
             onMain {
                 assertEquals(2, player.mediaItemCount)
-                assertEquals(tracks[0], TrackMedia.track(player.currentMediaItem))
+                assertEquals(tracks[0].id, TrackMedia.track(player.currentMediaItem)?.id)
+                assertEquals("Local PCM fixture A", player.currentMediaItem?.mediaMetadata?.title.toString())
+                assertEquals("Local PCM fixture A", TrackMedia.track(player.currentMediaItem)?.sourceTitle)
                 assertTrue("Duration must come from the decoded WAV", player.duration in 11_900L..12_100L)
                 player.play()
             }
             awaitPlayer(player, "real playback clock advances") { it.isPlaying && it.currentPosition >= 300 }
+            val beforeEdit = onMain { player.currentPosition }
+            runBlocking { app.container.songDetails.edit(tracks[0], "修正后的合成歌曲", "合成歌手") }
+            awaitPlayer(player, "media session metadata updates without restarting playback") {
+                it.currentMediaItem?.mediaMetadata?.title.toString() == "修正后的合成歌曲" && it.isPlaying
+            }
+            onMain {
+                assertTrue("Editing metadata must not reset playback position", player.currentPosition >= beforeEdit)
+                assertEquals("合成歌手", player.currentMediaItem?.mediaMetadata?.artist.toString())
+                assertEquals(tracks[0].id, player.currentMediaItem?.mediaId)
+                assertEquals(2, player.mediaItemCount)
+            }
+            val reopened = SongDetailsStore(File(app.filesDir, "song-details"))
+            runBlocking { reopened.load() }
+            assertEquals("修正后的合成歌曲", reopened.apply(tracks[0]).title)
             onMain { player.pause() }
             awaitPlayer(player, "playback pauses") { !it.isPlaying && !it.playWhenReady }
 
@@ -109,7 +126,8 @@ class PlaybackIntegrationTest {
             }
             onMain {
                 assertEquals(1, player.currentMediaItemIndex)
-                assertEquals(tracks[1], TrackMedia.track(player.currentMediaItem))
+                assertEquals(tracks[1].id, TrackMedia.track(player.currentMediaItem)?.id)
+                assertEquals(tracks[1].title, player.currentMediaItem?.mediaMetadata?.title.toString())
                 assertTrue(player.hasPreviousMediaItem())
             }
         } catch (error: Throwable) {
@@ -138,6 +156,11 @@ class PlaybackIntegrationTest {
                 }
             }
             tracks.forEach { track -> clean { runBlocking { library.removeLocal(track.id) } } }
+            clean {
+                // This random fixture ID did not exist before the test; never touch user sidecars.
+                val sidecar = File(app.filesDir, "song-details/${SongDetailsStore.key(tracks[0].id)}.json")
+                assertTrue(!sidecar.exists() || sidecar.delete())
+            }
             clean { assertTrue("Remove only this test's private audio directory", !directory.exists() || directory.deleteRecursively()) }
             if (cleanupErrors.isNotEmpty()) {
                 val cleanupFailure = AssertionError("Playback fixture cleanup failed")

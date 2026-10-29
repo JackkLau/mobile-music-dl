@@ -11,9 +11,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
@@ -21,6 +23,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -64,6 +67,7 @@ private fun PlayerContent(state: AppUiState, actions: AppActions) {
         (player.mode == PlayMode.REPEAT_ALL || player.mode == PlayMode.SHUFFLE || player.index < player.queue.lastIndex)
     var scrubbing by remember(track?.id) { mutableStateOf(false) }
     var sliderPosition by remember(track?.id) { mutableFloatStateOf(0f) }
+    var lyricsVisible by rememberSaveable(track?.id) { mutableStateOf(false) }
     LaunchedEffect(player.positionMs, scrubbing) { if (!scrubbing) sliderPosition = player.positionMs.toFloat() }
     val maxPosition = duration.coerceAtLeast(1).toFloat()
     Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(TingYuColors.PlayerSurface, TingYuColors.Ink)))
@@ -84,10 +88,17 @@ private fun PlayerContent(state: AppUiState, actions: AppActions) {
           LazyColumn(Modifier.weight(1f).testTag("player_list"), contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(20.dp)) {
             item {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                    TextButton(onClick = { lyricsVisible = false }, modifier = Modifier.semantics { selected = !lyricsVisible },
+                        colors = ButtonDefaults.textButtonColors(containerColor = if (!lyricsVisible) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)) { Text("封面") }
+                    TextButton(onClick = { lyricsVisible = true }, modifier = Modifier.testTag("lyrics_tab").semantics { selected = lyricsVisible },
+                        colors = ButtonDefaults.textButtonColors(containerColor = if (lyricsVisible) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)) { Text("歌词") }
+                }
                 BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    val discSize = minOf(maxWidth, 340.dp)
+                    val discSize = minOf(maxWidth, 300.dp)
                     val ink = TingYuColors.PlayerAccent
-                    Box(Modifier.size(discSize), contentAlignment = Alignment.Center) {
+                    if (lyricsVisible) LyricsPanel(state, actions, Modifier.fillMaxWidth().height(discSize.coerceAtLeast(300.dp)))
+                    else Box(Modifier.size(discSize), contentAlignment = Alignment.Center) {
                         Canvas(Modifier.fillMaxSize()) {
                             val radius = size.minDimension / 2
                             drawCircle(ink.copy(alpha = 0.035f), radius)
@@ -100,8 +111,9 @@ private fun PlayerContent(state: AppUiState, actions: AppActions) {
             item {
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(track.title, style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
-                    Text(track.artist.ifBlank { if (track.localOnly) "本地音频" else "哔哩哔哩" }, style = MaterialTheme.typography.bodyLarge,
+                    Text(track.artist.ifBlank { "歌手待补充" }, style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                    TextButton(onClick = { actions.showMusicEditor(true) }) { Text("编辑歌曲信息") }
                 }
             }
             if (player.error != null) {
@@ -163,6 +175,8 @@ private fun PlayerContent(state: AppUiState, actions: AppActions) {
           }
         }
     }
+    val editing = state.musicEditorTrack ?: track
+    if (state.musicEditorVisible && editing != null) SongDetailsDialog(state, actions, editing)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

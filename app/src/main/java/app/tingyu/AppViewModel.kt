@@ -34,9 +34,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 @UnstableApi
-class AppViewModel(application: Application, savedStateHandle: SavedStateHandle) : AndroidViewModel(application), AppActions {
+class AppViewModel(application: Application, private val savedStateHandle: SavedStateHandle) : AndroidViewModel(application), AppActions {
     private val container = (application as MusicApp).container
     private val mutable = MutableStateFlow(AppUiState(
         debugAvailable = container.debugSettings.available,
@@ -51,6 +53,8 @@ class AppViewModel(application: Application, savedStateHandle: SavedStateHandle)
     // Restore a callback target only. A missing result must not lock the library or repeat deletion.
     val pendingDeleteResultId: String? get() = localOperations.pendingDeletion?.takeUnless { it.approved }?.operationId
     private var parseJob: Job? = null
+    private var lyricsJob: Job? = null
+    private var lyricsVersion = 0
     private var requestVersion = 0
     private val debugGate = DebugModeGate(container.debugSettings.available)
     private var probeJob: Job? = null
@@ -71,9 +75,17 @@ class AppViewModel(application: Application, savedStateHandle: SavedStateHandle)
                 if (!settings.enabled) cancelUaComparison()
             }
         }
-        viewModelScope.launch { container.library.localTracks.collect { value -> mutable.update { it.copy(library = value) } } }
+        viewModelScope.launch {
+            container.songDetails.load()
+            container.songDetails.state.collect { refreshSongDetails() }
+        }
+        viewModelScope.launch { container.library.localTracks.collect { value ->
+            mutable.update { it.copy(library = value.map { local -> local.copy(track = container.songDetails.apply(local.track)) }) }
+        } }
         refreshLocalLibrary(automatic = true)
-        viewModelScope.launch { container.downloads.jobs.collect { value -> mutable.update { it.copy(downloads = value) } } }
+        viewModelScope.launch { container.downloads.jobs.collect { value ->
+            mutable.update { it.copy(downloads = value.map { task -> task.copy(track = container.songDetails.apply(task.track)) }) }
+        } }
         viewModelScope.launch {
             var initial = true
             container.sessions.state.collect { session ->
@@ -112,7 +124,7 @@ class AppViewModel(application: Application, savedStateHandle: SavedStateHandle)
         parseJob = viewModelScope.launch {
             try {
                 val result = container.bilibili.parse(input)
-                if (version == requestVersion) mutable.update { it.copy(result = result) }
+                if (version == requestVersion) mutable.update { it.copy(result = result.copy(tracks = result.tracks.map(container.songDetails::apply))) }
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) { if (version == requestVersion) mutable.update { it.copy(error = displayError(e)) } }
             finally { if (version == requestVersion) mutable.update { it.copy(parsing = false) } }
@@ -128,7 +140,7 @@ class AppViewModel(application: Application, savedStateHandle: SavedStateHandle)
         parseJob = viewModelScope.launch {
             try {
                 val next = container.bilibili.loadFavorites(id, page)
-                if (version == requestVersion) mutable.update { it.copy(result = current.copy(tracks = (current.tracks + next.tracks).distinctBy(Track::id), nextPage = next.nextPage)) }
+                if (version == requestVersion) mutable.update { it.copy(result = current.copy(tracks = (current.tracks + next.tracks).distinctBy(Track::id).map(container.songDetails::apply), nextPage = next.nextPage)) }
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) { if (version == requestVersion) mutable.update { it.copy(error = displayError(e)) } }
             finally { if (version == requestVersion) mutable.update { it.copy(loadingMore = false) } }
@@ -140,7 +152,7 @@ class AppViewModel(application: Application, savedStateHandle: SavedStateHandle)
         mutable.update { it.copy(tab = index.coerceIn(0, 3)) }
     }
     override fun play(track: Track, queue: List<Track>) {
-        val items = (queue.ifEmpty { listOf(track) }).distinctBy(Track::id)
+        val items = (queue.ifEmpty { listOf(track) }).distinctBy(Track::id).map(container.songDetails::apply)
         val fullQueue = if (items.none { it.id == track.id }) listOf(track) + items else items
         val player = controller
         if (player == null) { pendingPlay = track to fullQueue; mutable.update { it.copy(message = "正在连接播放器…") }; return }
@@ -154,7 +166,7 @@ class AppViewModel(application: Application, savedStateHandle: SavedStateHandle)
         if (tracks.isEmpty()) return
         val remote = tracks.filterNot { it.localOnly }.distinctBy(Track::id)
         if (remote.isEmpty()) { mutable.update { it.copy(message = "这是本地音频，无需再次下载") }; return }
-        container.downloads.enqueue(remote)
+        container.downloads.enqueue(remote.map(container.songDetails::apply))
         mutable.update { it.copy(message = "已加入下载队列，可在“下载”查看进度") }
     }
     fun deferDownloadForPermission(tracks: List<Track>) { notificationDownloads = tracks }
@@ -183,6 +195,135 @@ class AppViewModel(application: Application, savedStateHandle: SavedStateHandle)
     }
     override fun showPlayer(show: Boolean) { mutable.update { it.copy(playerVisible = show) } }
     override fun showQueue(show: Boolean) { mutable.update { it.copy(queueVisible = show) } }
+    override fun showMusicEditor(show: Boolean) {
+        if (!mutable.value.musicSaving) mutable.update { it.copy(musicEditorVisible = show,
+            musicEditorTrack = if (show) it.playback.track else null, musicError = null) }
+    }
+
+    override fun saveMusicInfo(track: Track, title: String, artist: String) {
+        if (mutable.value.musicSaving) return
+        cancelLyrics()
+        mutable.update { it.copy(musicSaving = true, musicError = null) }
+        viewModelScope.launch {
+            try {
+                container.songDetails.edit(track, title, artist)
+                mutable.update { it.copy(musicEditorVisible = false, musicEditorTrack = null, message = "歌曲信息已保存") }
+            } catch (error: CancellationException) { throw error }
+            catch (error: Exception) { mutable.update { it.songFailure(track, if (error is IllegalArgumentException) error.message ?: "请检查歌名和歌手" else "歌曲信息未能保存，请检查存储空间后重试") } }
+            finally { mutable.update { it.copy(musicSaving = false) } }
+        }
+    }
+
+    override fun findLyrics() {
+        if (mutable.value.lyricsLoading || mutable.value.musicSaving) return
+        val current = mutable.value.playback
+        val track = current.track ?: return
+        val snapshot = track.copy(durationMs = current.durationMs.takeIf { it > 0 } ?: track.durationMs)
+        val version = ++lyricsVersion
+        mutable.update { it.copy(lyricsLoading = true, lyricsError = null) }
+        lyricsJob = viewModelScope.launch {
+            try {
+                val result = container.lyrics.find(snapshot)
+                if (version == lyricsVersion && mutable.value.playback.track?.id == track.id) {
+                    if (result == null) mutable.update { it.copy(lyricsError = "没有找到匹配的歌词。可修正歌名、歌手，或导入本地歌词。") }
+                    else if (!container.songDetails.saveLyrics(track, result)) mutable.update { it.copy(lyricsError = "歌曲信息已改变，请重新查找歌词") }
+                }
+            } catch (error: CancellationException) { throw error }
+            catch (error: Exception) {
+                if (version == lyricsVersion) mutable.update { it.copy(lyricsError = userMessage(error, "歌词未能加载，请检查网络或导入本地歌词")) }
+            } finally { if (version == lyricsVersion) mutable.update { it.copy(lyricsLoading = false) } }
+        }
+    }
+
+    override fun cancelLyrics() {
+        lyricsVersion++
+        lyricsJob?.cancel()
+        lyricsJob = null
+        mutable.update { it.copy(lyricsLoading = false) }
+    }
+
+    override fun clearLyrics() {
+        val track = mutable.value.playback.track ?: return
+        cancelLyrics()
+        viewModelScope.launch {
+            try { container.songDetails.clearLyrics(track.id); mutable.update { if (it.playback.track?.id == track.id) it.copy(lyricsError = null) else it } }
+            catch (error: CancellationException) { throw error }
+            catch (_: Exception) { mutable.update { it.songFailure(track, "歌词未能移除，请重试", lyrics = true) } }
+        }
+    }
+
+    // MainActivity owns the document picker. Store the exact target across recreation and track changes.
+    override fun importLyrics(track: Track) = Unit
+    override fun selectSongCover(track: Track) = Unit
+    fun beginSongFile(kind: String, track: Track): Boolean {
+        if (mutable.value.musicSaving || mutable.value.lyricsLoading || savedStateHandle.get<String>("song_file_$kind") != null) return false
+        savedStateHandle["song_file_$kind"] = Json.encodeToString(container.songDetails.apply(track))
+        return true
+    }
+    fun finishSongFile(kind: String, uri: Uri?) {
+        val target = savedStateHandle.remove<String>("song_file_$kind") ?: return
+        if (uri == null) return
+        val track = runCatching { Json.decodeFromString<Track>(target) }.getOrNull() ?: return
+        if (kind == "lyrics") cancelLyrics()
+        mutable.update { it.copy(musicSaving = true,
+            musicError = if (it.musicEditorTrack?.id == track.id) null else it.musicError,
+            lyricsError = if (kind == "lyrics" && it.playback.track?.id == track.id) null else it.lyricsError) }
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    if (kind == "lyrics") {
+                        if (!container.songDetails.saveLyrics(track, container.songFiles.lyrics(uri)))
+                            throw java.io.IOException("歌曲信息已改变，请重新导入歌词")
+                    } else {
+                        val old = container.songDetails.details(track.id)?.coverUri
+                        val file = container.songFiles.cover(uri)
+                        val savedUri = Uri.fromFile(file).toString()
+                        try { container.songDetails.setCover(track.id, savedUri) }
+                        catch (error: Exception) {
+                            // Cancellation can be delivered after the atomic commit completed.
+                            if (container.songDetails.details(track.id)?.coverUri != savedUri) file.delete()
+                            throw error
+                        }
+                        container.songFiles.deleteOwnedCover(old)
+                    }
+                }
+                mutable.update { it.copy(message = if (kind == "lyrics") "歌词已导入：${track.title}" else "封面已保存：${track.title}") }
+            } catch (error: CancellationException) { throw error }
+            catch (_: Exception) {
+                val message = if (kind == "lyrics") "歌词导入失败。请选择 UTF-8 的 LRC／TXT 文件（不超过 256 KB）。" else "封面导入失败。请选择可读取的图片（不超过 12 MB）。"
+                mutable.update { it.songFailure(track, message, lyrics = kind == "lyrics") }
+            } finally { mutable.update { it.copy(musicSaving = false) } }
+        }
+    }
+
+    override fun resetSongCover(track: Track) {
+        if (mutable.value.musicSaving) return
+        mutable.update { it.copy(musicSaving = true, musicError = null) }
+        viewModelScope.launch {
+            try {
+                val old = container.songDetails.details(track.id)?.coverUri
+                container.songDetails.setCover(track.id, "")
+                withContext(Dispatchers.IO) { container.songFiles.deleteOwnedCover(old) }
+            } catch (error: CancellationException) { throw error }
+            catch (_: Exception) { mutable.update { it.songFailure(track, "默认封面未能保存，请重试") } }
+            finally { mutable.update { it.copy(musicSaving = false) } }
+        }
+    }
+
+    private fun refreshSongDetails() {
+        mutable.update { state ->
+            val playback = state.playback
+            val current = playback.track?.let(container.songDetails::apply)
+            state.copy(
+                result = state.result?.let { it.copy(tracks = it.tracks.map(container.songDetails::apply)) },
+                library = state.library.map { it.copy(track = container.songDetails.apply(it.track)) },
+                downloads = state.downloads.map { it.copy(track = container.songDetails.apply(it.track)) },
+                playback = playback.copy(track = current, queue = playback.queue.map(container.songDetails::apply)),
+                musicEditorTrack = state.musicEditorTrack?.let(container.songDetails::apply),
+                lyrics = current?.let { container.songDetails.details(it.id)?.lyrics },
+            )
+        }
+    }
     override fun login() { getApplication<Application>().startActivity(Intent(getApplication(), LoginActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
     override fun logout() { container.sessions.logout() }
     override fun sessionMode(mode: SessionMode) {
@@ -387,8 +528,10 @@ class AppViewModel(application: Application, savedStateHandle: SavedStateHandle)
 
     private fun syncPlayback() {
         val player = controller ?: return
-        val queue = (0 until player.mediaItemCount).mapNotNull { TrackMedia.track(player.getMediaItemAt(it)) }
-        val current = TrackMedia.track(player.currentMediaItem)
+        val queue = (0 until player.mediaItemCount).mapNotNull { TrackMedia.track(player.getMediaItemAt(it)) }.map(container.songDetails::apply)
+        val current = TrackMedia.track(player.currentMediaItem)?.let(container.songDetails::apply)
+        val changed = current?.id != mutable.value.playback.track?.id
+        if (changed) cancelLyrics()
         val duration = player.duration.takeIf { it != C.TIME_UNSET && it >= 0 } ?: current?.durationMs ?: 0
         val mode = when {
             player.shuffleModeEnabled -> PlayMode.SHUFFLE
@@ -397,7 +540,10 @@ class AppViewModel(application: Application, savedStateHandle: SavedStateHandle)
             else -> PlayMode.SEQUENTIAL
         }
         val error = player.playerError?.let { userMessage(it, "音频加载失败，请检查网络或重新解析") }
-        mutable.update { it.copy(playback = PlaybackState(current, queue, player.currentMediaItemIndex.coerceAtLeast(0), player.isPlaying, player.playbackState == Player.STATE_BUFFERING && player.playWhenReady, player.currentPosition.coerceAtLeast(0), duration, mode, error)) }
+        mutable.update { it.copy(playback = PlaybackState(current, queue, player.currentMediaItemIndex.coerceAtLeast(0), player.isPlaying, player.playbackState == Player.STATE_BUFFERING && player.playWhenReady, player.currentPosition.coerceAtLeast(0), duration, mode, error),
+            lyrics = current?.let { track -> container.songDetails.details(track.id)?.lyrics },
+            lyricsError = if (changed) null else it.lyricsError,
+            musicError = if (changed && !it.musicEditorVisible) null else it.musicError) }
     }
     private fun displayError(e: Exception): String {
         return userMessage(e, "请求失败，请检查网络后重试")

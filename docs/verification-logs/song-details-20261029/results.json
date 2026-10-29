@@ -1,0 +1,46 @@
+{
+  "app-debug": {
+    "tests": 191,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "app-release": {
+    "tests": 191,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "pc-shared": {
+    "tests": 128,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "lint-debug": {
+    "errors": 0,
+    "warnings": 24
+  },
+  "lint-release": {
+    "errors": 0,
+    "warnings": 23
+  },
+  "live-lyrics-request": {
+    "endpoint": "LRCLIB official sample GET /api/get",
+    "http": 200,
+    "matching_identity": true,
+    "duration": 233,
+    "has_synced_lyrics": true,
+    "has_plain_lyrics": true,
+    "lyrics_content_recorded": false
+  },
+  "android": {
+    "full": 40,
+    "failed": 0,
+    "skipped": 0,
+    "relatedRegression": 7,
+    "narrow320dpFont1_5": 4,
+    "finalLabelsAndFiles": 5,
+    "additionalCountsOverlap": true
+  }
+}

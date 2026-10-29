@@ -1,6 +1,7 @@
 package app.tingyu.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,10 +13,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -27,15 +32,34 @@ import java.util.Locale
 @Composable
 internal fun Cover(track: Track?, size: Dp, modifier: Modifier = Modifier) {
     Box(
-        modifier.size(size).clip(RoundedCornerShape(if (size > 100.dp) 24.dp else 12.dp))
+        modifier.size(size).clearAndSetSemantics { }.clip(RoundedCornerShape(if (size > 100.dp) 24.dp else 12.dp))
             .background(MaterialTheme.colorScheme.primaryContainer),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(Icons.Rounded.MusicNote, contentDescription = null, tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(size * 0.38f))
+        // A square, locally drawn sleeve replaces video thumbnails; no network or fake album art.
+        val flipped = (track?.id?.hashCode() ?: 0) and 1 == 0
+        Canvas(Modifier.fillMaxSize()) {
+            drawRect(Brush.linearGradient(if (flipped) listOf(TingYuColors.Blue, TingYuColors.Ink) else listOf(TingYuColors.PlayerSurface, TingYuColors.Blue)))
+            val center = Offset(this.size.width * 0.82f, this.size.height * 0.20f)
+            listOf(0.37f, 0.45f, 0.53f).forEach { radius ->
+                drawCircle(TingYuColors.PlayerAccent.copy(alpha = 0.16f), this.size.minDimension * radius, center, style = Stroke(1.dp.toPx()))
+            }
+        }
+        if (size > 100.dp) {
+            Column(Modifier.fillMaxSize().padding(size * 0.10f), verticalArrangement = Arrangement.SpaceBetween) {
+                Icon(Icons.Rounded.MusicNote, contentDescription = null, tint = TingYuColors.PlayerAccent, modifier = Modifier.size(28.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(track?.title.orEmpty(), color = TingYuColors.Surface, style = MaterialTheme.typography.titleLarge,
+                        maxLines = 3, overflow = TextOverflow.Ellipsis)
+                    if (!track?.artist.isNullOrBlank()) Text(track?.artist.orEmpty(), color = TingYuColors.PlayerAccent,
+                        style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        } else Icon(Icons.Rounded.MusicNote, contentDescription = null, tint = TingYuColors.PlayerAccent,
+            modifier = Modifier.size(size * 0.42f))
         if (!track?.coverUrl.isNullOrBlank()) {
             AsyncImage(model = track?.coverUrl, contentDescription = null,
-                contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
         }
     }
 }
@@ -102,7 +126,7 @@ internal fun TrackRow(
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(track.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(track.artist.ifBlank { if (track.localOnly) "本地音频" else "哔哩哔哩" }, style = MaterialTheme.typography.labelMedium,
+                Text(track.artist.ifBlank { "歌手待补充" }, style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(listOfNotNull(track.durationMs.takeIf { it > 0 }?.let(::formatTime), if (saved) "已下载" else null).joinToString(" · "),
                     style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

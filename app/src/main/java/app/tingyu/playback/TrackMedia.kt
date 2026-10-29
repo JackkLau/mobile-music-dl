@@ -16,7 +16,7 @@ object TrackMedia {
         .setUri(Uri.Builder().scheme("tingyu").authority("track").appendPath(track.bvid).appendPath(track.page.toString()).build())
         .setMediaMetadata(MediaMetadata.Builder()
             .setTitle(track.title).setArtist(track.artist)
-            .setArtworkUri(track.coverUrl.takeIf { it.startsWith("https://") }?.let(Uri::parse))
+            .setArtworkUri(track.coverUrl.takeIf { it.startsWith("https://") || it.startsWith("file://") }?.let(Uri::parse))
             .setIsPlayable(true)
             .setExtras(Bundle().apply { putString(KEY, json.encodeToString(track)) }).build())
         .build()

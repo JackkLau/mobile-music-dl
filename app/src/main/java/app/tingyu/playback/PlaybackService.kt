@@ -78,11 +78,12 @@ class PlaybackService : MediaSessionService() {
                     val job = scope.launch {
                         try {
                             val accepted = withContext(Dispatchers.IO) {
+                                container.songDetails.load()
                                 mediaItems.mapNotNull { TrackMedia.track(it) }.mapNotNull { track ->
                                     if (track.page <= 0) null
                                     else if (track.localOnly) container.library.saved(track.id)?.track?.takeIf { it.localOnly }
                                     else track.takeIf { it.bvid.matches(Regex("BV[0-9A-Za-z]{10}")) }
-                                }
+                                }.map(container.songDetails::apply)
                             }
                             if (epoch != sessionEpoch) result.set(emptyList())
                             else result.set(accepted.map { track -> tracks[track.id] = track; TrackMedia.item(track) })
@@ -96,10 +97,11 @@ class PlaybackService : MediaSessionService() {
         scope.launch {
             val restoreEpoch = sessionEpoch
             try {
+                container.songDetails.load()
                 val snapshot = container.library.readPlayer()
                 if (restoreEpoch == sessionEpoch && !restored && player.mediaItemCount == 0 && snapshot != null && snapshot.sessionKey == sessionKey()) {
                     restoring = true
-                    val queue = container.library.decodeQueue(snapshot)
+                    val queue = container.library.decodeQueue(snapshot).map(container.songDetails::apply)
                     queue.forEach { tracks[it.id] = it }
                     if (queue.isNotEmpty()) {
                         player.setMediaItems(queue.map(TrackMedia::item), snapshot.index.coerceIn(queue.indices), snapshot.position.coerceAtLeast(0))
@@ -110,6 +112,21 @@ class PlaybackService : MediaSessionService() {
             } catch (_: Exception) { /* A corrupt snapshot must not prevent a new playback request. */ }
             finally { restoring = false; restored = true }
             while (true) { delay(5000); if (player.mediaItemCount > 0) saveSnapshot() }
+        }
+        scope.launch {
+            container.songDetails.load()
+            container.songDetails.state.collect {
+                for (index in 0 until player.mediaItemCount) {
+                    val item = player.getMediaItemAt(index)
+                    val old = TrackMedia.track(item) ?: continue
+                    val updated = container.songDetails.apply(old)
+                    if (updated != old) {
+                        tracks[updated.id] = updated
+                        // Keep the exact media URI/configuration so edits do not reload the audio.
+                        player.replaceMediaItem(index, item.buildUpon().setMediaMetadata(TrackMedia.item(updated).mediaMetadata).build())
+                    }
+                }
+            }
         }
         scope.launch {
             container.sessions.state.drop(1).collect {

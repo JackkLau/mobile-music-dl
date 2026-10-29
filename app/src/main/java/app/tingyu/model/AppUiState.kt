@@ -3,6 +3,7 @@ package app.tingyu.model
 import app.tingyu.debug.AudioUaMode
 import app.tingyu.debug.DebugSettings
 import app.tingyu.data.bili.UserAgentProfile
+import app.tingyu.lyrics.LyricsDocument
 
 data class AppUiState(
     val input: String = "",
@@ -24,6 +25,13 @@ data class AppUiState(
     val tab: Int = 0,
     val playerVisible: Boolean = false,
     val queueVisible: Boolean = false,
+    val lyrics: LyricsDocument? = null,
+    val lyricsLoading: Boolean = false,
+    val lyricsError: String? = null,
+    val musicEditorVisible: Boolean = false,
+    val musicEditorTrack: Track? = null,
+    val musicSaving: Boolean = false,
+    val musicError: String? = null,
     val debugAvailable: Boolean = false,
     val debugSettings: DebugSettings = DebugSettings(),
     val developerVisible: Boolean = false,
@@ -47,6 +55,14 @@ interface AppActions {
     fun cycleMode()
     fun showPlayer(show: Boolean)
     fun showQueue(show: Boolean)
+    fun showMusicEditor(show: Boolean)
+    fun saveMusicInfo(track: Track, title: String, artist: String)
+    fun findLyrics()
+    fun cancelLyrics()
+    fun importLyrics(track: Track)
+    fun clearLyrics()
+    fun selectSongCover(track: Track)
+    fun resetSongCover(track: Track)
     fun cancelDownload(id: String)
     fun retryDownload(id: String)
     fun login()

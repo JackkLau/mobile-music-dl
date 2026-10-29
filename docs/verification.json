@@ -286,5 +286,46 @@
       ],
       "commit_note": "Final copy-only UI adjustment built on this base; full source is recorded by the following documentation/source commit."
     }
+  },
+  "song_details_0_1_3": {
+    "date": "2026-10-30",
+    "versionName": "0.1.3",
+    "versionCode": 4,
+    "applicationJVM": {
+      "debug": 191,
+      "release": 191,
+      "sameSuite": true,
+      "failures": 0
+    },
+    "sharedPcJVM": {
+      "tests": 128,
+      "overlapsApplication": true,
+      "failures": 0
+    },
+    "scripts": 29,
+    "structural": 102,
+    "android": {
+      "api": 37,
+      "tests": 40,
+      "failed": 0,
+      "skipped": 0,
+      "targetedRegression": 7,
+      "narrow320dpFont1_5": 4,
+      "additionalChecksOverlap": true,
+      "finalLabelsAndFiles": 5
+    },
+    "liveLyrics": {
+      "http": 200,
+      "officialSampleIdentityMatched": true,
+      "bodyNotRecorded": true
+    },
+    "localSignedRelease": "verified original certificate",
+    "cloudRelease": "pending",
+    "limitations": [
+      "Physical phone not connected",
+      "Metadata extraction is title-based, not audio recognition",
+      "Real-song lyric coverage and timing remain unverified"
+    ],
+    "report": "docs/SONG-DETAILS-VERIFICATION.md"
   }
 }

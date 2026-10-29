@@ -8,6 +8,10 @@ import app.tingyu.model.*
 import app.tingyu.debug.AudioUaMode
 import app.tingyu.debug.DebugSettings
 import app.tingyu.data.bili.UserAgentProfile
+import app.tingyu.lyrics.LyricsDocument
+import androidx.test.platform.app.InstrumentationRegistry
+import android.graphics.Bitmap
+import java.io.File
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -18,6 +22,89 @@ import org.junit.runner.RunWith
 class TingYuUiTest {
     @get:Rule val compose = createComposeRule()
     private val track = Track("BV1test000001", 101, "测试钢琴曲", "测试作者", durationMs = 180_000)
+
+    @Test fun lyricsLookupIsExplicitAndCanBeCancelled() {
+        val actions = RecordingActions()
+        val state = mutableStateOf(AppUiState(playerVisible = true, playback = PlaybackState(track = track)))
+        compose.setContent { TingYuApp(state.value, actions) }
+        compose.onNodeWithTag("lyrics_tab").performClick()
+        compose.onNodeWithText("还没有歌词").assertExists()
+        assertEquals(0, actions.lyricsLookups)
+        compose.onNodeWithText("联网查找").performClick()
+        assertEquals(1, actions.lyricsLookups)
+        compose.runOnIdle { state.value = state.value.copy(lyricsLoading = true) }
+        compose.onNodeWithText("导入歌词").assertIsNotEnabled()
+        compose.onNodeWithText("取消查找").performClick()
+        assertEquals(1, actions.lyricsCancellations)
+        compose.runOnIdle { state.value = state.value.copy(lyricsLoading = false, lyricsError = "没有匹配歌词，可导入文件") }
+        compose.onNodeWithText("没有匹配歌词，可导入文件").assertExists()
+        compose.onNodeWithText("导入歌词").performClick()
+        assertEquals(track, actions.lyricsImport)
+    }
+
+    @Test fun syncedLyricsFollowPositionAndRemovalNeedsConfirmation() {
+        val actions = RecordingActions()
+        val state = mutableStateOf(AppUiState(playerVisible = true, playback = PlaybackState(track = track, positionMs = 1500),
+            lyrics = LyricsDocument(syncedText = "[00:01]第一行合成歌词\n[00:03]第二行合成歌词", source = "本地导入")))
+        compose.setContent { TingYuApp(state.value, actions) }
+        compose.onNodeWithTag("lyrics_tab").performClick()
+        compose.onNodeWithText("第一行合成歌词").assertIsSelected()
+        compose.runOnIdle { state.value = state.value.copy(playback = state.value.playback.copy(positionMs = 3500)) }
+        compose.onNodeWithText("第二行合成歌词").assertIsSelected()
+        compose.onNodeWithText("暂停跟随").performClick()
+        compose.onNodeWithText("回到当前").performClick()
+        captureScreenshot("lyrics")
+        compose.onNodeWithContentDescription("移除当前歌词").performClick()
+        assertEquals(0, actions.lyricsRemovals)
+        compose.onNodeWithText("保留").performClick()
+        compose.onNodeWithContentDescription("移除当前歌词").performClick()
+        compose.onNodeWithText("移除歌词").performClick()
+        assertEquals(1, actions.lyricsRemovals)
+    }
+
+    @Test fun plainLyricsAndInstrumentalHaveHonestStates() {
+        val actions = RecordingActions()
+        val state = mutableStateOf(AppUiState(playerVisible = true, playback = PlaybackState(track = track),
+            lyrics = LyricsDocument(plainText = "没有时间标记的合成文字", source = "本地导入")))
+        compose.setContent { TingYuApp(state.value, actions) }
+        compose.onNodeWithTag("lyrics_tab").performClick()
+        compose.onNodeWithText("本地导入 · 纯文本歌词").assertExists()
+        compose.onNodeWithText("没有时间标记的合成文字").assertExists()
+        compose.runOnIdle { state.value = state.value.copy(lyrics = LyricsDocument(instrumental = true, source = "LRCLIB")) }
+        compose.onNodeWithText("纯音乐，请欣赏").assertExists()
+    }
+
+    @Test fun songEditorPreservesSourceAndValidatesTitle() {
+        val actions = RecordingActions()
+        val song = track.copy(sourceTitle = "原始视频推广标题", sourceArtist = "视频上传者", metadataVersion = 1)
+        compose.setContent { TingYuApp(AppUiState(playerVisible = true, musicEditorVisible = true,
+            playback = PlaybackState(track = song)), actions) }
+        compose.onNodeWithText("原视频：原始视频推广标题").assertExists()
+        captureScreenshot("song-editor")
+        compose.onNodeWithContentDescription("清空歌名").performClick()
+        compose.onNodeWithText("保存信息").assertIsNotEnabled()
+        compose.onNodeWithText("歌名").performTextInput("正确歌名")
+        compose.onNodeWithText("歌手").performTextReplacement("正确歌手")
+        compose.onNodeWithText("保存信息").performClick()
+        assertEquals("正确歌名" to "正确歌手", actions.edited)
+        compose.onNodeWithText("更换封面").performClick()
+        assertEquals(song, actions.coverImport)
+    }
+
+    @Test fun songEditorKeepsDraftForOriginalSongWhenPlaybackChanges() {
+        val actions = RecordingActions()
+        val state = mutableStateOf(AppUiState(playerVisible = true, musicEditorVisible = true, musicEditorTrack = track,
+            playback = PlaybackState(track = track)))
+        compose.setContent { TingYuApp(state.value, actions) }
+        compose.onNodeWithText("歌名").performTextReplacement("尚未保存的新歌名")
+        compose.runOnIdle { state.value = state.value.copy(playback = PlaybackState(track = track.copy(page = 2, title = "下一首歌曲"))) }
+        compose.onNodeWithText("尚未保存的新歌名").assertExists()
+        compose.onNodeWithText("取消").performClick()
+        compose.onNodeWithText("放弃未保存的修改？").assertExists()
+        compose.onNodeWithText("继续编辑").performClick()
+        compose.onNodeWithText("保存信息").performClick()
+        assertEquals(track, actions.editedTrack)
+    }
 
     @Test fun anonymousEntryDoesNotRequireLogin() {
         val actions = RecordingActions()
@@ -51,7 +138,7 @@ class TingYuUiTest {
     @Test fun librarySearchClearRestoresLocalResults() {
         val actions = RecordingActions()
         compose.setContent { TingYuApp(AppUiState(tab = 1, library = listOf(LocalTrack(track, "content://test/101"))), actions) }
-        compose.onNodeWithText("搜索标题或作者").performTextInput("不存在的曲目")
+        compose.onNodeWithText("搜索歌名或歌手").performTextInput("不存在的曲目")
         compose.onNodeWithText("没有找到匹配的音频").assertExists()
         compose.onNodeWithContentDescription("清空搜索").performClick()
         compose.onNodeWithText("测试钢琴曲").assertExists()
@@ -141,6 +228,7 @@ class TingYuUiTest {
             TingYuApp(AppUiState(playerVisible = true,
                 playback = PlaybackState(track = track, queue = listOf(track, second), durationMs = track.durationMs)), actions)
         }
+        captureScreenshot("mobile-cover")
         compose.onNodeWithTag("player_list").performScrollToNode(hasContentDescription("下一首"))
         compose.onNodeWithContentDescription("下一首").performClick()
         compose.onNodeWithTag("player_list").performScrollToNode(hasContentDescription("切换播放模式，当前顺序播放"))
@@ -220,6 +308,18 @@ class TingYuUiTest {
         compose.onNodeWithText("网络调试").assertDoesNotExist()
     }
 
+    private fun captureScreenshot(name: String) {
+        if (InstrumentationRegistry.getArguments().getString("screenshots") != "true") return
+        compose.waitForIdle()
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        instrumentation.waitForIdleSync()
+        android.os.SystemClock.sleep(200) // Let the emulator present the already-idle Compose frame.
+        val bitmap = instrumentation.uiAutomation.takeScreenshot() ?: return
+        val directory = File(instrumentation.targetContext.cacheDir, "song-ui").apply { mkdirs() }
+        File(directory, "$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        bitmap.recycle()
+    }
+
     private class RecordingActions : AppActions {
         var inputValue: String? = null
         var parseCount = 0
@@ -235,6 +335,13 @@ class TingYuUiTest {
         var probeCancellations = 0
         var scans = 0
         var imports = 0
+        var lyricsLookups = 0
+        var lyricsCancellations = 0
+        var lyricsRemovals = 0
+        var lyricsImport: Track? = null
+        var coverImport: Track? = null
+        var edited: Pair<String, String>? = null
+        var editedTrack: Track? = null
         override fun input(value: String) { inputValue = value }
         override fun parse() { parseCount++ }
         override fun loadMore() {}
@@ -248,6 +355,14 @@ class TingYuUiTest {
         override fun cycleMode() { modeCount++ }
         override fun showPlayer(show: Boolean) {}
         override fun showQueue(show: Boolean) {}
+        override fun showMusicEditor(show: Boolean) {}
+        override fun saveMusicInfo(track: Track, title: String, artist: String) { edited = title to artist; editedTrack = track }
+        override fun findLyrics() { lyricsLookups++ }
+        override fun cancelLyrics() { lyricsCancellations++ }
+        override fun importLyrics(track: Track) { lyricsImport = track }
+        override fun clearLyrics() { lyricsRemovals++ }
+        override fun selectSongCover(track: Track) { coverImport = track }
+        override fun resetSongCover(track: Track) {}
         override fun cancelDownload(id: String) {}
         override fun retryDownload(id: String) { retried = id }
         override fun login() { loginCount++ }

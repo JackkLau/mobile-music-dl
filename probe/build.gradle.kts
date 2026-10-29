@@ -9,7 +9,7 @@ kotlin {
     // Compile the app's network implementation directly. There is no second HTTP adapter.
     sourceSets.main {
         kotlin.srcDir("../app/src/main/java")
-        kotlin.include("app/tingyu/data/bili/**", "app/tingyu/model/Models.kt",
+        kotlin.include("app/tingyu/data/bili/**", "app/tingyu/model/Models.kt", "app/tingyu/model/MusicMetadata.kt",
             "app/tingyu/download/DownloadRules.kt", "app/tingyu/debug/UaComparison.kt",
             "app/tingyu/debug/NetworkProbe.kt", "app/tingyu/debug/DebugSettings.kt",
             "app/tingyu/probe/**")
@@ -18,7 +18,7 @@ kotlin {
         kotlin.srcDir("../app/src/test/java")
         kotlin.include("app/tingyu/bili/**", "app/tingyu/debug/DebugSettingsTest.kt",
             "app/tingyu/debug/NetworkProbeTest.kt", "app/tingyu/download/DownloadRulesTest.kt",
-            "app/tingyu/model/TrackTest.kt")
+            "app/tingyu/model/TrackTest.kt", "app/tingyu/model/MusicMetadataTest.kt")
     }
 }
 

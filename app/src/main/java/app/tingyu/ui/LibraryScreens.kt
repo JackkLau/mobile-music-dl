@@ -58,14 +58,14 @@ internal fun LibraryScreen(state: AppUiState, actions: AppActions) {
         }
         item {
             OutlinedTextField(value = query, onValueChange = { query = it }, singleLine = true,
-                modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), label = { Text("搜索标题或作者") },
+                modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), label = { Text("搜索歌名或歌手") },
                 leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
                 trailingIcon = if (query.isNotEmpty()) ({ ActionIcon(Icons.Rounded.Close, "清空搜索") { query = "" } }) else null)
         }
         if (state.library.isEmpty()) {
             item { StatePanel(Icons.Rounded.LibraryMusic, "收藏一段喜欢的声音", "下载完成的音频会出现在这里。已有音乐可先扫描或导入，也可以解析新链接。", "去解析链接", { actions.tab(0) }) }
         } else if (visible.isEmpty()) {
-            item { StatePanel(Icons.Rounded.SearchOff, "没有找到匹配的音频", "换一个标题或作者关键词试试。", "清空搜索", { query = "" }) }
+            item { StatePanel(Icons.Rounded.SearchOff, "没有找到匹配的音频", "换一个歌名或歌手关键词试试。", "清空搜索", { query = "" }) }
         } else {
             item {
                 FilledTonalButton(onClick = { actions.play(visible.first().track, visible.map { it.track }) }, modifier = Modifier.fillMaxWidth()) {

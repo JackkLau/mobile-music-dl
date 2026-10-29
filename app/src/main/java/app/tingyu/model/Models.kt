@@ -13,6 +13,11 @@ data class Track(
     val page: Int = 1,
     val sourceUrl: String = "https://www.bilibili.com/video/$bvid?p=$page",
     val localOnly: Boolean = false,
+    // Video attribution remains available without presenting an uploader as the singer.
+    val sourceTitle: String = "",
+    val sourceArtist: String = "",
+    val videoCoverUrl: String = "",
+    val metadataVersion: Int = 0,
 ) { val id: String get() = "$bvid:p$page" }
 
 data class ParseResult(
