@@ -1,0 +1,76 @@
+name: Android release build
+
+# Build on GitHub without transferring the private release signing key.
+# The resulting archive must be signed and verified locally before publication.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    if: github.repository == 'JackkLau/mobile-music-dl' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate version and master ancestry
+        id: release
+        run: python3 scripts/release-info.py
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
+          log-accepted-android-sdk-licenses: false
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Test and build release binaries without signing credentials
+        run: |
+          test ! -e signing.properties
+          python3 scripts/verify-source.py
+          python3 -m unittest discover -s scripts/tests -v
+          gradle --no-daemon :app:testReleaseUnitTest :app:lintRelease :app:assembleRelease :app:bundleRelease :probe:test :probe:installDist
+      - name: Record cloud build provenance and binary hashes
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          RELEASE_CODE: ${{ steps.release.outputs.code }}
+        run: |
+          mkdir -p artifacts/cloud-unsigned
+          cp app/build/outputs/apk/release/app-release-unsigned.apk artifacts/cloud-unsigned/
+          cp app/build/outputs/bundle/release/app-release.aab artifacts/cloud-unsigned/
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          directory = Path('artifacts/cloud-unsigned')
+          assets = [{"file": p.name, "bytes": p.stat().st_size, "sha256": hashlib.sha256(p.read_bytes()).hexdigest()}
+                    for p in sorted(directory.iterdir())]
+          metadata = {"package": "app.tingyu", "versionName": os.environ['RELEASE_VERSION'],
+                      "versionCode": int(os.environ['RELEASE_CODE']), "commit": os.environ['GITHUB_SHA'],
+                      "workflowRun": f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
+                      "signed": False, "assets": assets}
+          (directory / 'cloud-build.json').write_text(json.dumps(metadata, indent=2) + '\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tingyu-${{ steps.release.outputs.version }}-cloud-unsigned
+          path: artifacts/cloud-unsigned/
+          if-no-files-found: error
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cloud-release-reports-${{ github.run_id }}
+          path: |
+            app/build/reports/
+            app/build/test-results/
+            probe/build/reports/tests/
+          retention-days: 14

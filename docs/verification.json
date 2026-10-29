@@ -200,7 +200,7 @@
       ],
       "commit_note": "Final copy-only UI adjustment built on this base; full source is recorded by the following documentation/source commit."
     },
-    "github_signed_build": "pending explicit authorization for signing Secrets",
+    "github_signed_build": "Cloud compilation with local signing selected; signing Secrets will not be uploaded.",
     "logs_directory": "docs/verification-logs/local-music-20261029",
     "device_tests": {
       "tests": 32,

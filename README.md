@@ -42,7 +42,7 @@ gradle --no-daemon :app:testReleaseUnitTest :app:lintRelease :app:assembleReleas
 
 APK：`app/build/outputs/apk/release/app-release.apk`；AAB：`app/build/outputs/bundle/release/app-release.aab`。APK 可直接安装，AAB 用于商店提交。正式签名与 debug 签名不同，不能直接覆盖已有 debug 安装；不要为安装正式包而贸然卸载含有个人数据的调试版。0.1.1 历史构建记录见 [正式包记录](docs/RELEASE.md)，0.1.2 新结果见 [本地音乐验证记录](docs/LOCAL-MUSIC-VERIFICATION.md)。
 
-GitHub 的 **Android release** 工作流可构建同一正式证书的 APK/AAB；版本标签触发构建并生成 GitHub Release 下载附件。签名凭据必须经明确授权存入仓库加密 Secrets，绝不提交到源码；缺少凭据时会失败，不发布未签名包。配置、触发和验证说明见 [GitHub 构建发布](docs/GITHUB-RELEASE.md)。
+GitHub 的 **Android release build** 工作流可完成正式版编译，下载产物后在本机用原证书签名，再发布到 GitHub Release，私钥无需离开本机。另保留可选的全云端 **Android release** 流程，只有明确授权配置加密 Secrets 后使用；标签自动签名还需显式启用仓库变量。两条路径都必须验证正式签名后才发布安装包。详见 [GitHub 构建发布](docs/GITHUB-RELEASE.md)。
 
 ```bash
 # 设备测试会创建并清理自己的本地音频 fixture；不会访问 B 站

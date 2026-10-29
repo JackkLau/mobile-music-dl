@@ -2,14 +2,22 @@
 
 仓库：`JackkLau/mobile-music-dl`。首次计划发布 `v0.1.2`，对应 `versionName=0.1.2`、`versionCode=3`。工作流读取 `app/build.gradle.kts` 的真实版本，标签必须与其一致。
 
-## 触发与产物
+## 无需上传私钥的发布路径
+
+`Android release build`（`.github/workflows/release-build.yml`）是默认推荐入口：在 GitHub Actions 手动选择 `master`，执行 release 单元测试、lint、APK/AAB 编译及 PC 共用代码检查，不读取任何签名 Secrets。输出 `tingyu-版本-cloud-unsigned` artifact，其中 `cloud-build.json` 记录提交、工作流地址和每个原始文件的 SHA-256；这些文件尚未签名，不能直接作为正式安装包发布。
+
+下载该运行的 artifact，核对提交及哈希后，在本机用已有正式证书执行 APK 的 `zipalign` / `apksigner` 和 AAB 的 `jarsigner`，再用 `scripts/verify-release.py --apk ... --aab ...` 校验。对照签名前后 ZIP 载荷，确保签名过程中没有替换云端编译内容。最终 APK/AAB、SHA256SUMS、release.json 及 cloud-build.json 上传到该构建提交对应的 GitHub Release。私钥和密码始终留在本机。
+
+这种路径的准确表述是“GitHub 编译，本机签名，GitHub 发布”；它不是全程云端签名。此前上传私钥的自动审批被拒绝，本次改用这条路径，不再以私钥外传授权作为发布前提。
+
+## 可选：云端签名触发与产物
 
 `.github/workflows/android.yml` 保留原有 push、PR、手动验证；不读取发布签名 Secrets。
 
 `.github/workflows/release.yml` 提供两个入口：
 
 - **Actions → Android release → Run workflow**：只能选择 `master` 或匹配当前版本的 `v*` 标签，构建并上传 Actions artifact，不创建公开 Release。
-- **推送 `v0.1.2` 等版本标签**：完成同样的检查和构建，然后创建该标签的 GitHub Release。标签提交必须已在 `origin/master` 历史中；错误版本或未合并分支会在读取 Secrets 前失败。
+- **推送 `v0.1.2` 等版本标签**：仅当仓库变量 `TINGYU_CLOUD_SIGNING=true` 时，完成同样的检查和构建，然后创建该标签的 GitHub Release。默认不启用，避免本机签名发布时重复触发。标签提交必须已在 `origin/master` 历史中；错误版本或未合并分支会在读取 Secrets 前失败。
 
 工作流仅在 `JackkLau/mobile-music-dl` 仓库执行，PR 和其他分支不能触发带签名的构建。构建任务只有仓库读取权限；单独的发布任务在成功后获得 `contents: write`。同一 ref 的发布串行执行，不会中断正在签名的任务。
 
