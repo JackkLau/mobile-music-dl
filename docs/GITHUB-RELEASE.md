@@ -1,14 +1,14 @@
 # GitHub 正式签名构建与发布
 
-仓库：`JackkLau/mobile-music-dl`。首次计划发布 `v0.1.2`，对应 `versionName=0.1.2`、`versionCode=3`。工作流读取 `app/build.gradle.kts` 的真实版本，标签必须与其一致。
+仓库：`JackkLau/mobile-music-dl`。当前发布版本 `v0.1.2`，对应 `versionName=0.1.2`、`versionCode=3`。工作流读取 `app/build.gradle.kts` 的真实版本，标签必须与其一致。
 
 ## 无需上传私钥的发布路径
 
-`Android release build`（`.github/workflows/release-build.yml`）是默认推荐入口：在 GitHub Actions 手动选择 `master`，执行 release 单元测试、lint、APK/AAB 编译及 PC 共用代码检查，不读取任何签名 Secrets。输出 `tingyu-版本-cloud-unsigned` artifact，其中 `cloud-build.json` 记录提交、工作流地址和每个原始文件的 SHA-256；这些文件尚未签名，不能直接作为正式安装包发布。
+`Android release build`（`.github/workflows/release-build.yml`）提供本机签名入口：在 GitHub Actions 手动选择 `master`，执行 release 单元测试、lint、APK/AAB 编译及 PC 共用代码检查，不读取任何签名 Secrets。输出 `tingyu-版本-cloud-unsigned` artifact，其中 `cloud-build.json` 记录提交、工作流地址和每个原始文件的 SHA-256；这些文件尚未签名，不能直接作为正式安装包发布。
 
 下载该运行的 artifact，核对提交及哈希后，在本机用已有正式证书执行 APK 的 `zipalign` / `apksigner` 和 AAB 的 `jarsigner`，再用 `scripts/verify-release.py --apk ... --aab ...` 校验。对照签名前后 ZIP 载荷，确保签名过程中没有替换云端编译内容。最终 APK/AAB、SHA256SUMS、release.json 及 cloud-build.json 上传到该构建提交对应的 GitHub Release。私钥和密码始终留在本机。
 
-这种路径的准确表述是“GitHub 编译，本机签名，GitHub 发布”；它不是全程云端签名。此前上传私钥的自动审批被拒绝，本次改用这条路径，不再以私钥外传授权作为发布前提。
+这种路径的准确表述是“GitHub 编译，本机签名，GitHub 发布”。它与下方全云端签名路径分开使用，不能混称构建产物来源。
 
 ## 可选：云端签名触发与产物
 
@@ -77,4 +77,4 @@ python3 scripts/verify-release.py
 
 上一轮 GitHub `Android verification` 因 setup-android 默认安装已经移除的 `tools` 包失败。本次两个工作流均显式指定 `packages: platform-tools`，后续单独安装 SDK 35 和 Build Tools 35.0.0。完整本地功能验收见 [0.1.2 验证记录](LOCAL-MUSIC-VERIFICATION.md)。
 
-远端 Secrets 配置、Actions 执行结果和实际 Release 地址应在成功后单独记录。仅提交工作流或看到 Actions 开始运行，不算正式包构建完成。
+2026-10-29 经用户明确授权，将本机原正式证书及其凭据保存为上述四项 GitHub Actions 加密 Secrets，并启用 `TINGYU_CLOUD_SIGNING=true`。此前已有远端凭据的证书不匹配，被校验步骤拒绝；现在恢复原证书，未修改固定指纹来接受其他证书。最终 Actions 执行结果和 Release 地址在成功后单独记录。仅配置完成或看到 Actions 开始运行，不算正式包构建完成。

@@ -200,7 +200,7 @@
       ],
       "commit_note": "Final copy-only UI adjustment built on this base; full source is recorded by the following documentation/source commit."
     },
-    "github_signed_build": "Cloud compilation with local signing selected; signing Secrets will not be uploaded.",
+    "github_signed_build": "Existing release certificate and credentials restored into four GitHub Actions Secrets after explicit user authorization; TINGYU_CLOUD_SIGNING=true. Awaiting tagged signed build and publication.",
     "logs_directory": "docs/verification-logs/local-music-20261029",
     "device_tests": {
       "tests": 32,
@@ -226,6 +226,17 @@
       "device_tests": 2,
       "failures": 0,
       "overlaps_full_device_suite": true
+    },
+    "github_unsigned_build": {
+      "run": "https://github.com/JackkLau/mobile-music-dl/actions/runs/40800321949",
+      "conclusion": "success",
+      "commit": "56286259e7ac889897808c1a9aaa5f2dd3c4de6b",
+      "artifact_sha256": "5c4307817357ae5284926e10db88c64bc4ad8817af3eeaafd8b77a86205bbb6f",
+      "local_signature_verified": true,
+      "unchanged_payload_entries": {
+        "apk": 222,
+        "aab": 227
+      }
     }
   }
 }
