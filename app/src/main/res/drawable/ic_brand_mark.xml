@@ -1,0 +1,10 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- A flowing W: two rounded musical pulses and an upturned note stem.
+         The complete mark stays inside the adaptive icon's central safe circle. -->
+    <path android:fillColor="@android:color/transparent"
+        android:strokeColor="#FFFFFF" android:strokeWidth="7"
+        android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:pathData="M31,41 C33,56 36,68 42,68 C47,68 51,56 54,48 C57,56 61,68 67,68 C73,68 76,54 76,42 L76,36 L66,39" />
+</vector>

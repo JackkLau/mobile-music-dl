@@ -30,7 +30,8 @@ class AppContainer(context: Context) {
     val songFiles = SongFileImporter(context)
     val catalog = MusicCatalogRepository(BuildConfig.VERSION_NAME)
     private val lrclib = LyricsRepository(BuildConfig.VERSION_NAME)
-    val lyrics = LyricsLookup(catalog::lyrics, lrclib::find)
+    val lyrics = LyricsLookup(catalog::lyrics, lrclib::find,
+        catalog::lyricCandidates, lrclib::candidates, catalog::lyrics, lrclib::lyrics)
     val localMusic = LocalMusicManager(context, library)
     val downloads = DownloadCoordinator(context, bilibili, library)
 }

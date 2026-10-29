@@ -127,14 +127,50 @@ class TingYuUiTest {
         compose.setContent { TingYuApp(state.value, actions) }
         compose.onNodeWithTag("lyrics_tab").performClick()
         compose.onNodeWithText("使用此版本歌词").assertIsNotEnabled()
-        compose.onNodeWithText("时长不同，请试听校准").assertExists()
-        compose.onNodeWithText("合成测试专辑版本").performClick()
+        compose.onNodeWithText("时长不同，请试听校准").performScrollTo().assertExists()
+        compose.onNodeWithText("合成测试专辑版本").performScrollTo().performClick()
         compose.onNodeWithText("使用此版本歌词").performClick()
         assertEquals(candidate, actions.chosenLyricVersion)
         compose.runOnIdle { state.value = state.value.copy(lyricsLoading = true) }
         compose.onNodeWithText("使用此版本歌词").assertIsNotEnabled()
         compose.onNode(hasText("取消查找") and hasAnyAncestor(hasTestTag("lyric_version_dialog"))).performClick()
         assertEquals(1, actions.lyricsCancellations)
+    }
+
+    @Test fun lyricSearchCorrectionsRequireNewSearchAndKeepOriginalSong() {
+        val actions = RecordingActions()
+        val candidate = LyricCandidate("netease:song:123", "遥远的她", "张学友", "测试专辑", 257546,
+            "网易云音乐", "https://music.163.com/song?id=123")
+        val state = AppUiState(playerVisible = true, playback = PlaybackState(track = track),
+            lyricsChoiceTrack = track, lyricsCandidates = listOf(candidate),
+            lyricsWarnings = listOf("LRCLIB 暂时繁忙（HTTP 503），可使用其他来源。"))
+        compose.setContent { TingYuApp(state, actions) }
+        compose.onNodeWithTag("lyrics_tab").performClick()
+        compose.onNodeWithText("遥远的她 · 张学友").performScrollTo().performClick()
+        compose.onNodeWithText("使用此版本歌词").assertIsEnabled()
+        compose.onNodeWithTag("lyrics_search_title").performScrollTo().performTextReplacement("遥远的她")
+        compose.onNodeWithText("使用此版本歌词").assertIsNotEnabled()
+        compose.onNodeWithContentDescription("清空搜索歌手").performScrollTo().performClick()
+        compose.onNodeWithText("搜索版本").performScrollTo().performClick()
+        assertEquals("遥远的她" to "", actions.lyricsSearch)
+        assertNull(actions.edited)
+        assertNull(actions.chosenLyricVersion)
+        compose.onNodeWithText("LRCLIB 暂时繁忙（HTTP 503），可使用其他来源。").performScrollTo().assertExists()
+        captureScreenshot("lyrics-search")
+    }
+
+    @Test fun lyricSearchCanClearAndCancelWithoutSelectingOldResult() {
+        val actions = RecordingActions()
+        val state = mutableStateOf(AppUiState(playerVisible = true, playback = PlaybackState(track = track), lyricsChoiceTrack = track))
+        compose.setContent { TingYuApp(state.value, actions) }
+        compose.onNodeWithTag("lyrics_tab").performClick()
+        compose.onNodeWithContentDescription("清空搜索歌名").performScrollTo().performClick()
+        compose.onNodeWithText("搜索版本").performScrollTo().assertIsNotEnabled()
+        compose.runOnIdle { state.value = state.value.copy(lyricsLoading = true) }
+        compose.onNodeWithTag("lyrics_search_title").performScrollTo().assertIsNotEnabled()
+        compose.onNode(hasText("取消查找") and hasAnyAncestor(hasTestTag("lyric_version_dialog"))).performClick()
+        assertEquals(1, actions.lyricsCancellations)
+        assertNull(actions.chosenLyricVersion)
     }
 
     @Test fun songEditorPreservesSourceAndValidatesTitle() {
@@ -408,6 +444,7 @@ class TingYuUiTest {
         var chosenCover: ArtworkCandidate? = null
         var coverCancellations = 0
         var chosenLyricVersion: LyricCandidate? = null
+        var lyricsSearch: Pair<String, String>? = null
         override fun input(value: String) { inputValue = value }
         override fun parse() { parseCount++ }
         override fun loadMore() {}
@@ -420,6 +457,7 @@ class TingYuUiTest {
         override fun resetLyricsOffset(track: Track) { lyricReset = track }
         override fun useSongCover(candidate: ArtworkCandidate) { chosenCover = candidate }
         override fun cancelCoverSearch() { coverCancellations++ }
+        override fun searchLyricVersions(title: String, artist: String) { lyricsSearch = title to artist }
         override fun useLyricVersion(candidate: LyricCandidate) { chosenLyricVersion = candidate }
         override fun next() { nextCount++ }
         override fun previous() {}

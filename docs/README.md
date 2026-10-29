@@ -19,6 +19,7 @@
 
 | 版本 / 专题 | 记录 |
 |---|---|
+| 0.1.5 | [微乐品牌与歌词候选修复](WEILE-0.1.5-VERIFICATION.md) |
 | 0.1.4 | [歌词、封面与固定播放器](LYRICS-PLAYER-VERIFICATION.md)，含设备测试事故与恢复范围 |
 | 0.1.3 | [歌曲信息与歌词](SONG-DETAILS-VERIFICATION.md) |
 | 0.1.2 | [本地音乐管理](LOCAL-MUSIC-VERIFICATION.md) |

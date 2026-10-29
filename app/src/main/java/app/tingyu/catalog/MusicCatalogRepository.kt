@@ -2,6 +2,7 @@ package app.tingyu.catalog
 
 import app.tingyu.lyrics.LrcParser
 import app.tingyu.lyrics.LyricsDocument
+import app.tingyu.lyrics.LyricsSourceException
 import app.tingyu.model.Track
 import java.io.IOException
 import java.net.InetAddress
@@ -62,6 +63,7 @@ class MusicCatalogRepository internal constructor(
     private val mutex = Mutex()
     private val json = Json { ignoreUnknownKeys = true }
     private val cooldown = mutableMapOf<String, Long>()
+    private val cooldownStatus = mutableMapOf<String, Int>()
     private var nextRequestAt = 0L
     // A caller cannot turn image() into an arbitrary URL fetcher, including by copying a candidate.
     private val offered = LinkedHashSet<ArtworkCandidate>()
@@ -94,12 +96,17 @@ class MusicCatalogRepository internal constructor(
     }
 
     suspend fun lyricCandidates(track: Track): List<LyricCandidate> = mutex.withLock {
-        requireIdentity(track)
-        val result = neteaseSongs(track).take(MAX_CANDIDATES).mapNotNull { song ->
+        requireSearch(track)
+        // Discovery deliberately keeps different recordings. Only an explicit choice may attach them.
+        val result = neteaseSongs(track, exact = false).mapNotNull { song ->
             val id = song.long("id")?.takeIf { it > 0 } ?: return@mapNotNull null
-            LyricCandidate("netease:song:$id", track.title, track.artist, song.obj("album").string("name"),
+            val title = song.string("name").takeIf { it.isNotBlank() && it.length <= 200 } ?: return@mapNotNull null
+            val artist = song.array("artists").mapNotNull { (it as? JsonObject)?.string("name")?.takeIf(String::isNotBlank) }.joinToString(" / ")
+            LyricCandidate("netease:song:$id", title, artist, song.obj("album").string("name"),
                 song.long("duration")?.coerceAtLeast(0) ?: 0, "网易云音乐", "https://music.163.com/song?id=$id")
-        }
+        }.sortedWith(compareBy<LyricCandidate> { identity(it.title) != identity(track.title) }
+            .thenBy { track.artist.isNotBlank() && identity(it.artist) != identity(track.artist) }
+            .thenBy { if (track.durationMs > 0 && it.durationMs > 0) abs(it.durationMs - track.durationMs) else Long.MAX_VALUE })
         offeredLyrics.addAll(result)
         while (offeredLyrics.size > 64) offeredLyrics.remove(offeredLyrics.first())
         result
@@ -160,19 +167,19 @@ class MusicCatalogRepository internal constructor(
         result.bytes
     }
 
-    private suspend fun neteaseSongs(track: Track): List<JsonObject> {
+    private suspend fun neteaseSongs(track: Track, exact: Boolean = true): List<JsonObject> {
         val search = getJson(neteaseBase.newBuilder().addPathSegments("api/search/get/web")
-            .addQueryParameter("s", "${track.title} ${track.artist}").addQueryParameter("type", "1")
+            .addQueryParameter("s", "${track.title.trim()} ${track.artist.trim()}".trim()).addQueryParameter("type", "1")
             .addQueryParameter("limit", "20").addQueryParameter("offset", "0").build(), "网易云音乐") ?: return emptyList()
         businessCode(search, 200, "网易云音乐")
         val ids = search.obj("result").array("songs").mapNotNull { it as? JsonObject }
-            .filter { matchesNetease(it, track) }.mapNotNull { it.long("id")?.takeIf { id -> id > 0 } }.distinct().take(20)
+            .filter { !exact || matchesNetease(it, track) }.mapNotNull { it.long("id")?.takeIf { id -> id > 0 } }.distinct().take(20)
         if (ids.isEmpty()) return emptyList()
         val details = getJson(neteaseBase.newBuilder().addPathSegments("api/song/detail")
             .addQueryParameter("ids", ids.joinToString(",", "[", "]")).build(), "网易云音乐") ?: return emptyList()
         businessCode(details, 200, "网易云音乐")
         return details.array("songs").mapNotNull { it as? JsonObject }
-            .filter { it.long("id") in ids && matchesNetease(it, track) }.distinctBy { it.long("id") }
+            .filter { it.long("id") in ids && (!exact || matchesNetease(it, track)) }.distinctBy { it.long("id") }
     }
 
     private suspend fun neteaseArtwork(track: Track): List<ArtworkCandidate> {
@@ -239,25 +246,26 @@ class MusicCatalogRepository internal constructor(
 
     private suspend fun get(url: HttpUrl, source: String, maxBytes: Long): Result {
         val now = nowMillis()
-        if (now < (cooldown[url.host] ?: 0L)) throw IOException("${source}请求较多，请稍后重试")
+        if (now < (cooldown[url.host] ?: 0L)) throw LyricsSourceException(source, "请求等待", "服务冷却中，请稍后重试", httpStatus = cooldownStatus[url.host])
         delay((nextRequestAt - now).coerceAtLeast(0))
         val result = try { request(url, source, maxBytes) }
         finally { nextRequestAt = nowMillis() + requestSpacingMs.coerceAtLeast(0) }
         if (result.status == 429 || result.status == 503) {
             cooldown[url.host] = safeDeadline(retryDelay(result.retryAfter))
-            throw IOException("${source}暂时繁忙，请稍后重试")
+            cooldownStatus[url.host] = result.status
+            throw LyricsSourceException(source, "请求", "服务暂时繁忙，请稍后重试", httpStatus = result.status)
         }
         return result
     }
 
     private suspend fun request(url: HttpUrl, source: String, maxBytes: Long): Result = suspendCancellableCoroutine { continuation ->
         val call = client.newCall(Request.Builder().url(url)
-            .header("User-Agent", "Tingyu/$appVersion (https://github.com/JackkLau/mobile-music-dl)")
+            .header("User-Agent", "Weile/$appVersion (https://github.com/JackkLau/mobile-music-dl)")
             .header("Accept", if (maxBytes == MAX_IMAGE_BYTES) "image/jpeg,image/png,image/webp,image/avif,image/gif" else "application/json").build())
         continuation.invokeOnCancellation { call.cancel() }
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                if (continuation.isActive) continuation.resumeWithException(IOException("无法连接${source}，请检查网络后重试"))
+                if (continuation.isActive) continuation.resumeWithException(LyricsSourceException(source, "连接", "无法连接，请检查网络后重试"))
             }
             override fun onResponse(call: Call, response: Response) {
                 try {
@@ -286,9 +294,13 @@ class MusicCatalogRepository internal constructor(
     }
     private fun safeDeadline(delay: Long): Long = nowMillis().let { now -> if (delay > Long.MAX_VALUE - now) Long.MAX_VALUE else now + delay }
     private fun businessCode(root: JsonObject, success: Int, source: String) {
-        if (root.long("code") != success.toLong()) throw IOException("${source}查询未完成，请稍后重试")
+        if (root.long("code") != success.toLong()) throw LyricsSourceException(source, "查询", "查询未完成，请稍后重试", businessCode = root.long("code"))
     }
-    private fun statusError(source: String, status: Int) = IOException("${source}请求未完成（HTTP $status），请稍后重试")
+    private fun statusError(source: String, status: Int) = LyricsSourceException(source, "请求", "请求未完成，请稍后重试", httpStatus = status)
+    private fun requireSearch(track: Track) {
+        if (track.title.isBlank()) throw IOException("请先填写歌名，再查找歌词")
+        if (track.title.length > 200 || track.artist.length > 200) throw IOException("歌名或歌手过长，请缩短搜索词")
+    }
     private fun requireIdentity(track: Track) {
         if (track.title.isBlank() || track.artist.isBlank()) throw IOException("请先补全歌名和歌手，再联网查找")
         if (track.title.length > 200 || track.artist.length > 200) throw IOException("歌名或歌手过长，请先修改歌曲信息")

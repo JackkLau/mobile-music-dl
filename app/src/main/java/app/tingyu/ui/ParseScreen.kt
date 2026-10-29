@@ -14,7 +14,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import app.tingyu.R
 import app.tingyu.model.AppActions
 import app.tingyu.model.AppUiState
 import app.tingyu.model.Track
@@ -29,7 +31,13 @@ internal fun ParseScreen(state: AppUiState, actions: AppActions) {
     val savedIds = remember(state.library) { state.library.map { it.track.id }.toSet() }
     LazyColumn(Modifier.fillMaxSize().imePadding().testTag("parse_list"), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item {
-            PageTitle("听屿", "把喜欢的声音，留在身边。") {
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    BrandIcon()
+                    Box(Modifier.weight(1f)) {
+                        PageTitle(stringResource(R.string.app_name), "把喜欢的声音，留在身边。")
+                    }
+                }
                 AssistChip(onClick = { actions.tab(3) }, label = { Text(if (state.session.isLoggedIn) "已登录" else "匿名模式") },
                     leadingIcon = { Icon(if (state.session.isLoggedIn) Icons.Rounded.VerifiedUser else Icons.Rounded.PersonOutline,
                         contentDescription = null, modifier = Modifier.size(16.dp)) })

@@ -1,6 +1,8 @@
-# 听屿
+# 微乐
 
-面向 Android 的音乐播放器。
+<img src="docs/assets/weile-icon.svg" alt="微乐图标" width="80" height="80">
+
+面向 Android 的音乐播放器，原名听屿。
 
 [![GitHub Release](https://img.shields.io/github/v/release/JackkLau/mobile-music-dl)](https://github.com/JackkLau/mobile-music-dl/releases/latest)
 [![Build](https://github.com/JackkLau/mobile-music-dl/actions/workflows/android.yml/badge.svg?branch=master&event=push)](https://github.com/JackkLau/mobile-music-dl/actions/workflows/android.yml)

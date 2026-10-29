@@ -1,1 +1,5 @@
-<resources><string name="app_name">听屿</string></resources>
+<resources>
+    <string name="app_name">微乐</string>
+    <string name="return_to_app">返回微乐</string>
+    <string name="login_success_return">登录成功，已登录 %1$s。可以返回微乐继续使用。</string>
+</resources>

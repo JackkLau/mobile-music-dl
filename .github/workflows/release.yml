@@ -116,4 +116,4 @@ jobs:
           gh release create "$RELEASE_TAG" \
             "tingyu-$RELEASE_VERSION-release.apk" \
             "tingyu-$RELEASE_VERSION-release.aab" SHA256SUMS release.json \
-            --verify-tag --title "听屿 $RELEASE_VERSION" --generate-notes
+            --verify-tag --title "微乐 $RELEASE_VERSION" --generate-notes

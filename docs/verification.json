@@ -454,5 +454,54 @@
       "Third-party public endpoints may reject requests or change"
     ],
     "report": "docs/LYRICS-PLAYER-VERIFICATION.md"
+  },
+  "weile_0_1_5": {
+    "date": "2026-10-30",
+    "versionName": "0.1.5",
+    "versionCode": 6,
+    "appName": "微乐",
+    "applicationId": "app.tingyu",
+    "applicationJVM": {
+      "tests": 242,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "scriptTests": 41,
+    "pcSharedJVM": {
+      "reportTests": 128,
+      "taskUpToDate": true,
+      "overlapsApplication": true
+    },
+    "debugBuild": "passed",
+    "debugLint": "passed",
+    "premiumAuditFindings": 0,
+    "designLint": {
+      "errors": 0,
+      "warnings": 7
+    },
+    "liveQueries": {
+      "audioUploaded": false,
+      "lyricsBodiesStored": false,
+      "遥远的她": {
+        "artistQuery": "",
+        "candidates": 20,
+        "warnings": [
+          "LRCLIB HTTP 503"
+        ],
+        "selected": "netease:song:191232",
+        "syncedLines": 51
+      },
+      "三国杀": {
+        "artistQuery": "",
+        "candidates": 31,
+        "warnings": [],
+        "selected": "netease:song:165367",
+        "syncedLines": 50
+      }
+    },
+    "device": "pending dedicated emulator",
+    "cloudRelease": "pending",
+    "report": "docs/WEILE-0.1.5-VERIFICATION.md"
   }
 }

@@ -41,7 +41,7 @@ internal fun SongDetailsDialog(state: AppUiState, actions: AppActions, track: Tr
     AlertDialog(onDismissRequest = dismiss, title = { Text("歌曲信息") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("只修改听屿中的显示信息，保留原音频和视频来源。", style = MaterialTheme.typography.bodyMedium)
+                Text("只修改微乐中的显示信息，保留原音频和视频来源。", style = MaterialTheme.typography.bodyMedium)
                 OutlinedTextField(title, { title = it.take(200) }, label = { Text("歌名") }, singleLine = true,
                     enabled = !state.musicSaving, isError = title.isBlank(), modifier = Modifier.fillMaxWidth(),
                     trailingIcon = { if (title.isNotEmpty()) IconButton(onClick = { title = "" }, enabled = !state.musicSaving) { Icon(Icons.Rounded.Close, "清空歌名") } })
@@ -159,7 +159,7 @@ private fun LyricsOptionsDialog(state: AppUiState, actions: AppActions, track: T
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             state.lyricsError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             state.lyrics?.source?.takeIf { it.isNotBlank() }?.let { Text("当前歌词来源：$it", style = MaterialTheme.typography.bodySmall) }
-            Text("联网查找会向网易云音乐、LRCLIB发送歌名、歌手和时长。未自动匹配时，可手动核对网易云音乐的版本。", style = MaterialTheme.typography.bodySmall)
+            Text("联网查找会向网易云音乐、LRCLIB发送歌名、歌手和时长。未自动匹配时会显示候选，可修改搜索词并核对不同来源的版本。", style = MaterialTheme.typography.bodySmall)
             OutlinedButton(onClick = { onDismiss(); actions.findLyricVersions() }, enabled = !state.musicSaving && !state.lyricsLoading,
                 modifier = Modifier.fillMaxWidth()) { Text("选择歌词版本") }
             if (hasTimedLyrics) {
@@ -188,19 +188,37 @@ private fun LyricsOptionsDialog(state: AppUiState, actions: AppActions, track: T
 @Composable
 private fun LyricVersionDialog(state: AppUiState, actions: AppActions) {
     val track = state.lyricsChoiceTrack ?: return
-    var selected by remember(track.id, state.lyricsCandidates) { mutableStateOf<String?>(null) }
+    val submittedTitle = state.lyricsQueryTitle ?: track.title
+    val submittedArtist = state.lyricsQueryArtist ?: track.artist
+    var title by rememberSaveable(track.id, submittedTitle) { mutableStateOf(submittedTitle) }
+    var artist by rememberSaveable(track.id, submittedArtist) { mutableStateOf(submittedArtist) }
+    val queryChanged = title.trim() != submittedTitle || artist.trim() != submittedArtist
+    var selected by remember(track.id, state.lyricsCandidates, title, artist) { mutableStateOf<String?>(null) }
     AlertDialog(onDismissRequest = actions::cancelLyrics, modifier = Modifier.testTag("lyric_version_dialog"), title = { Text("选择歌词版本") }, text = {
         Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("${track.title} · ${track.artist}", style = MaterialTheme.typography.bodyMedium)
-            Text("当前音频 ${formatTime(track.durationMs)}。视频可能包含片头或剪辑，请核对专辑与时长；选择后替换现有歌词，可在歌词选项中校准时间。", style = MaterialTheme.typography.bodySmall)
+            Text("当前音频 ${formatTime(track.durationMs)}。请核对歌手、专辑和版本；选择后替换现有歌词，可在歌词选项中校准时间。", style = MaterialTheme.typography.bodySmall)
+            OutlinedTextField(title, { title = it.take(200) }, label = { Text("搜索歌名") }, singleLine = true,
+                enabled = !state.lyricsLoading, modifier = Modifier.fillMaxWidth().testTag("lyrics_search_title"),
+                trailingIcon = { if (title.isNotEmpty()) IconButton(onClick = { title = "" }, enabled = !state.lyricsLoading) { Icon(Icons.Rounded.Close, "清空搜索歌名") } })
+            OutlinedTextField(artist, { artist = it.take(200) }, label = { Text("歌手（可选）") }, singleLine = true,
+                enabled = !state.lyricsLoading, modifier = Modifier.fillMaxWidth().testTag("lyrics_search_artist"),
+                trailingIcon = { if (artist.isNotEmpty()) IconButton(onClick = { artist = "" }, enabled = !state.lyricsLoading) { Icon(Icons.Rounded.Close, "清空搜索歌手") } })
+            Text("搜索词只用于查找歌词，不会修改歌曲信息。找不到时可只填歌名。", style = MaterialTheme.typography.bodySmall)
+            OutlinedButton(onClick = { actions.searchLyricVersions(title.trim(), artist.trim()) },
+                enabled = !state.lyricsLoading && title.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("搜索版本") }
+            if (queryChanged) Text("搜索词已修改，请重新搜索后选择。", style = MaterialTheme.typography.bodySmall)
             if (state.lyricsLoading) { LinearProgressIndicator(Modifier.fillMaxWidth()); Text("正在读取歌词版本…") }
             state.lyricsError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            state.lyricsWarnings.forEach { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+            if (state.lyricsCandidates.isNotEmpty()) Text("${state.lyricsCandidates.size} 个候选 · 请核对后选择", style = MaterialTheme.typography.labelMedium)
             state.lyricsCandidates.forEach { candidate ->
                 Surface(shape = MaterialTheme.shapes.medium,
                     color = if (selected == candidate.id) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant) {
-                    Column(Modifier.fillMaxWidth().clickable(enabled = !state.lyricsLoading, role = Role.RadioButton) { selected = candidate.id }
+                    Column(Modifier.fillMaxWidth().clickable(enabled = !state.lyricsLoading && !queryChanged, role = Role.RadioButton) { selected = candidate.id }
                         .semantics { this.selected = selected == candidate.id }.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(candidate.album.ifBlank { candidate.title }, style = MaterialTheme.typography.titleSmall)
+                        Text("${candidate.title} · ${candidate.artist}", style = MaterialTheme.typography.titleSmall)
+                        if (candidate.album.isNotBlank()) Text(candidate.album, style = MaterialTheme.typography.bodyMedium)
                         Text("${candidate.source} · ${if (candidate.durationMs > 0) formatTime(candidate.durationMs) else "时长未知"}", style = MaterialTheme.typography.bodySmall)
                         if (track.durationMs > 0 && candidate.durationMs > 0 && kotlin.math.abs(track.durationMs - candidate.durationMs) > 2000)
                             Text("时长不同，请试听校准", style = MaterialTheme.typography.bodySmall)
@@ -211,7 +229,7 @@ private fun LyricVersionDialog(state: AppUiState, actions: AppActions) {
         }
     }, confirmButton = {
         TextButton(onClick = { state.lyricsCandidates.firstOrNull { it.id == selected }?.let(actions::useLyricVersion) },
-            enabled = selected != null && !state.lyricsLoading) { Text("使用此版本歌词") }
+            enabled = selected != null && !state.lyricsLoading && !queryChanged) { Text("使用此版本歌词") }
     }, dismissButton = { TextButton(onClick = actions::cancelLyrics) { Text(if (state.lyricsLoading) "取消查找" else "返回") } })
 }
 

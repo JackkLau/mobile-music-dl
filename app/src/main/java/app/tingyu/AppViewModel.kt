@@ -228,16 +228,19 @@ class AppViewModel(application: Application, private val savedStateHandle: Saved
         val current = mutable.value.playback
         val track = current.track ?: return
         val snapshot = track.copy(durationMs = current.durationMs.takeIf { it > 0 } ?: track.durationMs)
+        cancelLyrics()
         val version = ++lyricsVersion
         mutable.update { it.copy(lyricsLoading = true, lyricsError = null) }
         lyricsJob = viewModelScope.launch {
             try {
-                val result = container.lyrics.find(snapshot)
-                if (version == lyricsVersion && mutable.value.playback.track?.id == track.id) {
-                    if (result == null) mutable.update { it.copy(lyricsError = "没有找到匹配的歌词。可修正歌名、歌手，或导入本地歌词。") }
-                    else if (!container.songDetails.saveLyrics(snapshot, result)) mutable.update {
-                        if (version == lyricsVersion) it.copy(lyricsError = "歌曲信息已改变，请重新查找歌词") else it
-                    }
+                // Exact matching remains conservative. Ambiguity or an unavailable provider
+                // opens a searchable choice instead of treating existing lyrics as absent.
+                val result = if (snapshot.artist.isBlank()) null else try { container.lyrics.find(snapshot) }
+                    catch (_: java.io.IOException) { null }
+                if (version != lyricsVersion || mutable.value.playback.track?.id != track.id) return@launch
+                if (result == null) loadLyricCandidates(snapshot, snapshot, version)
+                else if (!container.songDetails.saveLyrics(snapshot, result)) mutable.update {
+                    if (version == lyricsVersion) it.copy(lyricsError = "歌曲信息已改变，请重新查找歌词") else it
                 }
             } catch (error: CancellationException) { throw error }
             catch (error: Exception) {
@@ -250,25 +253,41 @@ class AppViewModel(application: Application, private val savedStateHandle: Saved
         lyricsVersion++
         lyricsJob?.cancel()
         lyricsJob = null
-        mutable.update { it.copy(lyricsLoading = false, lyricsChoiceTrack = null, lyricsCandidates = emptyList()) }
+        mutable.update { it.copy(lyricsLoading = false, lyricsChoiceTrack = null, lyricsCandidates = emptyList(),
+            lyricsQueryTitle = null, lyricsQueryArtist = null, lyricsWarnings = emptyList()) }
     }
 
     override fun findLyricVersions() {
+        val track = mutable.value.playback.track ?: return
+        searchLyricVersions(track.title, track.artist)
+    }
+
+    override fun searchLyricVersions(title: String, artist: String) {
         if (mutable.value.musicSaving || mutable.value.lyricsLoading) return
         val player = mutable.value.playback
         val track = player.track ?: return
+        // Query corrections do not rename the audio or invalidate its saved details.
         val snapshot = track.copy(durationMs = player.durationMs.takeIf { it > 0 } ?: track.durationMs)
         cancelLyrics()
         val version = ++lyricsVersion
-        mutable.update { it.copy(lyricsChoiceTrack = snapshot, lyricsCandidates = emptyList(), lyricsLoading = true, lyricsError = null) }
+        mutable.update { it.copy(lyricsLoading = true, lyricsError = null) }
         lyricsJob = viewModelScope.launch {
-            try {
-                val candidates = container.catalog.lyricCandidates(snapshot)
-                if (version == lyricsVersion) mutable.update { it.copy(lyricsCandidates = candidates,
-                    lyricsError = if (candidates.isEmpty()) "没有找到可选版本。可核对歌名和歌手，或导入歌词。" else null) }
-            } catch (error: CancellationException) { throw error }
+            try { loadLyricCandidates(snapshot, snapshot.copy(title = title.trim(), artist = artist.trim()), version) }
+            catch (error: CancellationException) { throw error }
             catch (error: Exception) { if (version == lyricsVersion) mutable.update { it.copy(lyricsError = userMessage(error, "歌词版本查询失败，请重试")) } }
             finally { if (version == lyricsVersion) mutable.update { it.copy(lyricsLoading = false) } }
+        }
+    }
+
+    private suspend fun loadLyricCandidates(target: Track, query: Track, version: Int) {
+        if (version != lyricsVersion) return
+        mutable.update { it.copy(lyricsChoiceTrack = target, lyricsCandidates = emptyList(), lyricsWarnings = emptyList(),
+            lyricsQueryTitle = query.title, lyricsQueryArtist = query.artist, lyricsError = null) }
+        val result = container.lyrics.candidates(query)
+        if (version == lyricsVersion && mutable.value.playback.track?.id == target.id) mutable.update {
+            it.copy(lyricsCandidates = result.candidates, lyricsWarnings = result.warnings,
+                lyricsError = if (result.candidates.isEmpty() && result.warnings.isEmpty())
+                    "没有找到可选版本。可修改下方搜索词、仅用歌名搜索，或导入歌词。" else null)
         }
     }
 
@@ -280,13 +299,14 @@ class AppViewModel(application: Application, private val savedStateHandle: Saved
         mutable.update { it.copy(lyricsLoading = true, lyricsError = null) }
         lyricsJob = viewModelScope.launch {
             try {
-                val document = container.catalog.lyrics(candidate)
+                val document = container.lyrics.select(candidate)
                 if (version == lyricsVersion && mutable.value.playback.track?.id == target.id) {
                     if (document == null) mutable.update { it.copy(lyricsError = "这个版本暂无歌词，可选其他版本或导入本地歌词。") }
                     else {
                         val saved = container.songDetails.saveLyrics(target, document)
                         if (version == lyricsVersion) mutable.update {
-                            if (saved) it.copy(lyricsChoiceTrack = null, lyricsCandidates = emptyList(), message = "歌词已保存，请试听核对时间")
+                            if (saved) it.copy(lyricsChoiceTrack = null, lyricsCandidates = emptyList(), lyricsWarnings = emptyList(),
+                                lyricsQueryTitle = null, lyricsQueryArtist = null, message = "歌词已保存，请试听核对时间")
                             else it.copy(lyricsError = "歌曲信息已改变，请重新查找歌词")
                         }
                     }

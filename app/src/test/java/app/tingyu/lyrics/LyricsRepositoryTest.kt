@@ -55,7 +55,7 @@ class LyricsRepositoryTest {
         assertEquals(track.title, request.requestUrl!!.queryParameter("track_name"))
         assertEquals(track.artist, request.requestUrl!!.queryParameter("artist_name"))
         assertEquals("120.0", request.requestUrl!!.queryParameter("duration"))
-        assertEquals("Tingyu/test (https://github.com/JackkLau/mobile-music-dl)", request.getHeader("User-Agent"))
+        assertEquals("Weile/test (https://github.com/JackkLau/mobile-music-dl)", request.getHeader("User-Agent"))
         assertNull(request.getHeader("Cookie"))
         assertNull(request.getHeader("Authorization"))
         assertNull(request.getHeader("Referer"))
@@ -165,6 +165,72 @@ class LyricsRepositoryTest {
         assertTrue(pending.isCancelled)
         server.enqueue(json(record()))
         assertNotNull(repository.find(track))
+    }
+
+    @Test fun searchKeepsVersionMetadataAndDoesNotRequireArtistOrMatchingDuration() = runBlocking {
+        server.enqueue(json("[" + record(title = "合成曲 (Live)", artist = "另一歌手", duration = 150.0) + "]"))
+        val result = repository.candidates(track.copy(artist = ""))
+        assertEquals("合成曲 (Live)", result.single().title)
+        assertEquals("另一歌手", result.single().artist)
+        assertEquals(150000L, result.single().durationMs)
+        val request = server.takeRequest()
+        assertEquals("/api/search", request.requestUrl!!.encodedPath)
+        assertEquals(track.title, request.requestUrl!!.queryParameter("track_name"))
+        assertNull(request.requestUrl!!.queryParameter("artist_name"))
+        assertNull(request.requestUrl!!.queryParameter("duration"))
+    }
+
+    @Test fun explicitSelectionUsesOfferedIdAndRejectsForgedOrChangedResponse() = runBlocking {
+        server.enqueue(json("[" + record() + "]"))
+        val candidate = repository.candidates(track).single()
+        expectIo { repository.lyrics(candidate.copy(id = "lrclib:song:99")) }
+        expectIo { repository.lyrics(candidate.copy(title = "tampered")) }
+        assertEquals(1, server.requestCount)
+        server.enqueue(json(record()))
+        assertTrue(repository.lyrics(candidate)!!.syncedText.isNotBlank())
+        server.takeRequest()
+        val selected = server.takeRequest()
+        assertEquals("/api/get/42", selected.requestUrl!!.encodedPath)
+        assertNull(selected.getHeader("Cookie")); assertNull(selected.getHeader("Authorization"))
+        server.enqueue(json(record(title = "不同录音")))
+        expectIo { repository.lyrics(candidate) }
+    }
+
+    @Test fun searchFailureRetainsStatusAndCooldownSharedWithAutomaticLookup() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(503).setHeader("Retry-After", "10"))
+        try { repository.candidates(track); fail("Expected failure") }
+        catch (error: LyricsSourceException) {
+            assertTrue(error.message!!.contains("LRCLIB")); assertTrue(error.message!!.contains("503"))
+        }
+        try { repository.find(track); fail("Expected cooldown") }
+        catch (error: LyricsSourceException) {
+            assertTrue(error.message!!.contains("503")); assertTrue(error.message!!.contains("冷却"))
+        }
+        assertEquals(1, server.requestCount)
+    }
+
+    @Test fun searchRejectsWrongShapeAndOversizedResponse() = runBlocking {
+        server.enqueue(json(record()))
+        expectIo { repository.candidates(track) }
+        server.enqueue(json("x".repeat(512 * 1024 + 1)))
+        expectIo { repository.candidates(track) }
+    }
+
+    @Test fun selectedHtmlInJsonIsNotSavedAsLyrics() = runBlocking {
+        server.enqueue(json("[" + record() + "]"))
+        val candidate = repository.candidates(track).single()
+        server.enqueue(json(record(plain = "<html>service error</html>", synced = "")))
+        expectIo { repository.lyrics(candidate) }
+    }
+
+    @Test fun cancellationStopsCandidateSearchAndAllowsNextRequest() = runBlocking {
+        server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.NO_RESPONSE))
+        val pending = async { repository.candidates(track) }
+        repeat(100) { if (server.requestCount == 0) delay(10) }
+        assertEquals(1, server.requestCount)
+        pending.cancelAndJoin()
+        server.enqueue(json("[]"))
+        assertTrue(repository.candidates(track).isEmpty())
     }
 
     private suspend fun expectIo(block: suspend () -> Any?) {

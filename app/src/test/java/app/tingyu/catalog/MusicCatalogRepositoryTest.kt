@@ -69,7 +69,7 @@ class MusicCatalogRepositoryTest {
         val first = server.takeRequest()
         assertEquals("${track.title} ${track.artist}", first.requestUrl!!.queryParameter("s"))
         assertNull(first.getHeader("Cookie")); assertNull(first.getHeader("Authorization")); assertNull(first.getHeader("Referer"))
-        assertTrue(first.getHeader("User-Agent")!!.startsWith("Tingyu/test"))
+        assertTrue(first.getHeader("User-Agent")!!.startsWith("Weile/test"))
         server.takeRequest()
         assertEquals("/netease/api/song/lyric", server.takeRequest().requestUrl!!.encodedPath)
     }
@@ -229,6 +229,54 @@ class MusicCatalogRepositoryTest {
         pending.cancelAndJoin()
         server.enqueue(search())
         assertNull(repository.lyrics(track))
+    }
+
+    @Test fun discoveryKeepsDuplicateReleasesAndDifferentVersionsForExplicitChoice() = runBlocking {
+        val original = song(1)
+        val reissue = song(2)
+        val live = song(3, name = "合成曲 (Live)", singer = "另一歌手", duration = 150000)
+        server.enqueue(search(original, reissue, live)); server.enqueue(detail(original, reissue, live))
+        val candidates = repository.lyricCandidates(track)
+        assertEquals(listOf("netease:song:1", "netease:song:2", "netease:song:3"), candidates.map { it.id })
+        assertEquals("合成曲 (Live)", candidates[2].title)
+        assertEquals("另一歌手", candidates[2].artist)
+        assertEquals(150000L, candidates[2].durationMs)
+        server.enqueue(lyrics())
+        assertNotNull(repository.lyrics(candidates[2]))
+        server.takeRequest(); server.takeRequest()
+        assertEquals("3", server.takeRequest().requestUrl!!.queryParameter("id"))
+    }
+
+    @Test fun discoveryAllowsTitleOnlyWithoutInventingArtistOrDiscardingLongIntro() = runBlocking {
+        val original = song(duration = 120000)
+        server.enqueue(search(original)); server.enqueue(detail(original))
+        val candidates = repository.lyricCandidates(track.copy(artist = "", durationMs = 135000))
+        assertEquals(track.artist, candidates.single().artist)
+        assertEquals(120000L, candidates.single().durationMs)
+        assertEquals(track.title, server.takeRequest().requestUrl!!.queryParameter("s"))
+    }
+
+    @Test fun titleAndArtistExactMatchesRankBeforeOtherRecordingsWithoutChangingSearchIdentity() = runBlocking {
+        val first = song(1, name = "合成曲 (Live)", duration = 120000)
+        val second = song(2, singer = "别人", duration = 120000)
+        val exact = song(3, duration = 125000)
+        server.enqueue(search(first, second, exact)); server.enqueue(detail(first, second, exact))
+        val candidates = repository.lyricCandidates(track)
+        assertEquals(listOf("netease:song:3", "netease:song:2", "netease:song:1"), candidates.map { it.id })
+        assertEquals(track.title, candidates[0].title)
+        assertEquals("别人", candidates[1].artist)
+    }
+
+    @Test fun discoveryAfterAutomaticFailureKeepsTheOriginalHttpStatusDuringCooldown() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(503).setHeader("Retry-After", "30"))
+        expectIo { repository.lyrics(track) }
+        try { repository.lyricCandidates(track); fail("Expected cooldown") }
+        catch (error: IOException) {
+            assertTrue(error.message!!.contains("网易云音乐"))
+            assertTrue(error.message!!.contains("503"))
+            assertTrue(error.message!!.contains("冷却"))
+        }
+        assertEquals(1, server.requestCount)
     }
 
     private suspend fun expectIo(block: suspend () -> Any?) {

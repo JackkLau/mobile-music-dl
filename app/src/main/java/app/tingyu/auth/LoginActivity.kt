@@ -27,6 +27,7 @@ import app.tingyu.data.auth.LoginVerificationGate
 import app.tingyu.data.auth.SessionStore
 import app.tingyu.model.Account
 import app.tingyu.ui.TingYuColors
+import app.tingyu.R
 import java.io.ByteArrayInputStream
 import java.io.IOException
 import java.util.concurrent.TimeUnit
@@ -173,7 +174,7 @@ class LoginActivity : Activity() {
                 gravity = Gravity.CENTER
             })
             addView(Button(this@LoginActivity).apply {
-                text = "返回听屿"
+                text = getString(R.string.return_to_app)
                 minHeight = dp(48)
                 setOnClickListener { finish() }
             })
@@ -299,10 +300,10 @@ class LoginActivity : Activity() {
         successPanel.visibility = View.VISIBLE
         reload.visibility = View.GONE
         progress.visibility = View.GONE
-        complete.text = "返回听屿"
+        complete.text = getString(R.string.return_to_app)
         complete.isEnabled = true
         complete.setOnClickListener { finish() }
-        showStatus("登录成功，已登录 ${account.name}。可以返回听屿继续使用。")
+        showStatus(getString(R.string.login_success_return, account.name))
         setResult(RESULT_OK)
         SessionStore.clearWebSession()
     }

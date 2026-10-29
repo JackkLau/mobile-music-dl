@@ -32,6 +32,9 @@ data class AppUiState(
     val lyricsError: String? = null,
     val lyricsChoiceTrack: Track? = null,
     val lyricsCandidates: List<LyricCandidate> = emptyList(),
+    val lyricsQueryTitle: String? = null,
+    val lyricsQueryArtist: String? = null,
+    val lyricsWarnings: List<String> = emptyList(),
     val musicEditorVisible: Boolean = false,
     val musicEditorTrack: Track? = null,
     val musicSaving: Boolean = false,
@@ -78,6 +81,7 @@ interface AppActions {
     fun adjustLyricsOffset(track: Track, deltaMs: Long) {}
     fun resetLyricsOffset(track: Track) {}
     fun findLyricVersions() {}
+    fun searchLyricVersions(title: String, artist: String) {}
     fun useLyricVersion(candidate: LyricCandidate) {}
     fun cancelDownload(id: String)
     fun retryDownload(id: String)

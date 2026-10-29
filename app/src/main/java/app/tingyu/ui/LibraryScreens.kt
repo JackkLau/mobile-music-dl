@@ -15,11 +15,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.tingyu.model.*
 import app.tingyu.BuildConfig
+import app.tingyu.R
 
 @Composable
 internal fun LibraryScreen(state: AppUiState, actions: AppActions) {
@@ -223,13 +225,16 @@ internal fun AccountScreen(state: AppUiState, actions: AppActions) {
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         item {
-            if (state.debugAvailable) {
-                TextButton(onClick = actions::versionTap, modifier = Modifier.heightIn(min = 48.dp).testTag("app_version")) {
-                    Text("听屿 · ${BuildConfig.VERSION_NAME}")
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                BrandIcon(36.dp)
+                if (state.debugAvailable) {
+                    TextButton(onClick = actions::versionTap, modifier = Modifier.heightIn(min = 48.dp).testTag("app_version")) {
+                        Text("${stringResource(R.string.app_name)} · ${BuildConfig.VERSION_NAME}")
+                    }
+                } else {
+                    Text("${stringResource(R.string.app_name)} · ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp))
                 }
-            } else {
-                Text("听屿 · ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp))
             }
         }
         if (state.debugAvailable) {

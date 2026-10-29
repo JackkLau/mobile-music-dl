@@ -1,5 +1,4 @@
-<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
-    <path android:fillColor="#3F5D96" android:pathData="M0,0h108v108h-108z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M54,19a35,35 0,1 0,0 70a35,35 0,1 0,0 -70M54,27a27,27 0,1 1,0 54a27,27 0,1 1,0 -54" android:fillType="evenOdd" />
-    <path android:fillColor="#FFFFFF" android:pathData="M49,37h7v28a9,9 0,1 1,-7 -8zM54,37l17,-5v8l-17,5z" />
-</vector>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/ic_brand_background" />
+    <item android:drawable="@drawable/ic_brand_mark" />
+</layer-list>
