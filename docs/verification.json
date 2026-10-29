@@ -511,12 +511,50 @@
       "existingEmulatorModified": false,
       "phoneConnected": false
     },
-    "cloudRelease": "pending",
+    "cloudRelease": {
+      "status": "published-and-independently-verified",
+      "runId": 40925577014,
+      "sourceCommit": "a2c33be094ce780d0ba1deed4efd83356677789d",
+      "releaseUrl": "https://github.com/JackkLau/mobile-music-dl/releases/tag/v0.1.5",
+      "certificateSha256": "ba4e5c4ba00be09d10421edac7f276f44393f52950623e64096f93c864b81911",
+      "assets": [
+        {
+          "file": "tingyu-0.1.5-release.apk",
+          "bytes": 51574668,
+          "sha256": "318ff484d6738991911094efe6cc2cafa1ff1483110c5a5bb7d7f3e4f14ec70b"
+        },
+        {
+          "file": "tingyu-0.1.5-release.aab",
+          "bytes": 14837429,
+          "sha256": "05a4956037205965e4978a48eb2a836a4f0e062da63488a564cddf421bd59a5f"
+        }
+      ],
+      "publicDownloadDigestsMatched": true,
+      "publicDownloadSignaturesAndIdentityVerified": true,
+      "appLabel": "微乐",
+      "verificationWorkflowRuns": [
+        40925149259,
+        40925576715,
+        40925576880
+      ],
+      "workflowConclusions": "success"
+    },
     "report": "docs/WEILE-0.1.5-VERIFICATION.md",
     "localRelease": {
       "build": "passed",
       "validation": "original certificate, APK/AAB identity, non-debug boundary, alignment, complete AAB payload signature verified",
       "appLabel": "微乐"
+    },
+    "structuralChecks": 118,
+    "lint": {
+      "debug": {
+        "errors": 0,
+        "warnings": 25
+      },
+      "release": {
+        "errors": 0,
+        "warnings": 26
+      }
     }
   }
 }

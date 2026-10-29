@@ -40,7 +40,10 @@
 - debug 与 release 各 242 项应用 JVM 测试通过，两者为同一套测试，不相加。正式 lint、APK、AAB 本机构建通过；签名、包名、版本、非调试边界、ZIP 对齐及 AAB 全内容签名校验通过，沿用原证书。正式 APK 显示名称“微乐”。
 - 新建了独立的空数据 API 37 AVD，未使用旧模拟器的数据。普通／headless、显式加速及软件图形启动均遇到 HVF／mprotect 错误，最后一次退出 139；未完成启动，未安装 APK，未运行本轮 51 项 instrumentation 测试（含 2 项新增候选搜索测试）。测试 APK 已编译通过，但不等于运行通过。
 - 原 `emulator-5554` 未安装、卸载、清理或切换用户。独立尝试的进程已停止，诊断保留在本地 `.tooling/weile-verification-avd/`。
-- GitHub 云端发布完成后补充产物验证。
+- [GitHub 正式构建与发布](https://github.com/JackkLau/mobile-music-dl/actions/runs/40925577014)通过，标签 `v0.1.5` 对应提交 `a2c33be094ce780d0ba1deed4efd83356677789d`；同时源码检查工作流通过。
+- 公开 APK／AAB 重新下载后，元数据与 SHA256SUMS 一致；独立复核包名、版本、原证书、APK 非调试边界／对齐及 AAB 全内容签名全部通过。APK 显示名称为“微乐”。
+- 原证书 SHA-256：`ba4e5c4ba00be09d10421edac7f276f44393f52950623e64096f93c864b81911`。
+- [下载与发布说明](https://github.com/JackkLau/mobile-music-dl/releases/tag/v0.1.5)。
 
 手机 `7c1213a1` 当前未连接，真机覆盖升级、TalkBack、完整播放及具体视频时间同步仍待验收。原模拟器及其数据不用于本轮自动安装测试。
 
@@ -50,3 +53,12 @@
 - `Music/听屿/` 继续表示实际目录，不移动、删除或重命名已有音频；歌词仍私有缓存并记录来源 URL。
 - 网易公开网页接口不保证长期稳定；LRCLIB 可能暂时不可用。候选搜索是明确触发的请求，遵守冷却、超时和取消，不进行后台全库抓取。
 - 不接入新的 QQ／酷狗歌词服务、商业识曲服务或豆瓣抓取；QQ 继续用于封面回退，豆瓣保留外部资料入口。
+
+## 云端公开产物
+
+| 文件 | 字节数 | SHA-256 |
+|---|---:|---|
+| tingyu-0.1.5-release.apk | 51574668 | `318ff484d6738991911094efe6cc2cafa1ff1483110c5a5bb7d7f3e4f14ec70b` |
+| tingyu-0.1.5-release.aab | 14837429 | `05a4956037205965e4978a48eb2a836a4f0e062da63488a564cddf421bd59a5f` |
+
+本轮 lint 为 debug 25 条、release 26 条警告、均 0 错误；包括依赖升级建议、现有平台建议及分版本 launcher 资源警告。已检查正式 APK 中 API 33 图标实际包含 monochrome 节点，不能将该静态警告等同于缺失主题图标。
