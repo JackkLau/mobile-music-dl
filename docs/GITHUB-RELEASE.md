@@ -1,6 +1,6 @@
 # GitHub 正式签名构建与发布
 
-仓库：`JackkLau/mobile-music-dl`。当前发布版本 `v0.1.2`，对应 `versionName=0.1.2`、`versionCode=3`。工作流读取 `app/build.gradle.kts` 的真实版本，标签必须与其一致。
+仓库：`JackkLau/mobile-music-dl`。当前发布版本 `v0.1.3`，对应 `versionName=0.1.3`、`versionCode=4`。工作流读取 `app/build.gradle.kts` 的真实版本，标签必须与其一致。
 
 ## 无需上传私钥的发布路径
 
@@ -81,3 +81,5 @@ python3 scripts/verify-release.py
 
 
 2026-10-29 最终结果：[v0.1.2 Release](https://github.com/JackkLau/mobile-music-dl/releases/tag/v0.1.2) 已由 [Actions 40891505722](https://github.com/JackkLau/mobile-music-dl/actions/runs/40891505722) 完成云端编译、原证书签名和发布。公开 APK/AAB 下载后复核通过，详见 [最终验收结果](LOCAL-MUSIC-VERIFICATION.md#github-正式发布结果)。
+
+2026-10-30：[v0.1.3 Release](https://github.com/JackkLau/mobile-music-dl/releases/tag/v0.1.3) 已由 [Actions 40907581731](https://github.com/JackkLau/mobile-music-dl/actions/runs/40907581731) 云端构建、原证书签名并发布。来源提交 `fc018851dc1d65af50eeae48886d8757f256befe`；公开 APK/AAB 下载后独立复核通过，见 [本轮验证记录](SONG-DETAILS-VERIFICATION.md#github-正式发布)。

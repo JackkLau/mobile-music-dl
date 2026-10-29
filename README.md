@@ -1,7 +1,7 @@
 # 听屿 · mobile-music-dl
 
 Android 原生音频播放器，包名 `app.tingyu`，源码版本 **0.1.3（versionCode 4）**。解析哔哩哔哩链接、在线播放、下载兼容 AAC 音轨并重封装为 M4A，保存到 `Music/听屿/` 后离线收听；也可以找回、导入和管理手机中已有的音频。
-正式版下载：[0.1.2 APK](https://github.com/JackkLau/mobile-music-dl/releases/download/v0.1.2/tingyu-0.1.2-release.apk) · [GitHub Release（含 AAB 和校验文件）](https://github.com/JackkLau/mobile-music-dl/releases/tag/v0.1.2)。该版本已由 GitHub Actions 编译、签名并发布，沿用 0.1.1 正式证书。
+正式版下载：[0.1.3 APK](https://github.com/JackkLau/mobile-music-dl/releases/download/v0.1.3/tingyu-0.1.3-release.apk) · [GitHub Release（含 AAB 和校验文件）](https://github.com/JackkLau/mobile-music-dl/releases/tag/v0.1.3)。该版本已由 GitHub Actions 编译、签名并发布，沿用 0.1.1 正式证书。
 
 
 **实际工程入口是本目录的 `settings.gradle.kts`，应用源码在 `app/src/`。** 本轮将误放在 `app/app/src/` 的恢复版合入实际工程；嵌套目录保留为历史来源，不参与构建。合并前备份在 `artifacts/before-handoff-merge-20261028.zip`。交接的 ChatGPT Library 压缩包本轮无法读取，因此以本机恢复源码和交接清单补齐，不能声称与远端压缩包逐字相同。
@@ -42,7 +42,7 @@ test -f signing.properties &&
 gradle --no-daemon :app:testReleaseUnitTest :app:lintRelease :app:assembleRelease :app:bundleRelease
 ```
 
-APK：`app/build/outputs/apk/release/app-release.apk`；AAB：`app/build/outputs/bundle/release/app-release.aab`。APK 可直接安装，AAB 用于商店提交。正式签名与 debug 签名不同，不能直接覆盖已有 debug 安装；不要为安装正式包而贸然卸载含有个人数据的调试版。0.1.1 历史构建记录见 [正式包记录](docs/RELEASE.md)，0.1.2 新结果见 [本地音乐验证记录](docs/LOCAL-MUSIC-VERIFICATION.md)。
+APK：`app/build/outputs/apk/release/app-release.apk`；AAB：`app/build/outputs/bundle/release/app-release.aab`。APK 可直接安装，AAB 用于商店提交。正式签名与 debug 签名不同，不能直接覆盖已有 debug 安装；不要为安装正式包而贸然卸载含有个人数据的调试版。0.1.1 历史构建记录见 [正式包记录](docs/RELEASE.md)，0.1.2 验证见 [本地音乐记录](docs/LOCAL-MUSIC-VERIFICATION.md)，0.1.3 见 [歌曲信息与歌词验证记录](docs/SONG-DETAILS-VERIFICATION.md)。
 
 GitHub 的 **Android release build** 工作流可完成正式版编译，下载产物后在本机用原证书签名，再发布到 GitHub Release，私钥无需离开本机。另保留可选的全云端 **Android release** 流程，只有明确授权配置加密 Secrets 后使用；标签自动签名还需显式启用仓库变量。两条路径都必须验证正式签名后才发布安装包。详见 [GitHub 构建发布](docs/GITHUB-RELEASE.md)。
 

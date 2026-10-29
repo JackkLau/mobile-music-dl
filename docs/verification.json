@@ -320,7 +320,24 @@
       "bodyNotRecorded": true
     },
     "localSignedRelease": "verified original certificate",
-    "cloudRelease": "pending",
+    "cloudRelease": {
+      "status": "published-and-independently-verified",
+      "runId": 40907581731,
+      "sourceCommit": "fc018851dc1d65af50eeae48886d8757f256befe",
+      "releaseUrl": "https://github.com/JackkLau/mobile-music-dl/releases/tag/v0.1.3",
+      "assets": [
+        {
+          "file": "tingyu-0.1.3-release.apk",
+          "bytes": 51358324,
+          "sha256": "f421cb6f5917f7cb4420dd70672dab19b28c06554c3707c640dee767c6ef9866"
+        },
+        {
+          "file": "tingyu-0.1.3-release.aab",
+          "bytes": 14763629,
+          "sha256": "b10bc254a44cfb8d4bc7dacfc9f2f24850a3653a168a07d0dfce631dbb25aa83"
+        }
+      ]
+    },
     "limitations": [
       "Physical phone not connected",
       "Metadata extraction is title-based, not audio recognition",

@@ -41,3 +41,19 @@
 - 手机 `7c1213a1` 本轮未连接：同证书覆盖升级、不同系统文件提供方、真实图库照片方向、后台/锁屏歌词与 TalkBack 仍待真机检查。
 - 真实歌曲标题整理的覆盖率，歌曲/歌手匹配，中文歌词服务覆盖，以及具体视频前奏/剪辑造成的歌词时间偏差，需实际试听。
 - 既有 403 结论边界不变：桌面 UA 成功反馈与 CDN 节点变化并存，206 不等于完整保存或播放成功。
+
+## GitHub 正式发布
+
+2026-10-30 00:06 HKT，`v0.1.3` 已正式发布：[版本页](https://github.com/JackkLau/mobile-music-dl/releases/tag/v0.1.3) · [APK](https://github.com/JackkLau/mobile-music-dl/releases/download/v0.1.3/tingyu-0.1.3-release.apk)。
+
+- 来源提交：`fc018851dc1d65af50eeae48886d8757f256befe`。
+- [正式构建与发布 40907581731](https://github.com/JackkLau/mobile-music-dl/actions/runs/40907581731)：build / publish 均成功，原签名校验通过。
+- 分支与标签的 Android verification（40907571242、40907582393）均成功。
+- 公开附件下载后重新计算哈希，与 GitHub asset digest、release.json 一致，并独立执行 `verify-release.py`；包名、0.1.3/code4、正式签名、无诊断入口、不可调试、ZIP 对齐及 AAB 所有载荷签名全部通过。
+
+| 文件 | 字节数 | SHA-256 |
+|---|---:|---|
+| `tingyu-0.1.3-release.apk` | 51,358,324 | `f421cb6f5917f7cb4420dd70672dab19b28c06554c3707c640dee767c6ef9866` |
+| `tingyu-0.1.3-release.aab` | 14,763,629 | `b10bc254a44cfb8d4bc7dacfc9f2f24850a3653a168a07d0dfce631dbb25aa83` |
+
+云端文件与本机独立构建的字节哈希可能不同；上表明确对应公开发布附件。证据在 [GitHub 发布记录](verification-logs/song-details-20261029/github-release/)。模拟器临时用户 11 已清理，仅原用户 0 保留；显示密度与字体设置已恢复。
