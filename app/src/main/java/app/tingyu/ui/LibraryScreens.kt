@@ -87,7 +87,8 @@ internal fun LibraryScreen(state: AppUiState, actions: AppActions) {
         val deleting = state.deletingLocalId == local.track.id
         AlertDialog(onDismissRequest = { if (!deleting) { deleteTarget = null; actions.dismissLocalDeleteError() } }, title = { Text("删除本地音频？") },
             text = { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("“${local.track.title}”将从手机中删除。来源视频和 B 站收藏夹不会改变。")
+                Text("“${local.track.title}”将从手机中删除。" +
+                    if (local.track.localOnly) "此操作无法撤销。" else "来源视频和 B 站收藏夹不会改变。")
                 if (deleting) { LinearProgressIndicator(Modifier.fillMaxWidth()); Text("正在删除，必要时请在系统窗口中确认。") }
                 state.localDeleteError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             } },

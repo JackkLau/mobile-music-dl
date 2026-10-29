@@ -178,17 +178,17 @@
       "versionName": "0.1.2",
       "versionCode": 3,
       "certificateSha256": "ba4e5c4ba00be09d10421edac7f276f44393f52950623e64096f93c864b81911",
-      "commit": "ec9738c2920c50ad1d861b49996b3ead4d0545f9",
+      "commit": "1f3e5ce48bcc9f02a8ae0efa8d7950851abf302a",
       "assets": [
         {
           "file": "tingyu-0.1.2-release.apk",
           "bytes": 51210868,
-          "sha256": "d4c506bac9c05707c4c063f225fbc434ba46fb73b8f7bd78078a9196bfba04d2"
+          "sha256": "d62e80ffdd5357e130a90a89fe2e04db654ea2c3abf58f257cac000272df0097"
         },
         {
           "file": "tingyu-0.1.2-release.aab",
-          "bytes": 14705734,
-          "sha256": "d04da69ebdff6e2065789b643fcd6bfaea100a86865421bf52ba263acd0f7148"
+          "bytes": 14706194,
+          "sha256": "5e4736b394f11c735a0c27e6bba66ab84a1683d640f45a4e0becd4287e0aab5f"
         }
       ],
       "validation": [
@@ -198,7 +198,7 @@
         "AAB manifest identity",
         "all AAB payload signatures"
       ],
-      "commit_note": "Local working tree built before feature commit; commit field is its base commit, not a clean-source release claim."
+      "commit_note": "Final copy-only UI adjustment built on this base; full source is recorded by the following documentation/source commit."
     },
     "github_signed_build": "pending explicit authorization for signing Secrets",
     "logs_directory": "docs/verification-logs/local-music-20261029",
@@ -210,6 +210,22 @@
       "device": "emulator-5554",
       "android_api": 37,
       "isolated_temporary_android_user": true
+    },
+    "manual_saf": {
+      "real_system_picker_import": "passed",
+      "scan_same_file_without_duplicates": "passed",
+      "process_restart_and_actual_playback": "passed",
+      "cancel_delete_retains_file": "passed",
+      "confirm_delete_removes_file_record_and_queue": "passed",
+      "fixture": "generated 30-second WAV; isolated temporary Android user",
+      "physical_phone": false
+    },
+    "final_copy_recheck": {
+      "scope": "local-only delete confirmation text",
+      "build": "debug APK and release APK/AAB rebuilt; signatures verified",
+      "device_tests": 2,
+      "failures": 0,
+      "overlaps_full_device_suite": true
     }
   }
 }
