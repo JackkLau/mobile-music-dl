@@ -178,17 +178,17 @@
       "versionName": "0.1.2",
       "versionCode": 3,
       "certificateSha256": "ba4e5c4ba00be09d10421edac7f276f44393f52950623e64096f93c864b81911",
-      "commit": "1f3e5ce48bcc9f02a8ae0efa8d7950851abf302a",
+      "commit": "b137493cafa51a72ca72c5ad45059d77b85171a2",
       "assets": [
         {
           "file": "tingyu-0.1.2-release.apk",
           "bytes": 51210868,
-          "sha256": "d62e80ffdd5357e130a90a89fe2e04db654ea2c3abf58f257cac000272df0097"
+          "sha256": "68c0d05b457326f54a47fd424682caa489d740a17046f816f9f11e6fcc49a4a7"
         },
         {
           "file": "tingyu-0.1.2-release.aab",
-          "bytes": 14706194,
-          "sha256": "5e4736b394f11c735a0c27e6bba66ab84a1683d640f45a4e0becd4287e0aab5f"
+          "bytes": 14705999,
+          "sha256": "ffbf5c04c98136cb47182dfb0ef266995ab154ab6b7bc60cf419bef67dc45c39"
         }
       ],
       "validation": [
@@ -197,10 +197,31 @@
         "APK ZIP alignment",
         "AAB manifest identity",
         "all AAB payload signatures"
-      ],
-      "commit_note": "Final copy-only UI adjustment built on this base; full source is recorded by the following documentation/source commit."
+      ]
     },
-    "github_signed_build": "Existing release certificate and credentials restored into four GitHub Actions Secrets after explicit user authorization; TINGYU_CLOUD_SIGNING=true. Awaiting tagged signed build and publication.",
+    "github_signed_build": {
+      "status": "success",
+      "build": "success",
+      "publish": "success",
+      "workflow_run": "https://github.com/JackkLau/mobile-music-dl/actions/runs/40891505722",
+      "release": "https://github.com/JackkLau/mobile-music-dl/releases/tag/v0.1.2",
+      "source_commit": "b137493cafa51a72ca72c5ad45059d77b85171a2",
+      "tag": "v0.1.2",
+      "release_jvm": {
+        "tests": 149,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "pc_shared_jvm": {
+        "tests": 113,
+        "failures": 0,
+        "skipped": 0
+      },
+      "public_download_hashes_verified": true,
+      "public_download_signatures_and_identity_verified": true,
+      "certificate_matches_0_1_1": true
+    },
     "logs_directory": "docs/verification-logs/local-music-20261029",
     "device_tests": {
       "tests": 32,
@@ -237,6 +258,33 @@
         "apk": 222,
         "aab": 227
       }
+    },
+    "preliminary_local_release": {
+      "package": "app.tingyu",
+      "versionName": "0.1.2",
+      "versionCode": 3,
+      "certificateSha256": "ba4e5c4ba00be09d10421edac7f276f44393f52950623e64096f93c864b81911",
+      "commit": "1f3e5ce48bcc9f02a8ae0efa8d7950851abf302a",
+      "assets": [
+        {
+          "file": "tingyu-0.1.2-release.apk",
+          "bytes": 51210868,
+          "sha256": "d62e80ffdd5357e130a90a89fe2e04db654ea2c3abf58f257cac000272df0097"
+        },
+        {
+          "file": "tingyu-0.1.2-release.aab",
+          "bytes": 14706194,
+          "sha256": "5e4736b394f11c735a0c27e6bba66ab84a1683d640f45a4e0becd4287e0aab5f"
+        }
+      ],
+      "validation": [
+        "APK signature and identity",
+        "APK non-debuggable and no probe entry",
+        "APK ZIP alignment",
+        "AAB manifest identity",
+        "all AAB payload signatures"
+      ],
+      "commit_note": "Final copy-only UI adjustment built on this base; full source is recorded by the following documentation/source commit."
     }
   }
 }

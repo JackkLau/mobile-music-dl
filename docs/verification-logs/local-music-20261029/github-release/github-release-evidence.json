@@ -1,0 +1,31 @@
+{
+  "url": "https://github.com/JackkLau/mobile-music-dl/releases/tag/v0.1.2",
+  "tag": "v0.1.2",
+  "release_id": 427974242,
+  "assets": [
+    {
+      "name": "release.json",
+      "size": 756,
+      "digest": "sha256:38d321fa4432282db16d326b29233af1014305ec376e6757fcc7e90a0d628078",
+      "browser_download_url": "https://github.com/JackkLau/mobile-music-dl/releases/download/v0.1.2/release.json"
+    },
+    {
+      "name": "SHA256SUMS",
+      "size": 182,
+      "digest": "sha256:9c65a31858bbbc0d44f371da02cc134e53a7dc4078f18d6c98433e9474021b5c",
+      "browser_download_url": "https://github.com/JackkLau/mobile-music-dl/releases/download/v0.1.2/SHA256SUMS"
+    },
+    {
+      "name": "tingyu-0.1.2-release.aab",
+      "size": 14705999,
+      "digest": "sha256:ffbf5c04c98136cb47182dfb0ef266995ab154ab6b7bc60cf419bef67dc45c39",
+      "browser_download_url": "https://github.com/JackkLau/mobile-music-dl/releases/download/v0.1.2/tingyu-0.1.2-release.aab"
+    },
+    {
+      "name": "tingyu-0.1.2-release.apk",
+      "size": 51210868,
+      "digest": "sha256:68c0d05b457326f54a47fd424682caa489d740a17046f816f9f11e6fcc49a4a7",
+      "browser_download_url": "https://github.com/JackkLau/mobile-music-dl/releases/download/v0.1.2/tingyu-0.1.2-release.apk"
+    }
+  ]
+}

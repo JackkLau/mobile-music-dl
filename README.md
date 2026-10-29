@@ -1,6 +1,8 @@
 # 听屿 · mobile-music-dl
 
 Android 原生音频播放器，包名 `app.tingyu`，版本 **0.1.2（versionCode 3）**。解析哔哩哔哩链接、在线播放、下载兼容 AAC 音轨并重封装为 M4A，保存到 `Music/听屿/` 后离线收听；也可以找回、导入和管理手机中已有的音频。
+正式版下载：[0.1.2 APK](https://github.com/JackkLau/mobile-music-dl/releases/download/v0.1.2/tingyu-0.1.2-release.apk) · [GitHub Release（含 AAB 和校验文件）](https://github.com/JackkLau/mobile-music-dl/releases/tag/v0.1.2)。该版本已由 GitHub Actions 编译、签名并发布，沿用 0.1.1 正式证书。
+
 
 **实际工程入口是本目录的 `settings.gradle.kts`，应用源码在 `app/src/`。** 本轮将误放在 `app/app/src/` 的恢复版合入实际工程；嵌套目录保留为历史来源，不参与构建。合并前备份在 `artifacts/before-handoff-merge-20261028.zip`。交接的 ChatGPT Library 压缩包本轮无法读取，因此以本机恢复源码和交接清单补齐，不能声称与远端压缩包逐字相同。
 

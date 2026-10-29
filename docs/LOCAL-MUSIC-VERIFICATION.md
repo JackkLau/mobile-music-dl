@@ -53,3 +53,16 @@ GitHub 正式版无签名构建已成功：[运行 40800321949](https://github.c
 - 导入测试仅在授权边界使用替身时，验证的是文件读取、媒体检查和数据库行为，不等于真实系统选择器授权通过。
 - 本次未重新运行 CDN 网络探测。此前桌面 UA 成功和移动 UA 403 的结论、CDN 节点差异及 `206` 不能证明完整下载的边界保持不变，见 README。
 - 默认发布路径不需要 GitHub 签名 Secrets；可选的全云端签名路径仍须明确授权上传私钥。所有路径都沿用原证书，不发布未签名包。
+
+## GitHub 正式发布结果
+
+[正式版本 v0.1.2](https://github.com/JackkLau/mobile-music-dl/releases/tag/v0.1.2) 已发布；[Actions 40891505722](https://github.com/JackkLau/mobile-music-dl/actions/runs/40891505722) 的 build、publish 均成功。编译和签名全部在 GitHub 完成，源码标签指向 `b137493cafa51a72ca72c5ad45059d77b85171a2`。本机随后下载公开附件，独立复核 GitHub asset digest、SHA256SUMS、包名/版本、原证书签名、APK 对齐、AAB 全部载荷签名以及非调试发布边界，全部通过。
+
+本次签名构建的原始报告确认：149 项 release JVM、113 项 PC 共用 JVM 测试通过，0 失败；与前述测试重叠，不相加。凭据通过加密 Secrets 使用，没有提交到仓库或发布附件。
+
+| 正式附件 | 字节数 | SHA-256 |
+|---|---:|---|
+| `tingyu-0.1.2-release.apk` | 51210868 | `68c0d05b457326f54a47fd424682caa489d740a17046f816f9f11e6fcc49a4a7` |
+| `tingyu-0.1.2-release.aab` | 14705999 | `ffbf5c04c98136cb47182dfb0ef266995ab154ab6b7bc60cf419bef67dc45c39` |
+
+最终发布元数据和校验清单保存在 `verification-logs/local-music-20261029/github-release/`。此前在本机签名的云端产物是预验证记录；此处记录的是 GitHub Release 实际公开下载的正式附件。

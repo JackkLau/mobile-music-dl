@@ -78,3 +78,6 @@ python3 scripts/verify-release.py
 上一轮 GitHub `Android verification` 因 setup-android 默认安装已经移除的 `tools` 包失败。本次两个工作流均显式指定 `packages: platform-tools`，后续单独安装 SDK 35 和 Build Tools 35.0.0。完整本地功能验收见 [0.1.2 验证记录](LOCAL-MUSIC-VERIFICATION.md)。
 
 2026-10-29 经用户明确授权，将本机原正式证书及其凭据保存为上述四项 GitHub Actions 加密 Secrets，并启用 `TINGYU_CLOUD_SIGNING=true`。此前已有远端凭据的证书不匹配，被校验步骤拒绝；现在恢复原证书，未修改固定指纹来接受其他证书。最终 Actions 执行结果和 Release 地址在成功后单独记录。仅配置完成或看到 Actions 开始运行，不算正式包构建完成。
+
+
+2026-10-29 最终结果：[v0.1.2 Release](https://github.com/JackkLau/mobile-music-dl/releases/tag/v0.1.2) 已由 [Actions 40891505722](https://github.com/JackkLau/mobile-music-dl/actions/runs/40891505722) 完成云端编译、原证书签名和发布。公开 APK/AAB 下载后复核通过，详见 [最终验收结果](LOCAL-MUSIC-VERIFICATION.md#github-正式发布结果)。
