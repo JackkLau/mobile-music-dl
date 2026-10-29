@@ -1,0 +1,118 @@
+name: Android release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: >-
+      github.repository == 'JackkLau/mobile-music-dl' &&
+      (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate release ref and master ancestry
+        id: release
+        run: python3 scripts/release-info.py
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
+          log-accepted-android-sdk-licenses: false
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+          # Do not persist release signing state in a shared Gradle cache.
+          cache-disabled: true
+      - name: Install Android build tools
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Check source and release tooling
+        run: |
+          python3 scripts/verify-source.py
+          python3 -m unittest discover -s scripts/tests -v
+      - name: Restore and verify the existing release signing key
+        env:
+          TINGYU_KEYSTORE_BASE64: ${{ secrets.TINGYU_KEYSTORE_BASE64 }}
+          TINGYU_STORE_PASSWORD: ${{ secrets.TINGYU_STORE_PASSWORD }}
+          TINGYU_KEY_ALIAS: ${{ secrets.TINGYU_KEY_ALIAS }}
+          TINGYU_KEY_PASSWORD: ${{ secrets.TINGYU_KEY_PASSWORD }}
+        run: python3 scripts/prepare-release-signing.py
+      - name: Test, lint, and build signed APK and AAB
+        run: >-
+          gradle --no-daemon --no-configuration-cache
+          :app:testReleaseUnitTest :app:lintRelease :app:assembleRelease :app:bundleRelease
+          :probe:test :probe:installDist
+      - name: Verify final signatures, versions, and release boundary
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          RELEASE_CODE: ${{ steps.release.outputs.code }}
+        run: python3 scripts/verify-release.py --version "$RELEASE_VERSION" --code "$RELEASE_CODE"
+      - name: Remove temporary signing material
+        if: always()
+        run: rm -f signing.properties .tooling/signing/tingyu-release.keystore
+      - name: Upload verified release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: tingyu-${{ steps.release.outputs.version }}-release
+          path: |
+            artifacts/github-release/*.apk
+            artifacts/github-release/*.aab
+            artifacts/github-release/SHA256SUMS
+            artifacts/github-release/release.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload build reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-reports-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            app/build/reports/
+            app/build/test-results/
+            probe/build/reports/tests/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  publish:
+    needs: build
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: tingyu-${{ needs.build.outputs.version }}-release
+          path: release-assets
+      - name: Publish this version tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          cd release-assets
+          sha256sum -c SHA256SUMS
+          gh release create "$RELEASE_TAG" \
+            "tingyu-$RELEASE_VERSION-release.apk" \
+            "tingyu-$RELEASE_VERSION-release.aab" SHA256SUMS release.json \
+            --verify-tag --title "听屿 $RELEASE_VERSION" --generate-notes

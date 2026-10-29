@@ -5,6 +5,7 @@ import android.content.Context
 import app.tingyu.data.auth.SessionStore
 import app.tingyu.data.bili.BilibiliRepository
 import app.tingyu.data.local.LibraryStore
+import app.tingyu.data.local.LocalMusicManager
 import app.tingyu.download.DownloadCoordinator
 import app.tingyu.debug.DebugSettingsStore
 
@@ -19,5 +20,6 @@ class AppContainer(context: Context) {
         android.util.Log.i("TingYuDownload", it)
     }
     val library = LibraryStore(context)
+    val localMusic = LocalMusicManager(context, library)
     val downloads = DownloadCoordinator(context, bilibili, library)
 }

@@ -17,15 +17,19 @@ import app.tingyu.data.bili.BiliResponseParser
 import app.tingyu.model.Track
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import com.google.common.util.concurrent.SettableFuture
+import com.google.common.util.concurrent.MoreExecutors
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import okhttp3.OkHttpClient
@@ -67,12 +71,26 @@ class PlaybackService : MediaSessionService() {
                     else MediaSession.ConnectionResult.reject()
                 }
                 override fun onAddMediaItems(session: MediaSession, controller: MediaSession.ControllerInfo, mediaItems: List<MediaItem>): ListenableFuture<List<MediaItem>> {
-                    // Only items created by this application are accepted; external content:// inputs are not opened.
-                    val items = mediaItems.mapNotNull { TrackMedia.track(it) }.filter {
-                        it.bvid.matches(Regex("BV[0-9A-Za-z]{10}")) && it.page > 0
-                    }.map { track -> tracks[track.id] = track; TrackMedia.item(track) }
+                    // URI access comes only from our persisted library, never a controller-supplied URI.
                     restored = true
-                    return Futures.immediateFuture(items)
+                    val epoch = sessionEpoch
+                    val result = SettableFuture.create<List<MediaItem>>()
+                    val job = scope.launch {
+                        try {
+                            val accepted = withContext(Dispatchers.IO) {
+                                mediaItems.mapNotNull { TrackMedia.track(it) }.mapNotNull { track ->
+                                    if (track.page <= 0) null
+                                    else if (track.localOnly) container.library.saved(track.id)?.track?.takeIf { it.localOnly }
+                                    else track.takeIf { it.bvid.matches(Regex("BV[0-9A-Za-z]{10}")) }
+                                }
+                            }
+                            if (epoch != sessionEpoch) result.set(emptyList())
+                            else result.set(accepted.map { track -> tracks[track.id] = track; TrackMedia.item(track) })
+                        } catch (error: CancellationException) { result.cancel(false); throw error }
+                        catch (_: Exception) { result.setException(java.io.IOException("无法读取音乐记录，请重新打开音乐库")) }
+                    }
+                    result.addListener({ if (result.isCancelled) job.cancel() }, MoreExecutors.directExecutor())
+                    return result
                 }
             }).build()
         scope.launch {

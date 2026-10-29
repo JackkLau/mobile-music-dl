@@ -13,6 +13,12 @@ data class AppUiState(
     val message: String? = null,
     val session: SessionState = SessionState(),
     val library: List<LocalTrack> = emptyList(),
+    val libraryWorking: Boolean = false,
+    val libraryStatus: String? = null,
+    val libraryError: String? = null,
+    val libraryNeedsPermission: Boolean = false,
+    val deletingLocalId: String? = null,
+    val localDeleteError: String? = null,
     val downloads: List<DownloadTask> = emptyList(),
     val playback: PlaybackState = PlaybackState(),
     val tab: Int = 0,
@@ -48,6 +54,9 @@ interface AppActions {
     fun sessionMode(mode: SessionMode)
     fun dismissMessage()
     fun deleteLocal(track: LocalTrack)
+    fun scanLocalMusic()
+    fun selectLocalFiles()
+    fun dismissLocalDeleteError()
     fun versionTap()
     fun showDeveloperTools(show: Boolean)
     fun disableDebugMode()

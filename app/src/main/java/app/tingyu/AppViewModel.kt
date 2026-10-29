@@ -1,11 +1,13 @@
 package app.tingyu
 
 import android.app.Application
+import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.C
 import androidx.media3.common.Player
@@ -14,6 +16,7 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import app.tingyu.auth.LoginActivity
 import app.tingyu.data.bili.UserAgentProfile
+import app.tingyu.data.local.DeleteResult
 import app.tingyu.debug.AudioUaMode
 import app.tingyu.debug.DebugModeGate
 import app.tingyu.debug.DebugSettings
@@ -33,13 +36,20 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @UnstableApi
-class AppViewModel(application: Application) : AndroidViewModel(application), AppActions {
+class AppViewModel(application: Application, savedStateHandle: SavedStateHandle) : AndroidViewModel(application), AppActions {
     private val container = (application as MusicApp).container
     private val mutable = MutableStateFlow(AppUiState(
         debugAvailable = container.debugSettings.available,
         debugSettings = container.debugSettings.state.value,
     ))
     val state = mutable.asStateFlow()
+    private val localOperations = LocalLibraryOperations(savedStateHandle["pending_local_deletion"]) {
+        savedStateHandle["pending_local_deletion"] = it
+    }
+    private val pendingDeleteConsent = MutableStateFlow<LocalDeleteConsent?>(null)
+    val deleteConsent = pendingDeleteConsent.asStateFlow()
+    // Restore a callback target only. A missing result must not lock the library or repeat deletion.
+    val pendingDeleteResultId: String? get() = localOperations.pendingDeletion?.takeUnless { it.approved }?.operationId
     private var parseJob: Job? = null
     private var requestVersion = 0
     private val debugGate = DebugModeGate(container.debugSettings.available)
@@ -62,6 +72,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application), Ap
             }
         }
         viewModelScope.launch { container.library.localTracks.collect { value -> mutable.update { it.copy(library = value) } } }
+        refreshLocalLibrary(automatic = true)
         viewModelScope.launch { container.downloads.jobs.collect { value -> mutable.update { it.copy(downloads = value) } } }
         viewModelScope.launch {
             var initial = true
@@ -141,7 +152,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application), Ap
     }
     override fun download(tracks: List<Track>) {
         if (tracks.isEmpty()) return
-        container.downloads.enqueue(tracks.distinctBy(Track::id))
+        val remote = tracks.filterNot { it.localOnly }.distinctBy(Track::id)
+        if (remote.isEmpty()) { mutable.update { it.copy(message = "这是本地音频，无需再次下载") }; return }
+        container.downloads.enqueue(remote)
         mutable.update { it.copy(message = "已加入下载队列，可在“下载”查看进度") }
     }
     fun deferDownloadForPermission(tracks: List<Track>) { notificationDownloads = tracks }
@@ -273,20 +286,102 @@ class AppViewModel(application: Application) : AndroidViewModel(application), Ap
         mutable.update { it.copy(probeRunning = false,
             probeLines = if (it.probeRunning) (it.probeLines + "对照已取消").takeLast(40) else it.probeLines) }
     }
-    override fun deleteLocal(track: LocalTrack) {
+    override fun scanLocalMusic() = refreshLocalLibrary(automatic = false)
+
+    // MainActivity owns the system document picker and passes only its granted URI flags.
+    override fun selectLocalFiles() = Unit
+
+    private fun refreshLocalLibrary(automatic: Boolean) {
         viewModelScope.launch {
-            try {
-                val player = controller
-                if (player != null) {
-                    for (index in player.mediaItemCount - 1 downTo 0) {
-                        if (player.getMediaItemAt(index).mediaId == track.track.id) player.removeMediaItem(index)
+            localOperations.serialized {
+                mutable.update { it.copy(libraryWorking = true, libraryStatus = "正在查找已下载音乐…", libraryError = null) }
+                try {
+                    val result = withContext(Dispatchers.IO) { container.localMusic.scan() }
+                    mutable.update { it.copy(libraryNeedsPermission = result.permissionRequired,
+                        libraryStatus = if (automatic && result.added == 0) null else "扫描完成：新增 ${result.added} 首，已有 ${result.existing} 首",
+                        libraryError = if (result.failed > 0) "${result.failed} 个文件暂时无法读取，已有音乐记录已保留。可重试扫描或手动导入。" else null) }
+                } catch (error: CancellationException) { throw error }
+                catch (_: Exception) { mutable.update { it.copy(libraryStatus = null, libraryError = "扫描未完成，已有记录已保留。请重试或手动导入音频。") } }
+                finally { mutable.update { it.copy(libraryWorking = false) } }
+            }
+        }
+    }
+
+    fun importLocalFiles(uris: List<Uri>, grantedFlags: Int) {
+        if (uris.isEmpty()) return
+        // System picker results must wait for startup scans, never be discarded as "busy".
+        viewModelScope.launch {
+            localOperations.serialized {
+                mutable.update { it.copy(libraryWorking = true, libraryStatus = "正在导入本地音频…", libraryError = null) }
+                try {
+                    val result = withContext(Dispatchers.IO) { container.localMusic.importUris(uris.distinct(), grantedFlags) }
+                    mutable.update { it.copy(libraryStatus = "导入完成：新增 ${result.added} 首，已有 ${result.existing} 首",
+                        libraryError = if (result.failed > 0) "${result.failed} 个文件未能导入。请选择可读取的音频，并保留文件访问授权。" else null) }
+                } catch (error: CancellationException) { throw error }
+                catch (_: Exception) { mutable.update { it.copy(libraryStatus = null, libraryError = "导入未完成，请重新选择可读取的音频。已有记录已保留。") } }
+                finally { mutable.update { it.copy(libraryWorking = false) } }
+            }
+        }
+    }
+
+    fun localPickerUnavailable() {
+        mutable.update { it.copy(libraryError = "无法打开文件选择器，请使用系统文件应用后重试。") }
+    }
+
+    override fun dismissLocalDeleteError() { mutable.update { it.copy(localDeleteError = null) } }
+
+    override fun deleteLocal(track: LocalTrack) {
+        if (mutable.value.deletingLocalId != null) return
+        performLocalDelete(localOperations.beginDeletion(track))
+    }
+
+    fun consumeDeleteConsent(operationId: String) {
+        if (pendingDeleteConsent.value?.operationId == operationId) pendingDeleteConsent.value = null
+    }
+
+    fun completeDeleteConsent(operationId: String, approved: Boolean) {
+        val pending = localOperations.pendingDeletion ?: return
+        if (pending.operationId != operationId || pending.approved) return
+        consumeDeleteConsent(operationId)
+        if (approved) localOperations.approveDeletion(operationId)?.let(::performLocalDelete)
+        else if (localOperations.clearDeletion(operationId)) {
+            mutable.update { it.copy(deletingLocalId = null, localDeleteError = "已取消系统授权，文件和音乐记录均保留。") }
+        }
+    }
+
+    private fun performLocalDelete(pending: PendingLocalDeletion) {
+        val local = pending.local
+        mutable.update { it.copy(deletingLocalId = local.track.id, localDeleteError = null) }
+        viewModelScope.launch {
+            localOperations.serialized {
+                if (localOperations.pendingDeletion?.operationId != pending.operationId) return@serialized
+                var awaitingConsent = false
+                try {
+                    when (val result = withContext(Dispatchers.IO) { container.localMusic.delete(local, pending.approved) }) {
+                        is DeleteResult.Deleted -> {
+                            // Only remove playback/download records after file deletion is confirmed.
+                            controller?.let { player ->
+                                for (index in player.mediaItemCount - 1 downTo 0) {
+                                    if (player.getMediaItemAt(index).mediaId == local.track.id) player.removeMediaItem(index)
+                                }
+                            }
+                            container.downloads.forgetCompleted(local.track.id)
+                            mutable.update { it.copy(message = if (result.alreadyMissing) "文件已不存在，已移除音乐记录" else "已删除本地音频") }
+                        }
+                        is DeleteResult.RequiresConfirmation -> {
+                            awaitingConsent = true
+                            pendingDeleteConsent.value = LocalDeleteConsent(pending.operationId, result.request)
+                        }
+                        is DeleteResult.Failed -> mutable.update { it.copy(localDeleteError = result.message, message = result.message) }
+                    }
+                } catch (error: CancellationException) { throw error }
+                catch (_: Exception) { mutable.update { it.copy(localDeleteError = "删除未完成，请检查文件权限后重试。", message = "删除未完成，请检查文件权限后重试。") } }
+                finally {
+                    if (!awaitingConsent && localOperations.clearDeletion(pending.operationId)) {
+                        mutable.update { it.copy(deletingLocalId = null) }
                     }
                 }
-                withContext(Dispatchers.IO) { getApplication<Application>().contentResolver.delete(Uri.parse(track.uri), null, null) }
-                container.library.removeLocal(track.track.id)
-                container.downloads.forgetCompleted(track.track.id)
-                mutable.update { it.copy(message = "已删除本地音频") }
-            } catch (_: Exception) { mutable.update { it.copy(message = "无法删除此文件，请在文件管理器中检查权限") } }
+            }
         }
     }
 
@@ -309,3 +404,5 @@ class AppViewModel(application: Application) : AndroidViewModel(application), Ap
     }
     override fun onCleared() { controller?.removeListener(listener); MediaController.releaseFuture(controllerFuture); super.onCleared() }
 }
+
+data class LocalDeleteConsent(val operationId: String, val request: PendingIntent)

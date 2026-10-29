@@ -12,6 +12,7 @@ data class Track(
     val durationMs: Long = 0,
     val page: Int = 1,
     val sourceUrl: String = "https://www.bilibili.com/video/$bvid?p=$page",
+    val localOnly: Boolean = false,
 ) { val id: String get() = "$bvid:p$page" }
 
 data class ParseResult(
@@ -38,7 +39,12 @@ data class SessionState(val mode: SessionMode = SessionMode.ANONYMOUS, val accou
 }
 
 @Serializable
-data class LocalTrack(val track: Track, val uri: String, val savedAt: Long = System.currentTimeMillis())
+data class LocalTrack(
+    val track: Track,
+    val uri: String,
+    val savedAt: Long = System.currentTimeMillis(),
+    val identityUri: String? = null,
+)
 
 enum class DownloadStatus { QUEUED, DOWNLOADING, SAVING, COMPLETED, FAILED, CANCELLED, INTERRUPTED }
 @Serializable

@@ -7,6 +7,19 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class BilibiliRepositoryTest {
+    @Test fun importedAudioNeverMakesANetworkRequest() = runTest {
+        var requests = 0
+        val repository = BilibiliRepository({ "" }, BiliTransport { _, _ ->
+            requests++
+            error("Local audio must never be resolved online")
+        })
+        try {
+            repository.resolveAudio(Track("BV1xx411c7mD", 0, "本地音频", localOnly = true))
+            fail("Expected local-source rejection")
+        } catch (error: BiliException) { assertEquals("local", error.stage) }
+        assertEquals(0, requests)
+    }
+
     private val video = """{"code":0,"data":{"bvid":"BV1xx411c7mD","title":"Music","cid":42,"duration":60}}"""
     private val nav = """{"code":-101,"data":{"isLogin":false,"wbi_img":{"img_url":"https://i0.hdslb.com/bfs/wbi/7cd084941338484aae1ad9425b84077c.png","sub_url":"https://i0.hdslb.com/bfs/wbi/4932caff0ff746eab6f01bf08b70ac45.png"}}}"""
     private val audio = """{"code":0,"data":{"timelength":60000,"dash":{"audio":[{"baseUrl":"https://a.bilivideo.com/audio.m4s","codecs":"mp4a.40.2","mimeType":"audio/mp4","bandwidth":192000}]}}}"""

@@ -1,6 +1,7 @@
 package app.tingyu.ui
 
 import androidx.compose.ui.test.*
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.tingyu.model.*
@@ -68,6 +69,60 @@ class TingYuUiTest {
         compose.onNodeWithContentDescription("删除 测试钢琴曲").performClick()
         compose.onNodeWithText("删除音频").performClick()
         assertEquals(local, actions.deleted)
+    }
+
+    @Test fun localLibraryOffersScanAndFileImportWithoutLogin() {
+        val actions = RecordingActions()
+        compose.setContent { TingYuApp(AppUiState(tab = 1), actions) }
+        compose.onNodeWithText("扫描已下载音乐").performClick()
+        compose.onNodeWithText("导入本地音频").performClick()
+        assertEquals(1, actions.scans)
+        assertEquals(1, actions.imports)
+        assertEquals(0, actions.loginCount)
+    }
+
+    @Test fun localDiscoveryProgressBlocksDuplicateActionsAndFailureKeepsFiles() {
+        val actions = RecordingActions()
+        val local = LocalTrack(track, "content://test/101")
+        val state = mutableStateOf(AppUiState(tab = 1, library = listOf(local), libraryWorking = true))
+        compose.setContent { TingYuApp(state.value, actions) }
+        compose.onNodeWithTag("library_progress").assertExists()
+        compose.onNodeWithText("扫描已下载音乐").assertIsNotEnabled()
+        compose.onNodeWithText("导入本地音频").assertIsNotEnabled()
+        compose.runOnIdle { state.value = state.value.copy(libraryWorking = false, libraryError = "扫描未完成，已有记录已保留。") }
+        compose.onNodeWithText("扫描未完成，已有记录已保留。").assertExists()
+        compose.onNodeWithTag("library_list").performScrollToNode(hasText(track.title))
+        compose.onNodeWithText(track.title).assertExists()
+    }
+
+    @Test fun localDeleteKeepsDialogUntilConfirmedResultAndAllowsRetry() {
+        val actions = RecordingActions()
+        val local = LocalTrack(track, "content://test/101")
+        val state = mutableStateOf(AppUiState(tab = 1, library = listOf(local)))
+        compose.setContent { TingYuApp(state.value, actions) }
+        compose.onNodeWithTag("library_list").performScrollToNode(hasContentDescription("删除 ${track.title}"))
+        compose.onNodeWithContentDescription("删除 ${track.title}").performClick()
+        compose.onNodeWithText("删除音频").performClick()
+        compose.runOnIdle { state.value = state.value.copy(deletingLocalId = track.id) }
+        compose.onNodeWithText("删除音频").assertIsNotEnabled()
+        compose.onNodeWithText("保留").assertIsNotEnabled()
+        compose.runOnIdle { state.value = state.value.copy(deletingLocalId = null, localDeleteError = "文件未能删除，音乐记录已保留") }
+        compose.onNodeWithText("文件未能删除，音乐记录已保留").assertExists()
+        compose.onNodeWithText("删除音频").assertIsEnabled().performClick()
+        assertEquals(local, actions.deleted)
+        compose.runOnIdle { state.value = state.value.copy(library = emptyList(), localDeleteError = null) }
+        compose.onNodeWithText("删除本地音频？").assertDoesNotExist()
+    }
+
+    @Test fun missingImportedTrackCannotBeDownloadedFromNetwork() {
+        val actions = RecordingActions()
+        val local = track.copy(localOnly = true)
+        compose.setContent { TingYuApp(AppUiState(playerVisible = true,
+            playback = PlaybackState(track = local, queue = listOf(local))), actions) }
+        compose.onNodeWithTag("player_list").performScrollToNode(hasContentDescription("本地音频"))
+        compose.onNodeWithContentDescription("本地音频").assertIsNotEnabled()
+        compose.onNodeWithContentDescription("下载音频").assertDoesNotExist()
+        assertTrue(actions.downloaded.isEmpty())
     }
 
     @Test fun failedDownloadKeepsErrorAndOffersTargetedRetry() {
@@ -178,6 +233,8 @@ class TingYuUiTest {
         var versionTaps = 0
         var developerOpened = false
         var probeCancellations = 0
+        var scans = 0
+        var imports = 0
         override fun input(value: String) { inputValue = value }
         override fun parse() { parseCount++ }
         override fun loadMore() {}
@@ -198,6 +255,9 @@ class TingYuUiTest {
         override fun sessionMode(mode: SessionMode) {}
         override fun dismissMessage() {}
         override fun deleteLocal(track: LocalTrack) { deleted = track }
+        override fun scanLocalMusic() { scans++ }
+        override fun selectLocalFiles() { imports++ }
+        override fun dismissLocalDeleteError() {}
         override fun versionTap() { versionTaps++ }
         override fun showDeveloperTools(show: Boolean) { developerOpened = show }
         override fun disableDebugMode() {}

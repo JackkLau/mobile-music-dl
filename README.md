@@ -1,6 +1,6 @@
 # 听屿 · mobile-music-dl
 
-Android 原生音频播放器，包名 `app.tingyu`，版本 **0.1.1（versionCode 2）**。解析哔哩哔哩链接、在线播放、下载兼容 AAC 音轨并重封装为 M4A，保存到 `Music/听屿/` 后离线收听。
+Android 原生音频播放器，包名 `app.tingyu`，版本 **0.1.2（versionCode 3）**。解析哔哩哔哩链接、在线播放、下载兼容 AAC 音轨并重封装为 M4A，保存到 `Music/听屿/` 后离线收听；也可以找回、导入和管理手机中已有的音频。
 
 **实际工程入口是本目录的 `settings.gradle.kts`，应用源码在 `app/src/`。** 本轮将误放在 `app/app/src/` 的恢复版合入实际工程；嵌套目录保留为历史来源，不参与构建。合并前备份在 `artifacts/before-handoff-merge-20261028.zip`。交接的 ChatGPT Library 压缩包本轮无法读取，因此以本机恢复源码和交接清单补齐，不能声称与远端压缩包逐字相同。
 
@@ -40,7 +40,9 @@ test -f signing.properties &&
 gradle --no-daemon :app:testReleaseUnitTest :app:lintRelease :app:assembleRelease :app:bundleRelease
 ```
 
-APK：`app/build/outputs/apk/release/app-release.apk`；AAB：`app/build/outputs/bundle/release/app-release.aab`。APK 可直接安装，AAB 用于商店提交。正式签名与 debug 签名不同，不能直接覆盖已有 debug 安装；不要为安装正式包而贸然卸载含有个人数据的调试版。构建及证书验证记录见 [正式包记录](docs/RELEASE.md)。
+APK：`app/build/outputs/apk/release/app-release.apk`；AAB：`app/build/outputs/bundle/release/app-release.aab`。APK 可直接安装，AAB 用于商店提交。正式签名与 debug 签名不同，不能直接覆盖已有 debug 安装；不要为安装正式包而贸然卸载含有个人数据的调试版。0.1.1 历史构建记录见 [正式包记录](docs/RELEASE.md)，0.1.2 新结果见 [本地音乐验证记录](docs/LOCAL-MUSIC-VERIFICATION.md)。
+
+GitHub 的 **Android release** 工作流可构建同一正式证书的 APK/AAB；版本标签触发构建并生成 GitHub Release 下载附件。签名凭据必须经明确授权存入仓库加密 Secrets，绝不提交到源码；缺少凭据时会失败，不发布未签名包。配置、触发和验证说明见 [GitHub 构建发布](docs/GITHUB-RELEASE.md)。
 
 ```bash
 # 设备测试会创建并清理自己的本地音频 fixture；不会访问 B 站
@@ -58,6 +60,16 @@ ANDROID_SERIAL=emulator-5554 bash scripts/check.sh --device
 4. 下载完成后在音乐库离线播放。删除本地音频需确认；退出账号保留音频文件。
 
 登录 Cookie 仅发送至 B 站 API，不发送给短链或音频 CDN。会话使用 Android Keystore 加密存储；退出清除会话和私密列表。临时签名 URL 不写入音乐库。内容权限、失效账号和平台限制按真实返回处理。
+
+## 管理已有的本地音乐
+
+- 使用同一正式签名覆盖升级到 0.1.2，原数据库、下载记录和音乐文件保留。不要卸载旧正式版来完成升级。
+- 打开应用会查找当前已获准访问的 `Music/听屿/` 音频。“音乐库 → 扫描已下载音乐”可申请音频访问权限，找回旧安装或数据库中遗漏的文件；只扫描这个目录，不收集整部手机的音乐。
+- “导入本地音频”打开系统文件选择器，可多选其他目录里的音频。文件继续留在原位置，不复制、不转码；需要保留系统提供的读取授权。本地格式以 Android 媒体组件实际可读取的音频为准，不改变网络下载仅支持兼容 AAC/M4A 的范围。
+- 扫描和导入保留已有曲目信息并去重；支持标题/作者搜索、单曲或全部播放、播放队列和确认删除。权限被拒绝或文件暂时无法读取不会清空音乐库。
+- 删除会移除手机上的实际文件；需要系统授权时再确认。取消或失败保留记录与播放队列，确认框显示错误供重试。仅本地条目不可用时提示重新导入，不向 B 站发起请求。
+
+外部移动文件或撤回授权后，原 URI 可能失效；请重新导入可读取的文件。真机文件提供方、系统授权和升级验证范围见 [0.1.2 验证记录](docs/LOCAL-MUSIC-VERIFICATION.md)。
 
 ## 默认 UA、网络调试和隐藏入口
 

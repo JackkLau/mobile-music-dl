@@ -29,6 +29,7 @@ data class PlayerRecord(@PrimaryKey val id: Int = 1, val payload: String, val in
 @Dao
 interface MusicDao {
     @Query("SELECT * FROM local_tracks ORDER BY savedAt DESC") fun observeLocal(): Flow<List<LocalRecord>>
+    @Query("SELECT * FROM local_tracks ORDER BY savedAt DESC") suspend fun locals(): List<LocalRecord>
     @Query("SELECT * FROM local_tracks WHERE id = :id") suspend fun local(id: String): LocalRecord?
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun put(record: LocalRecord)
     @Query("DELETE FROM local_tracks WHERE id = :id") suspend fun deleteLocal(id: String)
@@ -44,12 +45,36 @@ interface MusicDao {
 @Database(entities = [LocalRecord::class, DownloadRecord::class, PlayerRecord::class], version = 1, exportSchema = false)
 abstract class MusicDatabase : RoomDatabase() { abstract fun musicDao(): MusicDao }
 
-class LibraryStore(context: Context) {
-    private val db = Room.databaseBuilder(context.applicationContext, MusicDatabase::class.java, "tingyu.db").build()
+class LibraryStore(context: Context, databaseName: String = "tingyu.db") {
+    private val db = Room.databaseBuilder(context.applicationContext, MusicDatabase::class.java, databaseName).build()
     private val dao = db.musicDao()
-    private val json = Json { ignoreUnknownKeys = true }
-    val localTracks: Flow<List<LocalTrack>> = dao.observeLocal().map { rows -> rows.map { json.decodeFromString<LocalTrack>(it.payload) } }
-    suspend fun saved(id: String): LocalTrack? = dao.local(id)?.let { json.decodeFromString(it.payload) }
+    // Time-dependent defaults must never be omitted from newly written payloads.
+    private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+    private fun decodeLocal(record: LocalRecord): LocalTrack =
+        json.decodeFromString<LocalTrack>(record.payload).copy(savedAt = record.savedAt)
+    val localTracks: Flow<List<LocalTrack>> = dao.observeLocal().map { rows -> rows.map(::decodeLocal) }
+    suspend fun saved(id: String): LocalTrack? = dao.local(id)?.let(::decodeLocal)
+    suspend fun readLocal(): List<LocalTrack> = dao.locals().map(::decodeLocal)
+    /** A scan/import may add entries, but never replaces the user's saved metadata. */
+    suspend fun addDiscovered(candidate: LocalTrack): Boolean = db.withTransaction {
+        val existing = dao.locals().map(::decodeLocal)
+        val identity = LocalMusicRules.uriKey(candidate.identityUri ?: candidate.uri)
+        if (existing.any { LocalMusicRules.uriKey(it.uri) == LocalMusicRules.uriKey(candidate.uri) ||
+                LocalMusicRules.uriKey(it.identityUri ?: it.uri) == identity }) return@withTransaction false
+        val local = if (existing.any { it.track.id == candidate.track.id }) {
+            candidate.copy(track = LocalMusicRules.withLocalIdentity(candidate.track, candidate.uri))
+        } else candidate
+        // A hash identity collision must not replace a record either.
+        if (dao.local(local.track.id) != null) return@withTransaction false
+        dao.put(LocalRecord(local.track.id, json.encodeToString(local), local.savedAt))
+        true
+    }
+    suspend fun removeLocalIfUri(id: String, uri: String): Boolean = db.withTransaction {
+        val stored = dao.local(id)?.let(::decodeLocal) ?: return@withTransaction false
+        if (stored.uri != uri) return@withTransaction false
+        dao.deleteLocal(id)
+        true
+    }
     suspend fun saveLocal(track: LocalTrack) = dao.put(LocalRecord(track.track.id, json.encodeToString(track), track.savedAt))
     suspend fun removeLocal(id: String) = dao.deleteLocal(id)
     suspend fun readDownloads(): List<DownloadTask> = dao.downloads().map { json.decodeFromString(it.payload) }
@@ -63,4 +88,5 @@ class LibraryStore(context: Context) {
     suspend fun readPlayer(): PlayerRecord? = dao.player()
     fun decodeQueue(record: PlayerRecord): List<Track> = json.decodeFromString(record.payload)
     suspend fun clearPlayer() = dao.clearPlayer()
+    internal fun close() = db.close()
 }

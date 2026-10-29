@@ -102,7 +102,7 @@ internal fun TrackRow(
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(track.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(track.artist.ifBlank { "哔哩哔哩" }, style = MaterialTheme.typography.labelMedium,
+                Text(track.artist.ifBlank { if (track.localOnly) "本地音频" else "哔哩哔哩" }, style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(listOfNotNull(track.durationMs.takeIf { it > 0 }?.let(::formatTime), if (saved) "已下载" else null).joinToString(" · "),
                     style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

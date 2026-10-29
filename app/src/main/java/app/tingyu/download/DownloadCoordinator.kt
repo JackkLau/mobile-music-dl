@@ -108,7 +108,7 @@ class DownloadCoordinator(
         scope.launch {
             try {
                 ready.await()
-                tracks.distinctBy { it.id }.forEach { track ->
+                tracks.filterNot { it.localOnly }.distinctBy { it.id }.forEach { track ->
                     if (activeId == track.id) return@forEach
                     val old = _jobs.value.firstOrNull { it.track.id == track.id }
                     if (old?.status in activeStatuses) return@forEach

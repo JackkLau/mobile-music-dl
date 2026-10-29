@@ -15,6 +15,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import app.tingyu.MainActivity
 import app.tingyu.MusicApp
+import app.tingyu.data.local.LocalMusicRules
 import app.tingyu.model.LocalTrack
 import app.tingyu.model.Track
 import com.google.common.util.concurrent.ListenableFuture
@@ -46,14 +47,16 @@ class PlaybackIntegrationTest {
     fun localAudioPlaysSeeksAndChangesQueueItem() {
         val app = instrumentation.targetContext.applicationContext as MusicApp
         val library = app.container.library
-        assumeTrue("Use a clean test installation; preserve existing playback state", runBlocking { library.readPlayer() == null })
+        val previousSnapshot = runBlocking { library.readPlayer() }
+        assumeTrue("Use a clean test installation; preserve existing playback queue",
+            previousSnapshot == null || library.decodeQueue(previousSnapshot).isEmpty())
         assumeTrue("Do not interrupt an existing playback service", !serviceRunning(app))
 
         val directory = File(app.cacheDir, "playback-test-${UUID.randomUUID()}")
         val bvid = "BV" + UUID.randomUUID().toString().replace("-", "").take(10)
         val tracks = listOf(
             Track(bvid, 1, "Local PCM fixture A", durationMs = 12_000, page = 1),
-            Track(bvid, 2, "Local PCM fixture B", durationMs = 12_000, page = 2),
+            LocalMusicRules.track("Imported PCM fixture B.wav", Uri.fromFile(File(directory, "tone-1.wav")).toString(), durationMs = 12_000),
         )
         // Do not overwrite even a coincidentally matching library entry.
         assumeTrue("Fixture IDs must be unused", runBlocking { tracks.all { library.saved(it.id) == null } })
@@ -128,6 +131,9 @@ class PlaybackIntegrationTest {
                         val ids = tracks.map { it.id }.toSet()
                         check(library.decodeQueue(snapshot).all { it.id in ids }) { "Refusing to remove another queue" }
                         library.clearPlayer()
+                    }
+                    previousSnapshot?.let { snapshot ->
+                        library.savePlayer(emptyList(), snapshot.index, snapshot.position, snapshot.mode, snapshot.sessionKey)
                     }
                 }
             }

@@ -9,6 +9,7 @@ import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.TransferListener
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import app.tingyu.AppContainer
+import app.tingyu.model.AudioStream
 import app.tingyu.model.Track
 import java.io.IOException
 import java.util.concurrent.ConcurrentMap
@@ -23,6 +24,7 @@ class TrackDataSource(
     private val container: AppContainer,
     private val tracks: ConcurrentMap<String, Track>,
     private val http: OkHttpClient,
+    private val resolveRemote: suspend (Track) -> AudioStream = { container.bilibili.resolveAudio(it) },
 ) : DataSource {
     private var upstream: DataSource? = null
     private val listeners = mutableListOf<TransferListener>()
@@ -53,7 +55,8 @@ class TrackDataSource(
                 } catch (_: Exception) { throw IOException("本地音频已移除或无法读取，请重新下载") }
                 dataSpec.buildUpon().setUri(savedUri).setHttpRequestHeaders(emptyMap()).build()
             } else {
-                val stream = container.bilibili.resolveAudio(track)
+                if (track.localOnly) throw IOException("本地音频已移除或未授权，请重新导入或扫描音乐目录")
+                val stream = resolveRemote(track)
                 if (container.sessions.state.value != sessionAtStart) throw IOException("访问模式已切换，请重新播放")
                 if (boundBitrate != null && boundBitrate != stream.bitrate) throw IOException("音轨格式发生变化，请重新播放")
                 boundBitrate = stream.bitrate

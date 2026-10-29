@@ -62,6 +62,7 @@ class BilibiliRepository internal constructor(
     }
 
     suspend fun resolveAudio(track: Track, profile: NetworkProfile = profileSnapshot(), requestId: String = NetworkTrace.requestId()): AudioStream {
+        if (track.localOnly) throw BiliException("这是本地音频，请重新导入可读取的文件", stage = "local")
         val cookie = cookies()
         // Refresh authoritative part metadata, even for favorites with first_cid.
         // This catches deleted/changed content and supplies an independent duration.

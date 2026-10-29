@@ -80,7 +80,7 @@ private fun MiniPlayer(state: AppUiState, actions: AppActions) {
                     Text(when {
                         player.isLoading -> "正在准备音频…"
                         player.error != null -> "播放失败，点此查看"
-                        else -> track.artist.ifBlank { "哔哩哔哩" }
+                        else -> track.artist.ifBlank { if (track.localOnly) "本地音频" else "哔哩哔哩" }
                     }, maxLines = 1, overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }

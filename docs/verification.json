@@ -138,5 +138,78 @@
     "logs_directory": "docs/verification-logs/release-20261029",
     "installed_on_device": false,
     "github_release_published": false
+  },
+  "local_music_0_1_2": {
+    "verified_at": "2026-10-29T09:15:48.355651+08:00",
+    "version": "0.1.2",
+    "version_code": 3,
+    "checks": {
+      "app_debug": {
+        "tests": 149,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "app_release": {
+        "tests": 149,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "pc_shared": {
+        "tests": 113,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    "counts_overlap": true,
+    "python_tests": 29,
+    "structure": {
+      "structural_checks": 88,
+      "passed": 88,
+      "failures": [],
+      "kotlin_unit_tests_written": 149,
+      "android_tests_written": 32,
+      "limitation": "No Kotlin type checking, dependency resolution, APK build, media playback or Android runtime execution is performed by this script."
+    },
+    "release": {
+      "package": "app.tingyu",
+      "versionName": "0.1.2",
+      "versionCode": 3,
+      "certificateSha256": "ba4e5c4ba00be09d10421edac7f276f44393f52950623e64096f93c864b81911",
+      "commit": "ec9738c2920c50ad1d861b49996b3ead4d0545f9",
+      "assets": [
+        {
+          "file": "tingyu-0.1.2-release.apk",
+          "bytes": 51210868,
+          "sha256": "d4c506bac9c05707c4c063f225fbc434ba46fb73b8f7bd78078a9196bfba04d2"
+        },
+        {
+          "file": "tingyu-0.1.2-release.aab",
+          "bytes": 14705734,
+          "sha256": "d04da69ebdff6e2065789b643fcd6bfaea100a86865421bf52ba263acd0f7148"
+        }
+      ],
+      "validation": [
+        "APK signature and identity",
+        "APK non-debuggable and no probe entry",
+        "APK ZIP alignment",
+        "AAB manifest identity",
+        "all AAB payload signatures"
+      ],
+      "commit_note": "Local working tree built before feature commit; commit field is its base commit, not a clean-source release claim."
+    },
+    "github_signed_build": "pending explicit authorization for signing Secrets",
+    "logs_directory": "docs/verification-logs/local-music-20261029",
+    "device_tests": {
+      "tests": 32,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "device": "emulator-5554",
+      "android_api": 37,
+      "isolated_temporary_android_user": true
+    }
   }
 }

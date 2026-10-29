@@ -72,7 +72,7 @@ private fun PlayerContent(state: AppUiState, actions: AppActions) {
             ActionIcon(Icons.Rounded.KeyboardArrowDown, "收起播放器") { actions.showPlayer(false) }
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("正在播放", style = MaterialTheme.typography.titleMedium)
-                Text(if (local) "已下载 · 可离线播放" else "在线播放", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(if (local) "已下载 · 可离线播放" else if (track?.localOnly == true) "本地文件不可用" else "在线播放", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             ActionIcon(Icons.Rounded.QueueMusic, "打开播放队列") { actions.showQueue(true) }
         }
@@ -100,7 +100,7 @@ private fun PlayerContent(state: AppUiState, actions: AppActions) {
             item {
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(track.title, style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
-                    Text(track.artist.ifBlank { "哔哩哔哩" }, style = MaterialTheme.typography.bodyLarge,
+                    Text(track.artist.ifBlank { if (track.localOnly) "本地音频" else "哔哩哔哩" }, style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
                 }
             }
@@ -153,8 +153,8 @@ private fun PlayerContent(state: AppUiState, actions: AppActions) {
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
                         ActionIcon(if (local) Icons.Rounded.DownloadDone else Icons.Rounded.Download,
-                            if (local) "已下载" else if (pendingDownload) "正在下载" else "下载音频", enabled = !local && !pendingDownload) { actions.download(listOf(track)) }
-                        Text(if (local) "已下载" else if (pendingDownload) "下载中" else "下载", style = MaterialTheme.typography.labelMedium,
+                            if (local) "已下载" else if (track.localOnly) "本地音频" else if (pendingDownload) "正在下载" else "下载音频", enabled = !local && !pendingDownload && !track.localOnly) { actions.download(listOf(track)) }
+                        Text(if (local) "已下载" else if (track.localOnly) "本地音频" else if (pendingDownload) "下载中" else "下载", style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }

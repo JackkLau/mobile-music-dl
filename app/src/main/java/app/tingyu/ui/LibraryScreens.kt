@@ -25,11 +25,37 @@ import app.tingyu.BuildConfig
 internal fun LibraryScreen(state: AppUiState, actions: AppActions) {
     var query by rememberSaveable { mutableStateOf("") }
     var deleteTarget by remember { mutableStateOf<LocalTrack?>(null) }
+    LaunchedEffect(state.library, state.deletingLocalId) {
+        if (deleteTarget != null && state.deletingLocalId == null && state.library.none { it.track.id == deleteTarget?.track?.id }) {
+            deleteTarget = null
+        }
+    }
     val visible = remember(state.library, query) {
         state.library.filter { query.isBlank() || it.track.title.contains(query.trim(), true) || it.track.artist.contains(query.trim(), true) }
     }
     LazyColumn(Modifier.fillMaxSize().testTag("library_list"), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { PageTitle("音乐库", "${state.library.size} 首本地音频 · 离线也能听") }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = actions::scanLocalMusic, enabled = !state.libraryWorking && state.deletingLocalId == null,
+                    modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Rounded.Refresh, contentDescription = null)
+                    Spacer(Modifier.width(6.dp)); Text("扫描已下载音乐")
+                }
+                OutlinedButton(onClick = actions::selectLocalFiles, enabled = !state.libraryWorking && state.deletingLocalId == null,
+                    modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Rounded.FolderOpen, contentDescription = null)
+                    Spacer(Modifier.width(6.dp)); Text("导入本地音频")
+                }
+                Text("扫描 Music / 听屿 中的旧文件；其他文件可手动选择导入。", style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (state.libraryWorking) LinearProgressIndicator(Modifier.fillMaxWidth().testTag("library_progress"))
+                state.libraryStatus?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                if (state.libraryNeedsPermission) Text("找回旧安装留下的文件需要音频访问权限，也可只选择要导入的文件。",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                state.libraryError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
+            }
+        }
         item {
             OutlinedTextField(value = query, onValueChange = { query = it }, singleLine = true,
                 modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), label = { Text("搜索标题或作者") },
@@ -37,7 +63,7 @@ internal fun LibraryScreen(state: AppUiState, actions: AppActions) {
                 trailingIcon = if (query.isNotEmpty()) ({ ActionIcon(Icons.Rounded.Close, "清空搜索") { query = "" } }) else null)
         }
         if (state.library.isEmpty()) {
-            item { StatePanel(Icons.Rounded.LibraryMusic, "收藏一段喜欢的声音", "下载完成的音频会出现在这里，也可以用手机中的其他播放器打开。", "去解析链接", { actions.tab(0) }) }
+            item { StatePanel(Icons.Rounded.LibraryMusic, "收藏一段喜欢的声音", "下载完成的音频会出现在这里。已有音乐可先扫描或导入，也可以解析新链接。", "去解析链接", { actions.tab(0) }) }
         } else if (visible.isEmpty()) {
             item { StatePanel(Icons.Rounded.SearchOff, "没有找到匹配的音频", "换一个标题或作者关键词试试。", "清空搜索", { query = "" }) }
         } else {
@@ -50,17 +76,24 @@ internal fun LibraryScreen(state: AppUiState, actions: AppActions) {
             items(visible, key = { it.track.id }) { local ->
                 TrackRow(local.track, saved = true, playing = state.playback.track?.id == local.track.id,
                     onPlay = { actions.play(local.track, visible.map { it.track }) }) {
-                    ActionIcon(Icons.Rounded.DeleteOutline, "删除 ${local.track.title}") { deleteTarget = local }
+                    ActionIcon(Icons.Rounded.DeleteOutline, "删除 ${local.track.title}", enabled = !state.libraryWorking && state.deletingLocalId == null) {
+                        actions.dismissLocalDeleteError(); deleteTarget = local
+                    }
                 }
             }
         }
     }
     deleteTarget?.let { local ->
-        AlertDialog(onDismissRequest = { deleteTarget = null }, title = { Text("删除本地音频？") },
-            text = { Text("“${local.track.title}”将从手机中删除。来源视频和 B 站收藏夹不会改变。") },
-            confirmButton = { TextButton(onClick = { actions.deleteLocal(local); deleteTarget = null },
+        val deleting = state.deletingLocalId == local.track.id
+        AlertDialog(onDismissRequest = { if (!deleting) { deleteTarget = null; actions.dismissLocalDeleteError() } }, title = { Text("删除本地音频？") },
+            text = { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("“${local.track.title}”将从手机中删除。来源视频和 B 站收藏夹不会改变。")
+                if (deleting) { LinearProgressIndicator(Modifier.fillMaxWidth()); Text("正在删除，必要时请在系统窗口中确认。") }
+                state.localDeleteError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            } },
+            confirmButton = { TextButton(onClick = { actions.deleteLocal(local) }, enabled = !deleting,
                 colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("删除音频") } },
-            dismissButton = { TextButton(onClick = { deleteTarget = null }) { Text("保留") } })
+            dismissButton = { TextButton(onClick = { deleteTarget = null; actions.dismissLocalDeleteError() }, enabled = !deleting) { Text("保留") } })
     }
 }
 
