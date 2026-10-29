@@ -1,0 +1,142 @@
+{
+  "verified_at": "2026-10-29T08:21:20.563628+08:00",
+  "environment": "macOS arm64; JDK 17; Gradle 8.11.1; Android SDK 35; emulator API 37",
+  "active_source": "app/src",
+  "version": "0.1.1",
+  "version_code": 2,
+  "application_id": "app.tingyu",
+  "source_note": "Merged local recovered 0.1.1 from app/app/src into active app/src, then completed handoff checklist; remote ChatGPT Library ZIP not accessed.",
+  "source_sha256": "907501bf726f2c9b6e28f3a8763d6be433589b070aafc133ff2abf3d4c62916f",
+  "app_jvm": {
+    "tests": 135,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "pc_shared_jvm": {
+    "tests": 112,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "counts_overlap": true,
+  "python_scripts": {
+    "tests": 16,
+    "failures": 0
+  },
+  "structural": {
+    "structural_checks": 82,
+    "passed": 82,
+    "failures": [],
+    "kotlin_unit_tests_written": 135,
+    "android_tests_written": 17,
+    "limitation": "No Kotlin type checking, dependency resolution, APK build, media playback or Android runtime execution is performed by this script."
+  },
+  "device_tests": {
+    "tests": 17,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "device": "emulator-5554",
+    "android_api": 37
+  },
+  "android_lint": {
+    "exit_code": 0,
+    "errors": 0,
+    "warnings": 23
+  },
+  "premium_audit": {
+    "errors": 0
+  },
+  "design_lint": {
+    "errors": 0,
+    "warnings": 7
+  },
+  "build": {
+    "debug_apk": "app/build/outputs/apk/debug/app-debug.apk",
+    "debug_apk_bytes": 69357779,
+    "sha256": "f77180f29014e53d404ffec6bff01e9fa897cae9d2e1d2609f9d8939caf7a7a7",
+    "android_test_apk": true,
+    "pc_install_dist": true,
+    "release_manifest_excludes_probe": true,
+    "release_debug_flag": false,
+    "release_apk_built": true
+  },
+  "network_probes": {
+    "pc_original_inputs": {
+      "desktop": {
+        "parse": "success",
+        "desktop_audio_http": 206,
+        "mobile_audio_http": 403
+      },
+      "mobile": {
+        "parse": "success",
+        "desktop_audio_http": 206,
+        "mobile_audio_http": 403
+      },
+      "short": {
+        "parse": "success",
+        "desktop_audio_http": 206,
+        "mobile_audio_http": 403,
+        "current_target_bvid": "BV1d3Ye6BEPF"
+      }
+    },
+    "pc_script_exit_code": 1,
+    "emulator_phone_script_exit_code": 1,
+    "exit_1_reason": "Diagnostic correctly reports mobile-UA HTTP 403; script setup/build/install and desktop samples succeeded.",
+    "max_sample_bytes": 1024,
+    "same_signed_url_per_audio_ua_pair": true,
+    "complete_media_download_performed": false
+  },
+  "physical_device": {
+    "serial": "7c1213a1",
+    "connected": false,
+    "installed": false,
+    "probe_script_exit_code": 2
+  },
+  "remaining": [
+    "Physical-phone complete download, M4A saving and offline playback",
+    "Login feedback on physical phone",
+    "Real resume/refresh with mid-download UA change",
+    "MCDN 4483 real reachability and AAC profiles",
+    "Manual visual accessibility, font-size, small-screen and Android-version matrix"
+  ],
+  "logs_directory": "docs/verification-logs/mac-20261029",
+  "history_not_reused": "Historical 109 JVM, 11 script, 67 PC network and 55 Kotlin figures are not combined with current results.",
+  "release": {
+    "verified_at": "2026-10-29T08:43:37.714698+08:00",
+    "version": "0.1.1",
+    "version_code": 2,
+    "application_id": "app.tingyu",
+    "certificate_sha256": "ba4e5c4ba00be09d10421edac7f276f44393f52950623e64096f93c864b81911",
+    "release_unit_tests": {
+      "tests": 135,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "release_lint": {
+      "Warning": 22
+    },
+    "debuggable": false,
+    "diagnostic_activity_included": false,
+    "apk_signature_scheme_v2": true,
+    "zip_alignment_16kb": true,
+    "files": {
+      "apk": {
+        "path": "artifacts/release/tingyu-0.1.1-release.apk",
+        "sha256": "9d501da2bfc159b8177f4887885523fdd79d4bf7de268d391ff749b8085edf50",
+        "bytes": 51128868
+      },
+      "aab": {
+        "path": "artifacts/release/tingyu-0.1.1-release.aab",
+        "sha256": "00a718488af1bbbfff2f267f119c67fe309dee42deb8db4c3da705956be188d0",
+        "bytes": 14675811
+      }
+    },
+    "aab_payload_entries_verified": 227,
+    "logs_directory": "docs/verification-logs/release-20261029",
+    "installed_on_device": false,
+    "github_release_published": false
+  }
+}

@@ -1,0 +1,52 @@
+开始 pc 诊断，本次编号 6a2c6b84e863437b98105c26be1ef538。日志：/Users/tobin/Documents/projects/mobile-music-dl/artifacts/probes/pc-6a2c6b84e863437b98105c26be1ef538.log
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.11.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :probe:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :probe:compileKotlin UP-TO-DATE
+> Task :probe:compileJava NO-SOURCE
+> Task :probe:processResources NO-SOURCE
+> Task :probe:classes UP-TO-DATE
+> Task :probe:jar UP-TO-DATE
+> Task :probe:startScripts UP-TO-DATE
+> Task :probe:installDist UP-TO-DATE
+
+BUILD SUCCESSFUL in 4s
+4 actionable tasks: 4 up-to-date
+run=6a2c6b84e863437b98105c26be1ef538 stage=session event=started mode=anonymous
+run=6a2c6b84e863437b98105c26be1ef538 request=434c3f38-61e stage=probe event=parse_started parse_ua=desktop
+run=6a2c6b84e863437b98105c26be1ef538 request=434c3f38-61e stage=short_link event=response http=302 ua=desktop parse_ua=desktop redirects=0 family=ipv4 proxy=direct host=b23.tv url_id=ff1a03a668df13e1
+run=6a2c6b84e863437b98105c26be1ef538 request=434c3f38-61e stage=api event=response http=200 ua=desktop parse_ua=desktop redirects=0 family=ipv4 proxy=direct host=api.bilibili.com url_id=44fbccb6e4c68060
+run=6a2c6b84e863437b98105c26be1ef538 request=434c3f38-61e stage=api event=view http=200 code=0
+run=6a2c6b84e863437b98105c26be1ef538 request=434c3f38-61e stage=probe event=resolving parse_ua=desktop
+run=6a2c6b84e863437b98105c26be1ef538 request=434c3f38-61e stage=api event=response http=200 ua=desktop parse_ua=desktop redirects=0 family=ipv4 proxy=direct host=api.bilibili.com url_id=44fbccb6e4c68060
+run=6a2c6b84e863437b98105c26be1ef538 request=434c3f38-61e stage=api event=view http=200 code=0
+run=6a2c6b84e863437b98105c26be1ef538 request=434c3f38-61e stage=api event=response http=200 ua=desktop parse_ua=desktop redirects=0 family=ipv4 proxy=direct host=api.bilibili.com url_id=34a874714ed07411
+run=6a2c6b84e863437b98105c26be1ef538 request=434c3f38-61e stage=api event=nav http=200 code=-101
+run=6a2c6b84e863437b98105c26be1ef538 request=434c3f38-61e stage=api event=response http=200 ua=desktop parse_ua=desktop redirects=0 family=ipv4 proxy=direct host=api.bilibili.com url_id=9ff3511676b8b000
+run=6a2c6b84e863437b98105c26be1ef538 request=434c3f38-61e stage=api event=playurl http=200 code=0
+run=6a2c6b84e863437b98105c26be1ef538 request=434c3f38-61e event=candidate candidate=0 format=aac codec=aac mime=audio_mp4 urls=3 reason=usable stage=audio_select parse_ua=desktop
+run=6a2c6b84e863437b98105c26be1ef538 request=434c3f38-61e event=candidate candidate=1 format=aac codec=aac mime=audio_mp4 urls=3 reason=usable stage=audio_select parse_ua=desktop
+run=6a2c6b84e863437b98105c26be1ef538 request=434c3f38-61e event=selected format=aac audio_total=2 candidates=2 urls=3 stage=audio_select parse_ua=desktop
+run=6a2c6b84e863437b98105c26be1ef538 request=434c3f38-61e stage=resolve event=audio_ready parse_ua=desktop ua=desktop host=upos-sz-mirrorhw.bilivideo.com url_id=05e7b1639f16d487
+run=6a2c6b84e863437b98105c26be1ef538 request=434c3f38-61e stage=probe event=sample_result http=206 parse_ua=desktop ua=desktop bytes=1024 sample=valid_mp4_header range=sample profile=web_media offset=0 redirects=0 attempt=0 family=ipv4 proxy=direct host=upos-sz-mirrorhw.bilivideo.com url_id=05e7b1639f16d487
+run=6a2c6b84e863437b98105c26be1ef538 request=434c3f38-61e stage=probe event=sample_result http=403 parse_ua=desktop ua=mobile bytes=0 sample=not_confirmed range=sample profile=web_media offset=0 redirects=0 attempt=0 family=ipv4 proxy=direct host=upos-sz-mirrorhw.bilivideo.com url_id=05e7b1639f16d487
+run=6a2c6b84e863437b98105c26be1ef538 request=434c3f38-61e stage=probe event=completed result=failed
+run=6a2c6b84e863437b98105c26be1ef538 request=3ec574b7-cf2 stage=probe event=parse_started parse_ua=mobile
+run=6a2c6b84e863437b98105c26be1ef538 request=3ec574b7-cf2 stage=short_link event=response http=302 ua=mobile parse_ua=mobile redirects=0 family=ipv4 proxy=direct host=b23.tv url_id=ff1a03a668df13e1
+run=6a2c6b84e863437b98105c26be1ef538 request=3ec574b7-cf2 stage=api event=response http=200 ua=mobile parse_ua=mobile redirects=0 family=ipv4 proxy=direct host=api.bilibili.com url_id=44fbccb6e4c68060
+run=6a2c6b84e863437b98105c26be1ef538 request=3ec574b7-cf2 stage=api event=view http=200 code=0
+run=6a2c6b84e863437b98105c26be1ef538 request=3ec574b7-cf2 stage=probe event=resolving parse_ua=mobile
+run=6a2c6b84e863437b98105c26be1ef538 request=3ec574b7-cf2 stage=api event=response http=200 ua=mobile parse_ua=mobile redirects=0 family=ipv4 proxy=direct host=api.bilibili.com url_id=44fbccb6e4c68060
+run=6a2c6b84e863437b98105c26be1ef538 request=3ec574b7-cf2 stage=api event=view http=200 code=0
+run=6a2c6b84e863437b98105c26be1ef538 request=3ec574b7-cf2 stage=api event=response http=200 ua=mobile parse_ua=mobile redirects=0 family=ipv4 proxy=direct host=api.bilibili.com url_id=34a874714ed07411
+run=6a2c6b84e863437b98105c26be1ef538 request=3ec574b7-cf2 stage=api event=nav http=200 code=-101
+run=6a2c6b84e863437b98105c26be1ef538 request=3ec574b7-cf2 stage=api event=response http=200 ua=mobile parse_ua=mobile redirects=0 family=ipv4 proxy=direct host=api.bilibili.com url_id=9ff3511676b8b000
+run=6a2c6b84e863437b98105c26be1ef538 request=3ec574b7-cf2 stage=api event=playurl http=200 code=0
+run=6a2c6b84e863437b98105c26be1ef538 request=3ec574b7-cf2 event=candidate candidate=0 format=aac codec=aac mime=audio_mp4 urls=3 reason=usable stage=audio_select parse_ua=mobile
+run=6a2c6b84e863437b98105c26be1ef538 request=3ec574b7-cf2 event=candidate candidate=1 format=aac codec=aac mime=audio_mp4 urls=3 reason=usable stage=audio_select parse_ua=mobile
+run=6a2c6b84e863437b98105c26be1ef538 request=3ec574b7-cf2 event=selected format=aac audio_total=2 candidates=2 urls=3 stage=audio_select parse_ua=mobile
+run=6a2c6b84e863437b98105c26be1ef538 request=3ec574b7-cf2 stage=resolve event=audio_ready parse_ua=mobile ua=desktop host=upos-sz-mirrorhw.bilivideo.com url_id=1ba2515791dcbd91
+run=6a2c6b84e863437b98105c26be1ef538 request=3ec574b7-cf2 stage=probe event=sample_result http=206 parse_ua=mobile ua=desktop bytes=1024 sample=valid_mp4_header range=sample profile=web_media offset=0 redirects=0 attempt=0 family=ipv4 proxy=direct host=upos-sz-mirrorhw.bilivideo.com url_id=1ba2515791dcbd91
+run=6a2c6b84e863437b98105c26be1ef538 request=3ec574b7-cf2 stage=probe event=sample_result http=403 parse_ua=mobile ua=mobile bytes=0 sample=not_confirmed range=sample profile=web_media offset=0 redirects=0 attempt=0 family=ipv4 proxy=direct host=upos-sz-mirrorhw.bilivideo.com url_id=1ba2515791dcbd91
+run=6a2c6b84e863437b98105c26be1ef538 request=3ec574b7-cf2 stage=probe event=completed result=failed
+run=6a2c6b84e863437b98105c26be1ef538 stage=session event=finished exit=1

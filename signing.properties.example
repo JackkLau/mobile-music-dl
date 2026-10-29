@@ -1,0 +1,7 @@
+# Copy to signing.properties and fill in the existing release key credentials.
+# storeFile is relative to the project root, or an absolute path.
+# Keep the real file and keystore out of version control.
+storeFile=.tooling/signing/tingyu-release.keystore
+storePassword=REPLACE_WITH_STORE_PASSWORD
+keyAlias=tingyu
+keyPassword=REPLACE_WITH_KEY_PASSWORD

@@ -1,0 +1,191 @@
+{
+  "date": "2026-10-28",
+  "timezone": "Asia/Hong_Kong",
+  "source_origin": "Restored from tingyu-android-source.zip dated through 2026-10-28 ~14:46; later changes reconstructed from the supplied conversation. Not a byte-identical copy of the latest Mac worktree.",
+  "baseline_zip_sha256": "6b0d29ae57ebb1929c0c39f49c737548edf193b68442026e52bdedaef5e36a2f",
+  "source_sha256": {
+    "app/build.gradle.kts": "91b8840f98de786a828df158ae4b4191a12bc9c1ece76d6446db6a0553bd49c8",
+    "app/src/androidTest/java/app/tingyu/playback/PlaybackIntegrationTest.kt": "0a0d1c5b6c608987fc79c970ad46a28b5061c879b6e682765847a994d6700f9e",
+    "app/src/androidTest/java/app/tingyu/ui/TingYuUiTest.kt": "7b0f6a6fd0040a767c7daa75deb3be20d96898451240e567733c00f7077ddf2f",
+    "app/src/main/AndroidManifest.xml": "b5a135634c3bc488a2b8b45e6b170fe8bec38d00675aafdbad6f2480051882cf",
+    "app/src/main/java/app/tingyu/AppViewModel.kt": "7a41a85baec9c1965e2a27c24ac73d01fd9944db3b07e091e2f312816c8e302a",
+    "app/src/main/java/app/tingyu/MainActivity.kt": "f9a03cb3f894670cd248b53df2d555825665c3c66a57fcaecb72ba8a98722e84",
+    "app/src/main/java/app/tingyu/MusicApp.kt": "274a94e4fc853c8b5a3d99b2f13c4b96ac20cefbabbec0bc44a9213e208f8271",
+    "app/src/main/java/app/tingyu/auth/LoginActivity.kt": "ed08be3f578131ba26b30d1eb1d11cb6f52b980ad98ae18fbe10330b35f4a287",
+    "app/src/main/java/app/tingyu/data/auth/CookiePolicy.kt": "6a5c86d939426d6f16bd6e9d2159acd42cace3f62f8cc734ca79703f1cc3b4c9",
+    "app/src/main/java/app/tingyu/data/auth/LoginResponse.kt": "bcd33e7a3f89347c3f2816a829019441f122d2daaa186d975811f1522fd34ed6",
+    "app/src/main/java/app/tingyu/data/auth/LoginVerificationGate.kt": "4a3a873300cb7c345ddab738b98107538d9717302bc092d4b9cb1b53bf70740d",
+    "app/src/main/java/app/tingyu/data/auth/SessionStore.kt": "b0b9bc4f000919096504369e8d2570a41748f32ebb1868b1c686728f523161f7",
+    "app/src/main/java/app/tingyu/data/bili/BiliLink.kt": "ae06c485bf490aa35e2e2ebd8899d68cebe96c576ad34beffcbe68e26f4f0d22",
+    "app/src/main/java/app/tingyu/data/bili/BiliResponseParser.kt": "ad0ec794c7dcf1b2d06294b1e4a4cf9c594065c45e903af7ca5f26cb92dc54eb",
+    "app/src/main/java/app/tingyu/data/bili/BiliTransport.kt": "a4af673a5a4fa3e064b21d07fce6574adb41293f97f8605e3cc8465abb3c44a9",
+    "app/src/main/java/app/tingyu/data/bili/BilibiliRepository.kt": "936748e5c96cfa2f120c28e2a43e0923def62b68920ba372b265271c6ac3b611",
+    "app/src/main/java/app/tingyu/data/bili/MediaRequestPolicy.kt": "cd4f3b741ebec68cc38f4417a48ee1ada8a2a3c781ccdafa7db4b1ee2887577a",
+    "app/src/main/java/app/tingyu/data/bili/MediaUrlPolicy.kt": "749bacc0395de9e729e9b7dc4f305b41366bd8f8e4af03923e2d09bf178c066a",
+    "app/src/main/java/app/tingyu/data/bili/NetworkProfile.kt": "a7d7bedcf6de1f433749d51125541d8abf88935f866bb6bb432f44015643a7ff",
+    "app/src/main/java/app/tingyu/data/bili/WbiSigner.kt": "4e76a266657cd73e3efb10b2fcd78e63fdd67c2cac654e8ed2d2ea4f7108443c",
+    "app/src/main/java/app/tingyu/data/local/LibraryStore.kt": "c8e16ed9fd9b9dba93a6f0df704adac13027eed129d0d95df05b9c53047b6204",
+    "app/src/main/java/app/tingyu/debug/DebugSettings.kt": "129ab7b6f0fb5b79b66aa8343af85af83d561e28ea5aa23ef83f1a2478a61962",
+    "app/src/main/java/app/tingyu/debug/DebugSettingsStore.kt": "b2843aded75deeb19c6693b1183eeb981830e4160968fec6a794f92bc5e2728f",
+    "app/src/main/java/app/tingyu/debug/UaComparison.kt": "e6d6461cc9e790ace871db0d9019bbec26b49c00d213e3a3237392f072ccfaaa",
+    "app/src/main/java/app/tingyu/download/DownloadCoordinator.kt": "13860c933dd2fedc95931371dabde07f1ab2f11e48394082248e1bfee6fba2b2",
+    "app/src/main/java/app/tingyu/download/DownloadRules.kt": "042f364cda02bbe5eeda18596545ef9350d8379d1672112698388e7e864743ff",
+    "app/src/main/java/app/tingyu/download/DownloadService.kt": "aa4cb9e588abcf6ecf05969d1ea64771c2d8f0708dc5ed450042f4872f08f564",
+    "app/src/main/java/app/tingyu/download/StoppedDownloadPersistence.kt": "a1bbc536b91bc37f7b00a8b56a991f09916cd8c833b684daf043b726381935bb",
+    "app/src/main/java/app/tingyu/model/AppUiState.kt": "5009ca53c6e1ea795a488d70821e212b4ff639946ccffd6c680d5e5dff2c72ca",
+    "app/src/main/java/app/tingyu/model/Models.kt": "01fd73e79d686283624427c49f0f8cb529215f0981d61699096ec4dc8e5e80fc",
+    "app/src/main/java/app/tingyu/playback/PlaybackService.kt": "2dbdb361650c1fc6f41831b6c29b677dffff11cfa3d896c9d82bf8a3539bf74e",
+    "app/src/main/java/app/tingyu/playback/TrackDataSource.kt": "5b28602e361bff8fc0c555d4611c478d4f39ef2fab2503da3c321fa0c7d1b05a",
+    "app/src/main/java/app/tingyu/playback/TrackMedia.kt": "734dcc2415ebe3192554783efa11bb9e7814f57045915932f504c62520630cdc",
+    "app/src/main/java/app/tingyu/ui/Components.kt": "255c15de0350ccbc131966ee62adccd691629264e998a0b54ee23ae83a9b0bee",
+    "app/src/main/java/app/tingyu/ui/DeveloperToolsScreen.kt": "d8bc4026f01fc1b1ac75c1063b07086c5f2bf18484c11e6ba5fc68d10f5beea4",
+    "app/src/main/java/app/tingyu/ui/LibraryScreens.kt": "267df83c9404612d2e417f3712e36735c71226fe9a3aa5e625edbd0eeb07e232",
+    "app/src/main/java/app/tingyu/ui/ParseScreen.kt": "c625f935a0ca708fad09abf71e0d64c6cdc97aae7feef1c41ddde07528226902",
+    "app/src/main/java/app/tingyu/ui/PlayerScreen.kt": "12e4e7df83d1801e75a00a53840a095856a050fde371fe6c70cf1bcfac81c133",
+    "app/src/main/java/app/tingyu/ui/Theme.kt": "dad0322b430b6b3187b874df225badae851c35231a04f40eadaa5528f3f6938c",
+    "app/src/main/java/app/tingyu/ui/TingYuApp.kt": "eecf98ad335a7e9ed6e1908cde0c59ca7db07a3ab5960c408b94959e9cb75180",
+    "app/src/main/java/app/tingyu/util/UserMessage.kt": "8d4a8c64076dab9b3e45c8cf7288046515cf3ae86ad9de30a8f2a6aee6467755",
+    "app/src/main/res/drawable/ic_app.xml": "02d26fe20e4b11b66693019edd3d5488cfbbc1ba586379a8e8f61770c3163214",
+    "app/src/main/res/values/strings.xml": "663f82b831493ecfeb7e041c7a048ee7c1738e815582741292326941d086a78b",
+    "app/src/main/res/values/themes.xml": "e5e300fd03294365e717fc27048fccc6e321beda63811f4a9f1b1b6bf3bd90b2",
+    "app/src/test/java/app/tingyu/auth/CookiePolicyTest.kt": "d0f0e9dcfb8dbde07b930e4254e9c90ef61745f598872d04915a445820d870ac",
+    "app/src/test/java/app/tingyu/auth/LoginResponseTest.kt": "33271d8c0b54a3b0386a961a001d7f5069e494b29559f4b480ce596bd23c2522",
+    "app/src/test/java/app/tingyu/auth/LoginVerificationGateTest.kt": "c77f76c7c1950902508b0f6806bcb14ed504f862a5b9955c760583ef4f41b8c8",
+    "app/src/test/java/app/tingyu/bili/BiliLinkParserTest.kt": "11a477283096b6f62aefe709d4294ed43009fddad1ee278ba92fd03341ee5654",
+    "app/src/test/java/app/tingyu/bili/BiliResponseParserTest.kt": "413627fb8251c6736662fff1ec74455eee1fc3c8bc78388d8587a5a54587b001",
+    "app/src/test/java/app/tingyu/bili/BilibiliRepositoryTest.kt": "39f9decd9cdc14f47142debcb20623cdf8fdcb737b3ef4e896ec87564b2626ca",
+    "app/src/test/java/app/tingyu/bili/MediaRequestPolicyTest.kt": "15825c5354fb3bef5eae50dfdcb938454e1ffe98b76cf723af36aaa927e82963",
+    "app/src/test/java/app/tingyu/bili/MediaUrlPolicyTest.kt": "6e3654781a2a562aeca61ad794d5016b304ffd9e5fe53a557d2ab613a5fe716f",
+    "app/src/test/java/app/tingyu/bili/UaComparisonTest.kt": "ac6095bdb689e073ad4930fc9a3936fda1e7fb100e6111d12bd8a9bd331ed162",
+    "app/src/test/java/app/tingyu/debug/DebugSettingsTest.kt": "d3c5015582aade0b32554dd42454b1ed25ad4c7d10bead13ca1ceca0980559b7",
+    "app/src/test/java/app/tingyu/download/DownloadRulesTest.kt": "e8e453d038124ea718a18fa38751f0e802b37fe202c9fa686104f349205665b3",
+    "app/src/test/java/app/tingyu/download/StoppedDownloadPersistenceTest.kt": "f5f0036d80feecb5e5924b549dfebdea95090901ab6f0e8a736a4b21fd475103",
+    "app/src/test/java/app/tingyu/model/TrackTest.kt": "7d05082a352c55204e9bf80dbb14240d6a91de5a6be4cfabce36d39ba9fe60d3",
+    "app/src/test/java/app/tingyu/util/UserMessageTest.kt": "291191751321646b98cb476eea1c59f155b0d5f1b78609f1a245ad7b1f64e8d0",
+    "build.gradle.kts": "c948068cbc129e40929c5a3e438991af7da90731ba7a7f82c62ec52855d78a8a",
+    "scripts/bootstrap-android.sh": "73a691be8913f6281435aec872f17409701644d223026cee6975d51e85b69d11",
+    "scripts/check.sh": "d948a2ad8b989eb87e98f91530313d7214a4a006799e1b84824ddbf2cedc7c0d",
+    "scripts/lib/download.sh": "1e1c399b574ca3c4e0b192d6d995a26111b0e56cfced4d4b022339d9c61b47e4",
+    "scripts/tests/test_toolchain_download.py": "ab5b3e73328b24549da8387068fe2f5927596ea49e5618e86d7d243a63142b97",
+    "scripts/verify-source.py": "d01aa616a10d78c3bbcb98339e042b025b497cc5fabaa46a45e3a75bc2c54571",
+    "settings.gradle.kts": "3733b48698262f73e2ea918c9af7d08b75de6c90ce105db1d681ad7cccd3e44d"
+  },
+  "checks": {
+    "standalone_kotlin": {
+      "exit_code": 0,
+      "real_source_files": 53,
+      "includes": [
+        "all main Kotlin",
+        "all JUnit Kotlin",
+        "all Android instrumentation Kotlin"
+      ],
+      "compiler": "Kotlin 2.1.20 JVM17 with Compose and serialization plugins",
+      "classpath": "Real Maven Android API35 android-all and AndroidX AAR/classes.jar; no product/Android source stubs",
+      "generated": "Temporary BuildConfig mirrors debug/version values from app/build.gradle.kts",
+      "log": "verification-logs/aac-all-kotlin.log",
+      "warnings": 5,
+      "warning_scope": "Pre-existing deprecated icons/clipboard API"
+    },
+    "junit": {
+      "exit_code": 0,
+      "classes": 14,
+      "executed": 103,
+      "passed": 103,
+      "failed": 0,
+      "log": "verification-logs/aac-junit.log",
+      "network": "Local MockWebServer, no Bilibili live validation"
+    },
+    "structure": {
+      "exit_code": 0,
+      "executed": 75,
+      "passed": 75,
+      "scope": "XML, Kotlin lexical/package checks, file relationships, shell syntax",
+      "log": "verification-logs/aac-structure.log"
+    },
+    "toolchain_download_recovery": {
+      "exit_code": 0,
+      "executed": 6,
+      "passed": 6,
+      "network": "Local simulated transfer faults",
+      "evidence_scope": "Carried forward from the preceding restoration verification; relevant scripts/UI/configuration unchanged in 0.1.1. Not rerun for the AAC-only patch."
+    },
+    "standard_check": {
+      "command": "bash scripts/check.sh",
+      "exit_code": 2,
+      "reason": "Gradle/full Android SDK toolchain unavailable; structure and Python stages passed, Gradle stage did not run",
+      "log": "verification-logs/standard-check.log",
+      "evidence_scope": "Carried forward from the preceding restoration verification; relevant scripts/UI/configuration unchanged in 0.1.1. Not rerun for the AAC-only patch."
+    },
+    "premium_audit": {
+      "exit_code": 0,
+      "findings": 0,
+      "log": "verification-logs/premium-audit.json",
+      "scope": "Contracts/evidence configuration only; auditor does not inspect Kotlin UI",
+      "evidence_scope": "Carried forward from the preceding restoration verification; relevant scripts/UI/configuration unchanged in 0.1.1. Not rerun for the AAC-only patch."
+    },
+    "design_lint": {
+      "exit_code": 0,
+      "errors": 0,
+      "warnings": 7,
+      "warning_scope": "Existing Compose tokens unreferenced in the Markdown component map (orphaned-tokens); runtime Theme.kt uses them",
+      "evidence_scope": "Carried forward from the preceding restoration verification; relevant scripts/UI/configuration unchanged in 0.1.1. Not rerun for the AAC-only patch."
+    }
+  },
+  "not_executed": [
+    "Android Gradle Plugin and KSP processing",
+    "Resource linking and manifest merge",
+    "Android lint",
+    "APK/AAB build",
+    "15 Android instrumentation tests on a device/emulator",
+    "Rebuilt version live Bilibili download/login",
+    "TalkBack, narrow-screen, rotation and visual QA on device"
+  ],
+  "historical_device_result": {
+    "source": "User confirmation in supplied conversation",
+    "parse_desktop": "success",
+    "parse_mobile": "success",
+    "audio_desktop": "success",
+    "audio_mobile": "HTTP403",
+    "raw_final_comparison_logs_available": false,
+    "record": "UA-VALIDATION.md"
+  },
+  "sync": {
+    "mac_target_accessible": false,
+    "remote_git_push": false,
+    "deliverable": "Complete restored mobile-music-dl 0.1.1 source ZIP; no toolchain cache, APK, credentials or signing keys"
+  },
+  "app_version": {
+    "version_name": "0.1.1",
+    "version_code": 2
+  },
+  "aac_patch": {
+    "new_junit_tests": 21,
+    "initial_regression_run": {
+      "executed": 91,
+      "failed": 7,
+      "evidence": "Execution captured in the conversation before parser and shared URL policy fixes; not a live Bilibili response."
+    },
+    "changes": [
+      "AAC codecs from MIME parameters and dedicated codec fields",
+      "Explicit AAC with MP4/generic MIME labels",
+      "MPEG-2 AAC and padded MPEG-4 audio object type handling",
+      "Unknown audio MP4 fallback marked for content inspection, confirmed AAC preferred",
+      "Shared media URL policy, HTTPS 4483 restricted to mcdn.bilivideo.cn and subdomains",
+      "Distinct no-audio, unsupported-format and unusable-address errors",
+      "Allowlisted audio_select diagnostics without raw server strings or signed URLs"
+    ],
+    "independent_review": "Read-only review of parser, request policy, remux/publication and diagnostic flow found no blocking issues.",
+    "boundary": "Explicit AAC codec metadata takes precedence over representation id; actual AAC verification remains mandatory before M4A publication.",
+    "record": "AAC-COMPATIBILITY.md"
+  },
+  "live_probe": {
+    "environment": "Cloud Linux, anonymous, desktop UA",
+    "video": "BV1sVtw6JEeq (from prior conversation; not confirmed as the screenshot video)",
+    "stage": "video information API",
+    "http": 412,
+    "cid_obtained": false,
+    "playurl_requested": false,
+    "media_downloaded": false,
+    "conclusion": "No live AAC/CDN result. The exact on-device failure cause and end-to-end fix remain unverified."
+  }
+}

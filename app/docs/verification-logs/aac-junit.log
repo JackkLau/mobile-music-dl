@@ -1,0 +1,10 @@
+Compiling selected real Kotlin sources/tests against Android API35, no source stubs.
+Running 14 JUnit classes
+JUnit version 4.13.2
+...............................................................................................Oct 28, 2026 11:01:01 PM okhttp3.mockwebserver.MockWebServer$SocketHandler handle
+WARNING: MockWebServer[60631] connection from /127.0.0.1 didn't make a request
+........
+Time: 0.701
+
+OK (103 tests)
+

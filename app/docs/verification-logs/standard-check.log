@@ -1,0 +1,20 @@
+{
+  "structural_checks": 73,
+  "passed": 73,
+  "failures": [],
+  "kotlin_unit_tests_written": 82,
+  "android_tests_written": 15,
+  "limitation": "No Kotlin type checking, dependency resolution, APK build, media playback or Android runtime execution is performed by this script."
+}
+test_failed_transfer_preserves_partial_and_existing_archive (test_toolchain_download.ToolchainDownloadTest.test_failed_transfer_preserves_partial_and_existing_archive) ... ok
+test_metadata_is_replaced_instead_of_resumed (test_toolchain_download.ToolchainDownloadTest.test_metadata_is_replaced_instead_of_resumed) ... ok
+test_resumes_a_partial_from_an_earlier_invocation (test_toolchain_download.ToolchainDownloadTest.test_resumes_a_partial_from_an_earlier_invocation) ... ok
+test_server_without_ranges_restarts_cleanly (test_toolchain_download.ToolchainDownloadTest.test_server_without_ranges_restarts_cleanly) ... ok
+test_slow_transfer_completes_across_timeouts (test_toolchain_download.ToolchainDownloadTest.test_slow_transfer_completes_across_timeouts) ... ok
+test_unsatisfiable_range_restarts_cleanly (test_toolchain_download.ToolchainDownloadTest.test_unsatisfiable_range_restarts_cleanly) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.417s
+
+OK
+BLOCKED: Gradle/JDK/Android SDK required. Run scripts/bootstrap-android.sh first, or use Android Studio.

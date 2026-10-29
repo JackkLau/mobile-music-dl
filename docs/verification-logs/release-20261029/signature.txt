@@ -1,0 +1,17 @@
+Verifies
+Verified using v1 scheme (JAR signing): false
+Verified using v2 scheme (APK Signature Scheme v2): true
+Verified using v3 scheme (APK Signature Scheme v3): false
+Verified using v3.1 scheme (APK Signature Scheme v3.1): false
+Verified using v4 scheme (APK Signature Scheme v4): false
+Verified for SourceStamp: false
+Number of signers: 1
+Signer #1 certificate DN: CN=TingYu Release
+Signer #1 certificate SHA-256 digest: ba4e5c4ba00be09d10421edac7f276f44393f52950623e64096f93c864b81911
+Signer #1 certificate SHA-1 digest: 0e36f21d1c4d66b80197fbb73b941dc0a259ef1b
+Signer #1 certificate MD5 digest: 42cab42c334a14b97b8a4dd3ca97b651
+Signer #1 key algorithm: RSA
+Signer #1 key size (bits): 3072
+Signer #1 public key SHA-256 digest: e3d8c6e7ad07f7c2411c6c8da07d6b3df2c8b6c259fe9a38c7e0abd1d80cd0fc
+Signer #1 public key SHA-1 digest: 9098e76ea43567cc5999713c1e3b6cb3f8859937
+Signer #1 public key MD5 digest: 5f9b25d3415df596f2a0c752e1ee4261

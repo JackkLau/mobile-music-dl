@@ -1,0 +1,20 @@
+{
+  "profile": "product-admin",
+  "platform": "android-compose",
+  "sourceRoots": ["app/src/main/java/app/tingyu/ui"],
+  "locale": "zh-CN",
+  "canonicalMap": "UX-CONTRACT.md",
+  "requiredCapabilities": ["Table Selection", "Select/Listbox", "Form", "Scrollbar", "Toast", "CRUD"],
+  "ownership": {"Select/Listbox": "native"},
+  "requiredCommands": ["unit", "ui", "build", "design"],
+  "commands": {
+    "unit": "gradle :app:testDebugUnitTest",
+    "ui": "gradle :app:connectedDebugAndroidTest",
+    "build": "gradle :app:assembleDebug",
+    "design": "npx -p @google/design.md designmd lint DESIGN.md"
+  },
+  "evidence": {
+    "crudFullFlow": "app/src/androidTest/java/app/tingyu/ui/TingYuUiTest.kt",
+    "failurePaths": "app/src/androidTest/java/app/tingyu/ui/TingYuUiTest.kt"
+  }
+}

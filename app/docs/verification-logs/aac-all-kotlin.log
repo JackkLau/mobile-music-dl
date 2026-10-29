@@ -1,0 +1,16 @@
+Compiling 53 real Kotlin source files plus temporary debug BuildConfig; no product stubs.
+mobile-music-dl/app/src/main/java/app/tingyu/ui/LibraryScreens.kt:179:40: warning: 'val Icons.Rounded.PlaylistPlay: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.PlaylistPlay.
+                    Icon(Icons.Rounded.PlaylistPlay, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+                                       ^^^^^^^^^^^^
+mobile-music-dl/app/src/main/java/app/tingyu/ui/ParseScreen.kt:24:21: warning: 'val LocalClipboardManager: ProvidableCompositionLocal<ClipboardManager>' is deprecated. Use LocalClipboard instead which supports suspend functions.
+    val clipboard = LocalClipboardManager.current
+                    ^^^^^^^^^^^^^^^^^^^^^
+mobile-music-dl/app/src/main/java/app/tingyu/ui/PlayerScreen.kt:77:38: warning: 'val Icons.Rounded.QueueMusic: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.QueueMusic.
+            ActionIcon(Icons.Rounded.QueueMusic, "打开播放队列") { actions.showQueue(true) }
+                                     ^^^^^^^^^^
+mobile-music-dl/app/src/main/java/app/tingyu/ui/PlayerScreen.kt:199:42: warning: 'val Icons.Rounded.PlaylistPlay: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.PlaylistPlay.
+    PlayMode.SEQUENTIAL -> Icons.Rounded.PlaylistPlay
+                                         ^^^^^^^^^^^^
+mobile-music-dl/app/src/main/java/app/tingyu/ui/TingYuApp.kt:94:42: warning: 'val Icons.Rounded.QueueMusic: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Rounded.QueueMusic.
+                ActionIcon(Icons.Rounded.QueueMusic, "打开播放队列") { actions.showQueue(true) }
+                                         ^^^^^^^^^^

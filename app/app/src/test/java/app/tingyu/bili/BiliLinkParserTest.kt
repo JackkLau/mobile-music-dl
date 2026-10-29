@@ -1,0 +1,53 @@
+package app.tingyu.bili
+
+import app.tingyu.data.bili.BiliException
+import app.tingyu.data.bili.BiliLink
+import app.tingyu.data.bili.BiliLinkParser
+import org.junit.Assert.*
+import org.junit.Test
+
+class BiliLinkParserTest {
+    @Test fun extractsVideoAndPartFromShareText() {
+        val result = BiliLinkParser.parse("喜欢这首歌 https://www.bilibili.com/video/BV1xx411c7mD/?p=2&share_source=copy 。")
+        assertEquals(BiliLink.Video(bvid = "BV1xx411c7mD", page = 2), result)
+    }
+
+    @Test fun parsesStandaloneIdentifiersAndFavorites() {
+        assertEquals(BiliLink.Video(bvid = "BV1xx411c7mD"), BiliLinkParser.parse("BV1xx411c7mD"))
+        assertEquals(BiliLink.Video(aid = 170001), BiliLinkParser.parse("av170001"))
+        assertEquals(BiliLink.Favorite(12345), BiliLinkParser.parse("https://space.bilibili.com/123/favlist?fid=12345"))
+        assertEquals(BiliLink.Favorite(12345), BiliLinkParser.parse("https://www.bilibili.com/list/ml12345?oid=678"))
+    }
+
+    @Test fun shortLinksAreRecognizedWithoutNetworkOrCredentials() {
+        val result = BiliLinkParser.parse("分享 https://b23.tv/abcdef") as BiliLink.Short
+        assertEquals("b23.tv", result.url.host)
+    }
+
+    @Test fun desktopMobileAndShareTextHaveSameVideoIdentity() {
+        val expected = BiliLink.Video(bvid = "BV1sVtw6JEeq", page = 2)
+        listOf(
+            "https://www.bilibili.com/video/BV1sVtw6JEeq/?vd_source=ignored&p=2",
+            "https://m.bilibili.com/video/BV1sVtw6JEeq?p=2&vd_source=other",
+            "【歌曲精选】-哔哩哔哩 https://www.bilibili.com/video/BV1sVtw6JEeq?p=2&share_source=copy",
+        ).forEach { assertEquals(expected, BiliLinkParser.parse(it)) }
+    }
+
+    @Test fun clientShareShortLinkRetainsItsTokenForSafeExpansion() {
+        val result = BiliLinkParser.parse("【汪苏泷歌曲精选【分集+歌词+最高音质】-哔哩哔哩】 https://b23.tv/ZhRmMnf") as BiliLink.Short
+        assertEquals("https://b23.tv/ZhRmMnf", result.url.toString())
+    }
+
+    @Test fun untrustedAndMalformedLinksAreRejected() {
+        listOf(
+            "https://bilibili.com.evil.example/video/BV1xx411c7mD",
+            "https://www.bilibili.com@evil.example/video/BV1xx411c7mD",
+            "https://www.bilibili.com:8443/video/BV1xx411c7mD",
+            "https://www.bilibili.com/video/BV1xx411c7mD?p=0",
+            "https://space.bilibili.com/12/favlist?fid=-1",
+            "javascript:alert(1)",
+        ).forEach { input ->
+            try { BiliLinkParser.parse(input); fail("Accepted $input") } catch (_: BiliException) { }
+        }
+    }
+}

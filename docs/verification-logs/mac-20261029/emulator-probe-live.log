@@ -1,0 +1,91 @@
+开始 phone 诊断，本次编号 0d9cb16fe54148fe897ac4929d41cb8d。日志：/Users/tobin/Documents/projects/mobile-music-dl/artifacts/probes/phone-0d9cb16fe54148fe897ac4929d41cb8d.log
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.11.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:kspDebugKotlin UP-TO-DATE
+> Task :app:compileDebugKotlin UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:compileDebugJavaWithJavac UP-TO-DATE
+> Task :app:mergeDebugShaders UP-TO-DATE
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets UP-TO-DATE
+> Task :app:compressDebugAssets UP-TO-DATE
+> Task :app:desugarDebugFileDependencies UP-TO-DATE
+> Task :app:dexBuilderDebug UP-TO-DATE
+> Task :app:mergeDebugGlobalSynthetics UP-TO-DATE
+> Task :app:processDebugJavaRes UP-TO-DATE
+> Task :app:mergeDebugJavaResource UP-TO-DATE
+> Task :app:checkDebugDuplicateClasses UP-TO-DATE
+> Task :app:mergeExtDexDebug UP-TO-DATE
+> Task :app:mergeLibDexDebug UP-TO-DATE
+> Task :app:mergeProjectDexDebug UP-TO-DATE
+> Task :app:mergeDebugJniLibFolders UP-TO-DATE
+> Task :app:mergeDebugNativeLibs UP-TO-DATE
+> Task :app:stripDebugDebugSymbols UP-TO-DATE
+> Task :app:validateSigningDebug UP-TO-DATE
+> Task :app:writeDebugAppMetadata UP-TO-DATE
+> Task :app:writeDebugSigningConfigVersions UP-TO-DATE
+> Task :app:packageDebug UP-TO-DATE
+> Task :app:createDebugApkListingFileRedirect UP-TO-DATE
+> Task :app:assembleDebug UP-TO-DATE
+
+BUILD SUCCESSFUL in 4s
+38 actionable tasks: 38 up-to-date
+Performing Streamed Install
+Success
+run=0d9cb16fe54148fe897ac4929d41cb8d stage=session event=started mode=anonymous
+run=0d9cb16fe54148fe897ac4929d41cb8d request=72adacb1-f1a stage=probe event=parse_started parse_ua=desktop
+run=0d9cb16fe54148fe897ac4929d41cb8d request=72adacb1-f1a stage=api event=response http=200 ua=desktop parse_ua=desktop redirects=0 family=ipv4 proxy=direct host=api.bilibili.com url_id=ca68e0467579c0dc
+run=0d9cb16fe54148fe897ac4929d41cb8d request=72adacb1-f1a stage=api event=view http=200 code=0
+run=0d9cb16fe54148fe897ac4929d41cb8d request=72adacb1-f1a stage=probe event=resolving parse_ua=desktop
+run=0d9cb16fe54148fe897ac4929d41cb8d request=72adacb1-f1a stage=api event=response http=200 ua=desktop parse_ua=desktop redirects=0 family=ipv4 proxy=direct host=api.bilibili.com url_id=ca68e0467579c0dc
+run=0d9cb16fe54148fe897ac4929d41cb8d request=72adacb1-f1a stage=api event=view http=200 code=0
+run=0d9cb16fe54148fe897ac4929d41cb8d request=72adacb1-f1a stage=api event=response http=200 ua=desktop parse_ua=desktop redirects=0 family=ipv4 proxy=direct host=api.bilibili.com url_id=34a874714ed07411
+run=0d9cb16fe54148fe897ac4929d41cb8d request=72adacb1-f1a stage=api event=nav http=200 code=-101
+run=0d9cb16fe54148fe897ac4929d41cb8d request=72adacb1-f1a stage=api event=response http=200 ua=desktop parse_ua=desktop redirects=0 family=ipv4 proxy=direct host=api.bilibili.com url_id=353dffd90bd07a5a
+run=0d9cb16fe54148fe897ac4929d41cb8d request=72adacb1-f1a stage=api event=playurl http=200 code=0
+run=0d9cb16fe54148fe897ac4929d41cb8d request=72adacb1-f1a event=candidate candidate=0 format=aac codec=aac mime=audio_mp4 urls=2 reason=usable stage=audio_select parse_ua=desktop
+run=0d9cb16fe54148fe897ac4929d41cb8d request=72adacb1-f1a event=candidate candidate=1 format=aac codec=aac mime=audio_mp4 urls=3 reason=usable stage=audio_select parse_ua=desktop
+run=0d9cb16fe54148fe897ac4929d41cb8d request=72adacb1-f1a event=candidate candidate=2 format=aac codec=aac mime=audio_mp4 urls=2 reason=usable stage=audio_select parse_ua=desktop
+run=0d9cb16fe54148fe897ac4929d41cb8d request=72adacb1-f1a event=selected format=aac audio_total=3 candidates=3 urls=2 stage=audio_select parse_ua=desktop
+run=0d9cb16fe54148fe897ac4929d41cb8d request=72adacb1-f1a stage=resolve event=audio_ready parse_ua=desktop ua=desktop host=cn-jsnt-ct-01-07.bilivideo.com url_id=1c673e0a221726e8
+run=0d9cb16fe54148fe897ac4929d41cb8d request=72adacb1-f1a stage=probe event=sample_result http=206 parse_ua=desktop ua=desktop bytes=1024 sample=valid_mp4_header range=sample profile=web_media offset=0 redirects=0 attempt=0 family=ipv4 proxy=direct host=cn-jsnt-ct-01-07.bilivideo.com url_id=1c673e0a221726e8
+run=0d9cb16fe54148fe897ac4929d41cb8d request=72adacb1-f1a stage=probe event=sample_result http=403 parse_ua=desktop ua=mobile bytes=0 sample=not_confirmed range=sample profile=web_media offset=0 redirects=0 attempt=0 family=ipv4 proxy=direct host=cn-jsnt-ct-01-07.bilivideo.com url_id=1c673e0a221726e8
+run=0d9cb16fe54148fe897ac4929d41cb8d request=72adacb1-f1a stage=probe event=completed result=failed
+run=0d9cb16fe54148fe897ac4929d41cb8d request=63890b10-1f9 stage=probe event=parse_started parse_ua=mobile
+run=0d9cb16fe54148fe897ac4929d41cb8d request=63890b10-1f9 stage=api event=response http=200 ua=mobile parse_ua=mobile redirects=0 family=ipv4 proxy=direct host=api.bilibili.com url_id=ca68e0467579c0dc
+run=0d9cb16fe54148fe897ac4929d41cb8d request=63890b10-1f9 stage=api event=view http=200 code=0
+run=0d9cb16fe54148fe897ac4929d41cb8d request=63890b10-1f9 stage=probe event=resolving parse_ua=mobile
+run=0d9cb16fe54148fe897ac4929d41cb8d request=63890b10-1f9 stage=api event=response http=200 ua=mobile parse_ua=mobile redirects=0 family=ipv4 proxy=direct host=api.bilibili.com url_id=ca68e0467579c0dc
+run=0d9cb16fe54148fe897ac4929d41cb8d request=63890b10-1f9 stage=api event=view http=200 code=0
+run=0d9cb16fe54148fe897ac4929d41cb8d request=63890b10-1f9 stage=api event=response http=200 ua=mobile parse_ua=mobile redirects=0 family=ipv4 proxy=direct host=api.bilibili.com url_id=34a874714ed07411
+run=0d9cb16fe54148fe897ac4929d41cb8d request=63890b10-1f9 stage=api event=nav http=200 code=-101
+run=0d9cb16fe54148fe897ac4929d41cb8d request=63890b10-1f9 stage=api event=response http=200 ua=mobile parse_ua=mobile redirects=0 family=ipv4 proxy=direct host=api.bilibili.com url_id=b7e08b59dae6c57f
+run=0d9cb16fe54148fe897ac4929d41cb8d request=63890b10-1f9 stage=api event=playurl http=200 code=0
+run=0d9cb16fe54148fe897ac4929d41cb8d request=63890b10-1f9 event=candidate candidate=0 format=aac codec=aac mime=audio_mp4 urls=2 reason=usable stage=audio_select parse_ua=mobile
+run=0d9cb16fe54148fe897ac4929d41cb8d request=63890b10-1f9 event=candidate candidate=1 format=aac codec=aac mime=audio_mp4 urls=3 reason=usable stage=audio_select parse_ua=mobile
+run=0d9cb16fe54148fe897ac4929d41cb8d request=63890b10-1f9 event=candidate candidate=2 format=aac codec=aac mime=audio_mp4 urls=2 reason=usable stage=audio_select parse_ua=mobile
+run=0d9cb16fe54148fe897ac4929d41cb8d request=63890b10-1f9 event=selected format=aac audio_total=3 candidates=3 urls=2 stage=audio_select parse_ua=mobile
+run=0d9cb16fe54148fe897ac4929d41cb8d request=63890b10-1f9 stage=resolve event=audio_ready parse_ua=mobile ua=desktop host=cn-jsnt-ct-01-06.bilivideo.com url_id=3afcfa30b20e67dd
+run=0d9cb16fe54148fe897ac4929d41cb8d request=63890b10-1f9 stage=probe event=sample_result http=206 parse_ua=mobile ua=desktop bytes=1024 sample=valid_mp4_header range=sample profile=web_media offset=0 redirects=0 attempt=0 family=ipv4 proxy=direct host=cn-jsnt-ct-01-06.bilivideo.com url_id=3afcfa30b20e67dd
+run=0d9cb16fe54148fe897ac4929d41cb8d request=63890b10-1f9 stage=probe event=sample_result http=403 parse_ua=mobile ua=mobile bytes=0 sample=not_confirmed range=sample profile=web_media offset=0 redirects=0 attempt=0 family=ipv4 proxy=direct host=cn-jsnt-ct-01-06.bilivideo.com url_id=3afcfa30b20e67dd
+run=0d9cb16fe54148fe897ac4929d41cb8d request=63890b10-1f9 stage=probe event=completed result=failed
+run=0d9cb16fe54148fe897ac4929d41cb8d stage=session event=finished exit=1

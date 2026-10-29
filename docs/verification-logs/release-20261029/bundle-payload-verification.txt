@@ -1,0 +1,1 @@
+PASS: 227 AAB payload entries verified with the expected release certificate.

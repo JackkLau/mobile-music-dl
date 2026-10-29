@@ -1,0 +1,38 @@
+run=20261028000000000000000000000001 stage=session event=started mode=anonymous
+run=20261028000000000000000000000001 request=1ede34ba-2a0 stage=probe event=parse_started parse_ua=desktop
+run=20261028000000000000000000000001 request=1ede34ba-2a0 stage=api event=response http=200 ua=desktop parse_ua=desktop redirects=0 family=ipv4 proxy=direct host=api.bilibili.com url_id=ca68e0467579c0dc
+run=20261028000000000000000000000001 request=1ede34ba-2a0 stage=api event=view http=200 code=0
+run=20261028000000000000000000000001 request=1ede34ba-2a0 stage=probe event=resolving parse_ua=desktop
+run=20261028000000000000000000000001 request=1ede34ba-2a0 stage=api event=response http=200 ua=desktop parse_ua=desktop redirects=0 family=ipv4 proxy=direct host=api.bilibili.com url_id=ca68e0467579c0dc
+run=20261028000000000000000000000001 request=1ede34ba-2a0 stage=api event=view http=200 code=0
+run=20261028000000000000000000000001 request=1ede34ba-2a0 stage=api event=response http=200 ua=desktop parse_ua=desktop redirects=0 family=ipv4 proxy=direct host=api.bilibili.com url_id=34a874714ed07411
+run=20261028000000000000000000000001 request=1ede34ba-2a0 stage=api event=nav http=200 code=-101
+run=20261028000000000000000000000001 request=1ede34ba-2a0 stage=api event=response http=200 ua=desktop parse_ua=desktop redirects=0 family=ipv4 proxy=direct host=api.bilibili.com url_id=bbfee6c236a135d7
+run=20261028000000000000000000000001 request=1ede34ba-2a0 stage=api event=playurl http=200 code=0
+run=20261028000000000000000000000001 request=1ede34ba-2a0 event=candidate candidate=0 format=aac codec=aac mime=audio_mp4 urls=2 reason=usable stage=audio_select parse_ua=desktop
+run=20261028000000000000000000000001 request=1ede34ba-2a0 event=candidate candidate=1 format=aac codec=aac mime=audio_mp4 urls=3 reason=usable stage=audio_select parse_ua=desktop
+run=20261028000000000000000000000001 request=1ede34ba-2a0 event=candidate candidate=2 format=aac codec=aac mime=audio_mp4 urls=2 reason=usable stage=audio_select parse_ua=desktop
+run=20261028000000000000000000000001 request=1ede34ba-2a0 event=selected format=aac audio_total=3 candidates=3 urls=2 stage=audio_select parse_ua=desktop
+run=20261028000000000000000000000001 request=1ede34ba-2a0 stage=resolve event=audio_ready parse_ua=desktop ua=desktop host=upos-sz-mirrorhw.bilivideo.com url_id=e4ab540ef3117b70
+run=20261028000000000000000000000001 request=1ede34ba-2a0 stage=probe event=sample_result http=206 parse_ua=desktop ua=desktop bytes=1024 sample=valid_mp4_header range=sample profile=web_media offset=0 redirects=0 attempt=0 family=ipv4 proxy=direct host=upos-sz-mirrorhw.bilivideo.com url_id=e4ab540ef3117b70
+run=20261028000000000000000000000001 request=1ede34ba-2a0 stage=probe event=sample_result http=403 parse_ua=desktop ua=mobile bytes=0 sample=not_confirmed range=sample profile=web_media offset=0 redirects=0 attempt=0 family=ipv4 proxy=direct host=upos-sz-mirrorhw.bilivideo.com url_id=e4ab540ef3117b70
+run=20261028000000000000000000000001 request=1ede34ba-2a0 stage=probe event=completed result=failed
+run=20261028000000000000000000000001 request=a381416d-535 stage=probe event=parse_started parse_ua=mobile
+run=20261028000000000000000000000001 request=a381416d-535 stage=api event=response http=200 ua=mobile parse_ua=mobile redirects=0 family=ipv4 proxy=direct host=api.bilibili.com url_id=ca68e0467579c0dc
+run=20261028000000000000000000000001 request=a381416d-535 stage=api event=view http=200 code=0
+run=20261028000000000000000000000001 request=a381416d-535 stage=probe event=resolving parse_ua=mobile
+run=20261028000000000000000000000001 request=a381416d-535 stage=api event=response http=200 ua=mobile parse_ua=mobile redirects=0 family=ipv4 proxy=direct host=api.bilibili.com url_id=ca68e0467579c0dc
+run=20261028000000000000000000000001 request=a381416d-535 stage=api event=view http=200 code=0
+run=20261028000000000000000000000001 request=a381416d-535 stage=api event=response http=200 ua=mobile parse_ua=mobile redirects=0 family=ipv4 proxy=direct host=api.bilibili.com url_id=34a874714ed07411
+run=20261028000000000000000000000001 request=a381416d-535 stage=api event=nav http=200 code=-101
+run=20261028000000000000000000000001 request=a381416d-535 stage=api event=response http=200 ua=mobile parse_ua=mobile redirects=0 family=ipv4 proxy=direct host=api.bilibili.com url_id=bbfee6c236a135d7
+run=20261028000000000000000000000001 request=a381416d-535 stage=api event=playurl http=200 code=0
+run=20261028000000000000000000000001 request=a381416d-535 event=candidate candidate=0 format=aac codec=aac mime=audio_mp4 urls=2 reason=usable stage=audio_select parse_ua=mobile
+run=20261028000000000000000000000001 request=a381416d-535 event=candidate candidate=1 format=aac codec=aac mime=audio_mp4 urls=3 reason=usable stage=audio_select parse_ua=mobile
+run=20261028000000000000000000000001 request=a381416d-535 event=candidate candidate=2 format=aac codec=aac mime=audio_mp4 urls=2 reason=usable stage=audio_select parse_ua=mobile
+run=20261028000000000000000000000001 request=a381416d-535 event=selected format=aac audio_total=3 candidates=3 urls=2 stage=audio_select parse_ua=mobile
+run=20261028000000000000000000000001 request=a381416d-535 stage=resolve event=audio_ready parse_ua=mobile ua=desktop host=upos-sz-mirrorhwo1.bilivideo.com url_id=5be6037f9ab6222c
+run=20261028000000000000000000000001 request=a381416d-535 stage=probe event=sample_result http=206 parse_ua=mobile ua=desktop bytes=1024 sample=valid_mp4_header range=sample profile=web_media offset=0 redirects=0 attempt=0 family=ipv4 proxy=direct host=upos-sz-mirrorhwo1.bilivideo.com url_id=5be6037f9ab6222c
+run=20261028000000000000000000000001 request=a381416d-535 stage=probe event=sample_result http=403 parse_ua=mobile ua=mobile bytes=0 sample=not_confirmed range=sample profile=web_media offset=0 redirects=0 attempt=0 family=ipv4 proxy=direct host=upos-sz-mirrorhwo1.bilivideo.com url_id=5be6037f9ab6222c
+run=20261028000000000000000000000001 request=a381416d-535 stage=probe event=completed result=failed
+run=20261028000000000000000000000001 stage=session event=finished exit=1
