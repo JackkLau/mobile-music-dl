@@ -465,7 +465,9 @@
       "tests": 242,
       "failures": 0,
       "errors": 0,
-      "skipped": 0
+      "skipped": 0,
+      "releaseTests": 242,
+      "debugReleaseSameSuite": true
     },
     "scriptTests": 41,
     "pcSharedJVM": {
@@ -500,8 +502,21 @@
         "syncedLines": 50
       }
     },
-    "device": "pending dedicated emulator",
+    "device": {
+      "status": "blocked",
+      "instrumentationApk": "compiled",
+      "writtenTests": 51,
+      "runTests": 0,
+      "cause": "Dedicated new AVD HVF/mprotect startup failure; final exit 139",
+      "existingEmulatorModified": false,
+      "phoneConnected": false
+    },
     "cloudRelease": "pending",
-    "report": "docs/WEILE-0.1.5-VERIFICATION.md"
+    "report": "docs/WEILE-0.1.5-VERIFICATION.md",
+    "localRelease": {
+      "build": "passed",
+      "validation": "original certificate, APK/AAB identity, non-debug boundary, alignment, complete AAB payload signature verified",
+      "appLabel": "微乐"
+    }
   }
 }
