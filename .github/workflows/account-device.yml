@@ -40,13 +40,22 @@ jobs:
           TINGYU_TEST_CLASSES: app.tingyu.ui.LoginScreenTest,app.tingyu.update.UpdatePackageIntegrationTest,app.tingyu.ui.TingYuUiTest#accountProvidesUpdatesWithoutLoginOrDeveloperMode
         run: |
           set -euo pipefail
-          sdkmanager 'emulator' 'system-images;android-30;google_apis;x86_64'
+          sudo apt-get install -y libpulse0 libxkbcommon-x11-0 libxcb-cursor0
+          # Leave room for the guest image and its writable data on this disposable host.
+          sudo rm -rf /usr/local/lib/android/sdk/ndk /usr/share/dotnet
+          sdkmanager 'emulator' 'system-images;android-30;google_apis;x86_64' > "$RUNNER_TEMP/sdk-install.log"
           echo no | avdmanager create avd -n account-ui -k 'system-images;android-30;google_apis;x86_64' -d pixel_4
           sudo setfacl -m "u:$(id -un):rw" /dev/kvm
           adb start-server
-          "$ANDROID_HOME/emulator/emulator" -avd account-ui -port 5554 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > "$RUNNER_TEMP/emulator.log" 2>&1 &
-          trap 'adb -s emulator-5554 emu kill || true' EXIT
-          timeout 240 adb -s "$TINGYU_TEST_DEVICE" wait-for-device
+          "$ANDROID_HOME/emulator/emulator" -avd account-ui -port 5554 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader -feature -Vulkan -cores 2 -memory 2048 -partition-size 2048 > "$RUNNER_TEMP/emulator.log" 2>&1 &
+          emulator_pid=$!
+          trap 'status=$?; if [[ "$status" != 0 ]]; then tail -80 "$RUNNER_TEMP/emulator.log"; fi; adb -s emulator-5554 emu kill || true' EXIT
+          for i in {1..120}; do
+            kill -0 "$emulator_pid"
+            if [[ "$(adb -s "$TINGYU_TEST_DEVICE" get-state 2>/dev/null || true)" == device ]]; then break; fi
+            sleep 2
+          done
+          [[ "$(adb -s "$TINGYU_TEST_DEVICE" get-state)" == device ]]
           timeout 240 bash -c 'until [[ "$(adb shell getprop sys.boot_completed | tr -d "\r")" == 1 ]]; do sleep 2; done'
           adb shell input keyevent 82
           TINGYU_TEST_USER=$(adb shell pm create-user WeileTest | sed -nE 's/.* id ([0-9]+).*/\1/p')
