@@ -120,13 +120,48 @@ class BilibiliRepositoryTest {
     }
 
     @Test fun externalRedirectIsNeverRequested() = runTest {
-        var requests = 0
-        val repository = BilibiliRepository({ "SESSDATA=private" }, BiliTransport { _, _ ->
-            requests++
-            BiliResponse(302, "", "https://evil.example/video/BV1xx411c7mD")
+        listOf("https://evil.example/video/BV1xx411c7mD", "http://bili2233.cn/SrmWssU",
+            "https://bili2233.cn.evil.example/SrmWssU", "https://user:password@bili2233.cn/SrmWssU",
+            "https://bili2233.cn:8443/SrmWssU").forEach { target ->
+            listOf("https://b23.tv/test", "https://bili2233.cn/SrmWssU").forEach { input ->
+                var requests = 0
+                val repository = BilibiliRepository({ "SESSDATA=private" }, BiliTransport { _, _ ->
+                    requests++
+                    BiliResponse(302, "", target)
+                })
+                try { repository.parse(input); fail("Accepted unsafe redirect") }
+                catch (error: BiliException) {
+                    assertEquals("short_link", error.stage)
+                    assertEquals(302, error.httpStatus)
+                }
+                assertEquals(1, requests)
+            }
+        }
+    }
+
+    @Test fun bili2233CanExpandThroughB23WithoutSendingCookiesToEitherHost() = runTest {
+        val hosts = mutableListOf<String>()
+        val repository = BilibiliRepository({ "SESSDATA=private" }, BiliTransport { url, headers ->
+            hosts += url.host
+            when (url.host) {
+                "bili2233.cn" -> {
+                    assertFalse(headers.containsKey("Cookie"))
+                    BiliResponse(302, "", "https://b23.tv/second")
+                }
+                "b23.tv" -> {
+                    assertFalse(headers.containsKey("Cookie"))
+                    BiliResponse(302, "", "https://m.bilibili.com/video/BV1xx411c7mD?p=1&vd_source=ignored")
+                }
+                else -> {
+                    assertEquals("api.bilibili.com", url.host)
+                    assertEquals("SESSDATA=private", headers["Cookie"])
+                    assertEquals("BV1xx411c7mD", url.queryParameter("bvid"))
+                    BiliResponse(200, video)
+                }
+            }
         })
-        try { repository.parse("https://b23.tv/test"); fail("Accepted external redirect") } catch (_: BiliException) { }
-        assertEquals(1, requests)
+        assertEquals(42L, repository.parse("分享 https\\://bili2233.cn/SrmWssU\u00a0").tracks.single().cid)
+        assertEquals(listOf("bili2233.cn", "b23.tv", "api.bilibili.com"), hosts)
     }
 
     @Test fun changingModeDiscardsInFlightAccountResults() = runTest {
@@ -203,17 +238,18 @@ class BilibiliRepositoryTest {
         val referers = mutableListOf<String?>()
         val repository = BilibiliRepository({ "" }, BiliTransport { url, _ ->
             when {
-                url.host == "b23.tv" -> BiliResponse(302, "", "https://m.bilibili.com/video/BV1sVtw6JEeq?p=2&vd_source=ignored")
+                url.host in setOf("b23.tv", "bili2233.cn") -> BiliResponse(302, "", "https://m.bilibili.com/video/BV1sVtw6JEeq?p=2&vd_source=ignored")
                 url.encodedPath.endsWith("view") -> BiliResponse(200, partVideo)
                 url.encodedPath.endsWith("nav") -> BiliResponse(200, nav)
                 else -> { requests += url.toString(); BiliResponse(200, audio) }
             }
         }, nowSeconds = { 1000L })
         listOf("https://www.bilibili.com/video/BV1sVtw6JEeq/?p=2&vd_source=first",
-            "https://m.bilibili.com/video/BV1sVtw6JEeq?p=2&vd_source=second", "[手机客户端分享](https://b23.tv/ZhRmMnf)").forEach {
+            "https://m.bilibili.com/video/BV1sVtw6JEeq?p=2&vd_source=second", "[手机客户端分享](https://b23.tv/ZhRmMnf)",
+            "分享 https\\://bili2233.cn/SrmWssU\u00a0").forEach {
             referers += repository.resolveAudio(repository.parse(it).tracks.single()).headers["Referer"]
         }
-        assertEquals(3, requests.size)
+        assertEquals(4, requests.size)
         assertEquals(1, requests.distinct().size)
         assertEquals(listOf("https://www.bilibili.com/video/BV1sVtw6JEeq?p=2"), referers.distinct())
         assertTrue(requests.all { "vd_source" !in it })

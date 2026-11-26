@@ -14,19 +14,23 @@ sealed interface BiliLink {
 object BiliLinkParser {
     private val bv = Regex("BV[0-9A-Za-z]{10}")
     private val av = Regex("av([1-9][0-9]*)", RegexOption.IGNORE_CASE)
-    private val urlStart = Regex("https?://", RegexOption.IGNORE_CASE)
+    private val urlStart = Regex("""https?\\?://""", RegexOption.IGNORE_CASE)
     // Copy/share controls sometimes insert these without a visible separator. Encoded
     // values such as %E2%80%8B are deliberately untouched.
     private val invisible = Regex("[\u200B\u200C\u200D\u2060\uFEFF]")
     private val videoHosts = setOf("bilibili.com", "www.bilibili.com", "m.bilibili.com", "space.bilibili.com")
-    private val shortHosts = setOf("b23.tv", "www.b23.tv")
+    private val shortHosts = setOf("b23.tv", "www.b23.tv", "bili2233.cn")
 
     fun parse(input: String): BiliLink {
         val text = input.replace(invisible, "").trim()
         if (text.isEmpty()) throw BiliException("请粘贴 B 站视频或收藏夹链接")
         if (bv.matches(text)) return BiliLink.Video(bvid = text)
         av.matchEntire(text)?.let { return BiliLink.Video(aid = positive(it.groupValues[1])) }
-        val candidates = urlStart.findAll(text).map { extractUrl(text, it.range.first) }.toList()
+        val candidates = urlStart.findAll(text).map { match ->
+            // Some copied Markdown escapes the scheme's colon (https\://).
+            // Normalize only the matched scheme, never backslashes in URL values.
+            extractUrl(text, match.range.first).replaceRange(0, match.value.length, match.value.replace("\\", ""))
+        }.toList()
         // A share description may contain a preceding unrelated URL. Select a known
         // Bilibili host, then apply the normal credential and port validation below.
         val raw = candidates.firstOrNull { it.toHttpUrlOrNull()?.host in videoHosts + shortHosts }
@@ -37,7 +41,7 @@ object BiliLinkParser {
         if (original.port != if (original.scheme == "https") 443 else 80) throw BiliException("不支持此链接端口")
         val url = original.newBuilder().scheme("https").port(443).build()
         if (url.host in shortHosts) return BiliLink.Short(url)
-        if (url.host !in videoHosts) throw BiliException("请使用 bilibili.com 或 b23.tv 的分享链接")
+        if (url.host !in videoHosts) throw BiliException("请使用 bilibili.com、b23.tv 或 bili2233.cn 的分享链接")
 
         val parts = url.pathSegments.filter(String::isNotEmpty)
         if (parts.firstOrNull() == "video" && parts.size >= 2) {

@@ -38,6 +38,38 @@ class BiliLinkParserTest {
         assertEquals("https://b23.tv/ZhRmMnf", result.url.toString())
     }
 
+    @Test fun bili2233SharesPreserveTheShortLinkToken() {
+        listOf(
+            "https://bili2233.cn/SrmWssU",
+            "【黑胶试听合輯】周杰伦_葉惠美 https\\://bili2233.cn/SrmWssU\u00a0",
+            "[黑胶试听合輯](https\\://bili2233.cn/SrmWssU)",
+            "来源 https://example.com/ 分享：https://bili2233.cn/SrmWssU\u00a0复制链接",
+        ).forEach { input ->
+            val result = BiliLinkParser.parse(input) as BiliLink.Short
+            assertEquals(input, "https://bili2233.cn/SrmWssU", result.url.toString())
+        }
+    }
+
+    @Test fun escapedSchemeIsNormalizedWithoutChangingQueryValues() {
+        assertEquals(BiliLink.Video(bvid = "BV1sp4y1B7bH", page = 2), BiliLinkParser.parse(
+            "[视频](https\\://m.bilibili.com/video/BV1sp4y1B7bH?vd_source=ignored\\&p=2)"))
+        val query = "?label=(live)&literal=one\\:two&encoded=%5C%3A%26%20&last=done!"
+        assertEquals("https://bili2233.cn/SrmWssU$query", (BiliLinkParser.parse(
+            "[分享](https\\://bili2233.cn/SrmWssU$query)") as BiliLink.Short).url.toString())
+    }
+
+    @Test fun bili2233RequiresExactHostAndSafeAuthority() {
+        listOf(
+            "bili2233.cn.evil.example", "evilbili2233.cn", "other.bili2233.cn",
+            "bili2233.cn@evil.example", "user:password@bili2233.cn", "bili2233.cn:8443",
+        ).forEach { authority ->
+            listOf("https://", "https\\://").forEach { scheme ->
+                try { BiliLinkParser.parse("${scheme}${authority}/SrmWssU"); fail("Accepted $authority") }
+                catch (_: BiliException) { }
+            }
+        }
+    }
+
     @Test fun untrustedAndMalformedLinksAreRejected() {
         listOf(
             "https://bilibili.com.evil.example/video/BV1xx411c7mD",

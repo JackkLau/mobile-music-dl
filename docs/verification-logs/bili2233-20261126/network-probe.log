@@ -1,0 +1,7 @@
+run=22330000000000000000000000000001 stage=session event=started mode=anonymous
+run=22330000000000000000000000000001 request=fad3a742-f06 stage=probe event=parse_started parse_ua=desktop
+run=22330000000000000000000000000001 request=fad3a742-f06 stage=short_link event=response http=302 ua=desktop parse_ua=desktop redirects=0 family=ipv4 proxy=http host=bili2233.cn url_id=0ff75f7332a34c2d
+run=22330000000000000000000000000001 request=fad3a742-f06 stage=api event=response http=412 ua=desktop parse_ua=desktop redirects=0 family=ipv4 proxy=http host=api.bilibili.com url_id=58ab1537ef7309bb
+run=22330000000000000000000000000001 request=fad3a742-f06 stage=api event=failed failure=io http=412 code=412 parse_ua=desktop
+run=22330000000000000000000000000001 request=fad3a742-f06 stage=probe event=stopped reason=authorization_or_limit parse_ua=desktop
+run=22330000000000000000000000000001 stage=session event=finished exit=1

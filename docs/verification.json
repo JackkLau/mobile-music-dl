@@ -556,5 +556,45 @@
         "warnings": 26
       }
     }
+  },
+  "bili2233_0_1_6": {
+    "date": "2026-11-26",
+    "versionName": "0.1.6",
+    "versionCode": 7,
+    "focusedRegression": {
+      "tests": 39,
+      "failuresBeforeFix": 5,
+      "failuresAfterFix": 0
+    },
+    "localCheck": {
+      "command": "bash scripts/check.sh",
+      "exitCode": 0,
+      "appJVM": 246,
+      "pcSharedJVM": 132,
+      "countsOverlap": true,
+      "scriptTests": 41,
+      "structuralChecks": 118,
+      "lint": {
+        "Warning": 25
+      },
+      "androidTestCount": 51,
+      "androidTestsExecuted": false,
+      "debugApkBuilt": true,
+      "pcToolBuilt": true
+    },
+    "liveShortLink": {
+      "input": "https://bili2233.cn/SrmWssU",
+      "escapedSchemeAndNbspAccepted": true,
+      "http": 302,
+      "targetBvid": "BV1sp4y1B7bH",
+      "targetPage": 1,
+      "videoApiHttp": 412,
+      "probeExitCode": 1,
+      "stoppedOnRateLimit": true,
+      "cdnRequested": false,
+      "completeDownloadVerified": false,
+      "physicalDeviceVerified": false
+    },
+    "report": "docs/BILI2233-VERIFICATION.md"
   }
 }

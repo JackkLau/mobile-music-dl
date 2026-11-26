@@ -43,6 +43,7 @@ bash scripts/probe-bili-download.sh phone
 # 可指定三类原始问题链接，分享文本请整体加引号
 bash scripts/probe-bili-download.sh pc 'https://m.bilibili.com/video/BV1sVtw6JEeq?vd_source=1b2cad1e91ade28f394b35922f927023'
 bash scripts/probe-bili-download.sh phone 'https://b23.tv/ZhRmMnf'
+bash scripts/probe-bili-download.sh pc '【黑胶试听合輯】周杰伦_葉惠美 https\://bili2233.cn/SrmWssU'
 ANDROID_SERIAL=emulator-5554 bash scripts/probe-bili-download.sh phone
 ```
 
