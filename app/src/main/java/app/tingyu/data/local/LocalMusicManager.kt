@@ -55,7 +55,7 @@ class LocalMusicManager internal constructor(
 
     private val resolver get() = context.contentResolver
 
-    suspend fun scan(): ScanResult = withContext(Dispatchers.IO) {
+    suspend fun scan(selectedTree: Uri? = null): ScanResult = withContext(Dispatchers.IO) {
         var added = 0
         var existing = 0
         var skipped = 0
@@ -65,11 +65,11 @@ class LocalMusicManager internal constructor(
         val projection = arrayOf(MediaStore.Audio.Media._ID, MediaStore.Audio.Media.VOLUME_NAME,
             MediaStore.Audio.Media.DISPLAY_NAME, MediaStore.Audio.Media.TITLE, MediaStore.Audio.Media.ARTIST,
             MediaStore.Audio.Media.DATE_ADDED)
-        val selection = "${MediaStore.Audio.Media.RELATIVE_PATH} = ? AND ${MediaStore.Audio.Media.IS_PENDING} = 0" +
+        val selection = "${MediaStore.Audio.Media.RELATIVE_PATH} IN (?, ?) AND ${MediaStore.Audio.Media.IS_PENDING} = 0" +
             " AND ${MediaStore.Audio.Media.SIZE} > 0 AND ${MediaStore.Audio.Media.MIME_TYPE} LIKE 'audio/%'" +
             if (Build.VERSION.SDK_INT >= 30) " AND ${MediaStore.Audio.Media.IS_TRASHED} = 0" else ""
         try {
-            val cursor = resolver.query(collection, projection, selection, arrayOf(MUSIC_DIRECTORY), null)
+            val cursor = resolver.query(collection, projection, selection, arrayOf(MUSIC_DIRECTORY, LEGACY_MUSIC_DIRECTORY), null)
                 ?: throw IOException("音乐目录暂时不可用")
             cursor.use {
                 while (it.moveToNext()) {
@@ -91,6 +91,29 @@ class LocalMusicManager internal constructor(
         } catch (cancelled: CancellationException) { throw cancelled }
         catch (_: SecurityException) { failed++; permissionRequired = true }
         catch (_: Exception) { failed++ }
+        if (selectedTree != null) {
+            try {
+                val children = DocumentsContract.buildChildDocumentsUriUsingTree(selectedTree, DocumentsContract.getTreeDocumentId(selectedTree))
+                val columns = arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID, OpenableColumns.DISPLAY_NAME,
+                    DocumentsContract.Document.COLUMN_MIME_TYPE)
+                val cursor = resolver.query(children, columns, null, null, null) ?: throw IOException("无法读取所选文件夹")
+                cursor.use {
+                    while (it.moveToNext()) {
+                        currentCoroutineContext().ensureActive()
+                        if (!it.getString(2).orEmpty().startsWith("audio/")) continue
+                        val uri = DocumentsContract.buildDocumentUriUsingTree(selectedTree, it.getString(0))
+                        try {
+                            val metadata = inspectAudio(uri)
+                            val track = LocalMusicRules.track(it.getString(1).orEmpty(), uri.toString(), metadata.title, metadata.artist, metadata.durationMs)
+                            if (library.addDiscovered(LocalTrack(track, uri.toString(), identityUri = mediaIdentity(uri)))) added++ else existing++
+                        } catch (e: CancellationException) { throw e }
+                        catch (_: InvalidAudio) { skipped++ }
+                        catch (_: Exception) { failed++ }
+                    }
+                }
+            } catch (e: CancellationException) { throw e }
+            catch (_: Exception) { failed++ }
+        }
         ScanResult(added, existing, skipped, failed, permissionRequired)
     }
 
@@ -172,7 +195,7 @@ class LocalMusicManager internal constructor(
     private class InvalidAudio : IOException()
 
     /** Preserve the granted document URI for playback; use its MediaStore identity only for deduplication. */
-    private fun mediaIdentity(uri: Uri): String? = try {
+    internal fun mediaIdentity(uri: Uri): String? = try {
         val media = if (uri.authority == MediaStore.AUTHORITY) uri else MediaStore.getMediaUri(context, uri)
         if (media?.authority != MediaStore.AUTHORITY) null else {
             // ExternalStorageProvider can return MediaStore.Files rather than an
@@ -218,5 +241,8 @@ class LocalMusicManager internal constructor(
         if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE,
     ) == PackageManager.PERMISSION_GRANTED
 
-    companion object { const val MUSIC_DIRECTORY = "Music/听屿/" }
+    companion object {
+        const val MUSIC_DIRECTORY = "Music/微乐/"
+        internal const val LEGACY_MUSIC_DIRECTORY = "Music/听屿/"
+    }
 }

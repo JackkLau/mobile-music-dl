@@ -29,6 +29,9 @@ data class AppUiState(
     val libraryNeedsPermission: Boolean = false,
     val deletingLocalId: String? = null,
     val localDeleteError: String? = null,
+    val downloadFolder: app.tingyu.download.DownloadFolder = app.tingyu.download.DownloadFolder(),
+    val folderBusy: Boolean = false,
+    val folderError: String? = null,
     val downloads: List<DownloadTask> = emptyList(),
     val playback: PlaybackState = PlaybackState(),
     val tab: Int = 0,
@@ -67,6 +70,8 @@ data class AppUiState(
 }
 
 interface AppActions {
+    fun selectDownloadFolder() {}
+    fun resetDownloadFolder() {}
     fun startMusicLogin(challenge: MusicLoginChallenge, method: MusicLoginMethod) {}
     fun dismissMusicLogin(id: String) {}
     fun loginForDownload(id: String) {}

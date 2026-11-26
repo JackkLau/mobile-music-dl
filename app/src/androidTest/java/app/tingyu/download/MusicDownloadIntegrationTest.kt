@@ -83,6 +83,10 @@ class MusicDownloadIntegrationTest {
                 assertEquals(2, reparses)
                 uri = Uri.parse(task.uri!!)
                 assertEquals("audio/mpeg",app.contentResolver.getType(uri))
+                val pathColumn = android.provider.MediaStore.Audio.Media.RELATIVE_PATH
+                assertEquals("Music/微乐/", app.contentResolver.query(uri, arrayOf(pathColumn), null, null, null)?.use {
+                    if (it.moveToFirst()) it.getString(0) else null
+                })
                 val saved = app.contentResolver.openInputStream(uri)!!.use { it.readBytes() }
                 assertArrayEquals(audio,saved)
                 coordinator.remove(song.id)

@@ -46,6 +46,11 @@ class MainActivity : ComponentActivity() {
         // Even a denied request can still discover this installation's own downloads.
         model.scanLocalMusic()
     }
+    private val folderPicker = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) result.data?.let { data ->
+            data.data?.let { tree -> model.setDownloadFolder(tree, data.flags) }
+        }
+    }
     private val localFiles = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             result.data?.let { data ->
@@ -114,6 +119,17 @@ class MainActivity : ComponentActivity() {
                 val permission = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE
                 if (checkSelfPermission(permission) == android.content.pm.PackageManager.PERMISSION_GRANTED) model.scanLocalMusic()
                 else audioPermission.launch(permission)
+            }
+            override fun selectDownloadFolder() {
+                val previous = model.state.value.downloadFolder.tree?.let(android.net.Uri::parse)
+                val initial = previous ?: android.provider.DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", "primary:Music")
+                val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+                    putExtra(android.provider.DocumentsContract.EXTRA_INITIAL_URI, initial)
+                    putExtra(Intent.EXTRA_LOCAL_ONLY, true)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
+                        Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION or Intent.FLAG_GRANT_PREFIX_URI_PERMISSION)
+                }
+                try { folderPicker.launch(intent) } catch (_: android.content.ActivityNotFoundException) { model.folderPickerUnavailable() }
             }
             override fun selectLocalFiles() {
                 val picker = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {

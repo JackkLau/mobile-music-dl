@@ -29,7 +29,7 @@ internal fun ParseScreen(state: AppUiState, actions: AppActions) {
     val savedIds = remember(state.library) { state.library.map { it.track.id }.toSet() }
     LazyColumn(Modifier.fillMaxSize().imePadding().testTag("parse_list"), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item {
-            PageTitle("听屿", "把喜欢的声音，留在身边。") {
+            PageTitle("微乐", "把喜欢的声音，留在身边。") {
                 AssistChip(onClick = { actions.tab(3) }, label = { Text(if (state.session.isLoggedIn) "已登录" else "匿名模式") },
                     leadingIcon = { Icon(if (state.session.isLoggedIn) Icons.Rounded.VerifiedUser else Icons.Rounded.PersonOutline,
                         contentDescription = null, modifier = Modifier.size(16.dp)) })

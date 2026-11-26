@@ -77,6 +77,7 @@ class AppViewModel(application: Application, private val savedStateHandle: Saved
     }
 
     init {
+        viewModelScope.launch { container.downloadFolders.current.collect { folder -> mutable.update { it.copy(downloadFolder = folder) } } }
         viewModelScope.launch {
             container.debugSettings.state.collect { settings ->
                 mutable.update { it.copy(debugSettings = settings,
@@ -658,6 +659,20 @@ class AppViewModel(application: Application, private val savedStateHandle: Saved
         mutable.update { it.copy(probeRunning = false,
             probeLines = if (it.probeRunning) (it.probeLines + "对照已取消").takeLast(40) else it.probeLines) }
     }
+    fun setDownloadFolder(tree: Uri?, flags: Int = 0) {
+        if (mutable.value.folderBusy) return
+        mutable.update { it.copy(folderBusy = true, folderError = null) }
+        viewModelScope.launch {
+            try { container.downloadFolders.select(tree, flags) }
+            catch (e: CancellationException) { throw e }
+            catch (e: Exception) { mutable.update { it.copy(folderError = userMessage(e, "无法使用该文件夹，请重新选择并允许访问")) } }
+            finally { mutable.update { it.copy(folderBusy = false) } }
+        }
+    }
+
+    fun folderPickerUnavailable() { mutable.update { it.copy(folderError = "无法打开系统文件夹选择器，请检查系统文件管理器") } }
+    override fun resetDownloadFolder() = setDownloadFolder(null)
+
     override fun scanLocalMusic() = refreshLocalLibrary(automatic = false)
 
     // MainActivity owns the system document picker and passes only its granted URI flags.
@@ -668,7 +683,9 @@ class AppViewModel(application: Application, private val savedStateHandle: Saved
             localOperations.serialized {
                 mutable.update { it.copy(libraryWorking = true, libraryStatus = "正在查找已下载音乐…", libraryError = null) }
                 try {
-                    val result = withContext(Dispatchers.IO) { container.localMusic.scan() }
+                    val result = container.downloads.withPublishedFiles {
+                        container.localMusic.scan(if (automatic) null else container.downloadFolders.current.value.tree?.let(Uri::parse))
+                    }
                     mutable.update { it.copy(libraryNeedsPermission = result.permissionRequired,
                         libraryStatus = if (automatic && result.added == 0) null else "扫描完成：新增 ${result.added} 首，已有 ${result.existing} 首",
                         libraryError = if (result.failed > 0) "${result.failed} 个文件暂时无法读取，已有音乐记录已保留。可重试扫描或手动导入。" else null) }

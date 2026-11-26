@@ -56,7 +56,7 @@ class LocalMusicIntegrationTest {
     }
 
     @Test fun completedMediaScanIsRepeatableAndPreservesExistingMetadata() = runBlocking {
-        val restored = audio("restore")
+        val restored = audio("restore", directory = LocalMusicManager.LEGACY_MUSIC_DIRECTORY)
         val knownUri = audio("known")
         val pending = audio("pending", pending = true)
         val empty = audio("empty", bytes = byteArrayOf())

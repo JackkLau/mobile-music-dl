@@ -9,6 +9,7 @@ import android.media.MediaFormat
 import android.media.MediaMuxer
 import android.net.Uri
 import android.os.StatFs
+import android.provider.DocumentsContract
 import android.provider.MediaStore
 import androidx.core.content.ContextCompat
 import app.tingyu.data.local.LocalMusicManager
@@ -78,6 +79,7 @@ class DownloadCoordinator(
         ContextCompat.startForegroundService(it, Intent(it, DownloadService::class.java))
     },
     private val refreshMusic: suspend (Track) -> Track = { it },
+    private val downloadFolder: () -> DownloadFolder = { DownloadFolder() },
 ) {
     private val context = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -89,6 +91,8 @@ class DownloadCoordinator(
     private val _jobs = MutableStateFlow<List<DownloadTask>>(emptyList())
     val jobs: StateFlow<List<DownloadTask>> = _jobs.asStateFlow()
     private val directory = File(this.context.filesDir, "download-parts").apply { mkdirs() }
+    private val localMusic = LocalMusicManager(this.context, library)
+    private val exportMutex = Mutex()
     private val exportJournal = File(directory, "export-commit.json")
     @Volatile private var activeId: String? = null
     @Volatile private var activeCall: Call? = null
@@ -97,6 +101,8 @@ class DownloadCoordinator(
         scope.launch {
             try {
                 recoverExportCommit()
+                directory.listFiles { file -> file.name.startsWith("folder-export-") && file.extension == "json" }
+                    ?.forEach { journal -> recoverDocument(journal) }
                 val restored = library.readDownloads().map {
                     if (it.status in activeStatuses) it.copy(
                         status = DownloadStatus.INTERRUPTED,
@@ -111,6 +117,11 @@ class DownloadCoordinator(
                 ready.completeExceptionally(error)
             }
         }
+    }
+
+    suspend fun <T> withPublishedFiles(read: suspend () -> T): T {
+        ready.await()
+        return exportMutex.withLock { read() }
     }
 
     fun enqueue(tracks: List<Track>, loginRetry: MusicLoginRetry? = null) {
@@ -269,13 +280,20 @@ class DownloadCoordinator(
     }
 
     private suspend fun download(task: DownloadTask, onProgress: () -> Unit) {
+        val destination = downloadFolder()
         val original = task.track
         val profile = bilibili.profileSnapshot()
         val requestId = NetworkTrace.requestId()
         checkRunning(original.id)
         val existing = library.saved(original.id)
         if (existing != null) {
-            val exists = runCatching { context.contentResolver.openFileDescriptor(Uri.parse(existing.uri), "r")?.use { true } == true }.getOrDefault(false)
+            val savedUri = Uri.parse(existing.uri)
+            val exists = try { context.contentResolver.openFileDescriptor(savedUri, "r")?.use { true } == true }
+            catch (e: SecurityException) { throw IOException("已有文件的访问授权已失效，请在下载位置重新选择原文件夹", e) }
+            catch (e: java.io.FileNotFoundException) {
+                if (DocumentsContract.isTreeUri(savedUri)) throw IOException("已有文件暂时不可用，请检查原下载文件夹", e)
+                false
+            }
             if (exists) {
                 update(DownloadTask(original, DownloadStatus.COMPLETED, uri = existing.uri))
                 bilibili.log(profile, requestId, mapOf("stage" to "save", "event" to "local_hit"))
@@ -317,21 +335,24 @@ class DownloadCoordinator(
             val audio = prepareAudio(source, output, track, stream.expectedDurationMs, mp3)
             checkRunning(track.id)
             stage = "save"
-            val uri = publish(track, audio, mp3)
-            // Persist ownership before exposing success. No cancellation is accepted halfway through commit.
-            withContext(NonCancellable) {
-                try {
-                    val completed = latest.copy(status = DownloadStatus.COMPLETED, bytes = audio.length(), totalBytes = audio.length(), uri = uri.toString(), error = null)
-                    library.commitDownload(LocalTrack(track, uri.toString()), completed)
+            exportMutex.withLock {
+                val outputFile = publish(track, audio, mp3, destination)
+                val uri = outputFile.uri.toString()
+                withContext(NonCancellable) {
+                    val completed = latest.copy(status = DownloadStatus.COMPLETED, bytes = audio.length(),
+                        totalBytes = audio.length(), uri = uri, error = null)
+                    val identity = if (outputFile.document) localMusic.mediaIdentity(outputFile.uri) else null
+                    try {
+                        library.commitDownload(LocalTrack(track, uri, identityUri = identity), completed)
+                    } catch (e: Exception) {
+                        discardExport(outputFile)
+                        throw e
+                    }
                     updateMemory(completed)
                     bilibili.log(profile, requestId, mapOf("stage" to "save", "event" to "saved", "bytes" to audio.length().toString()))
-                    exportJournal.delete()
-                } catch (error: Exception) {
-                    context.contentResolver.delete(uri, null, null)
-                    exportJournal.delete()
-                    throw error
+                    outputFile.journal.delete()
+                    deleteParts(track)
                 }
-                deleteParts(track)
             }
         } catch (error: Exception) {
             if (error !is CancellationException) bilibili.log(profile, requestId,
@@ -528,23 +549,34 @@ class DownloadCoordinator(
         }
     }
 
-    private suspend fun publish(track: Track, file: File, mp3: Boolean): Uri {
+    private data class PublishedFile(val uri: Uri, val journal: File, val document: Boolean)
+
+    private suspend fun publish(track: Track, file: File, mp3: Boolean, destination: DownloadFolder): PublishedFile {
         ensureSpace(file.length() + SPACE_RESERVE)
-        val values = ContentValues().apply {
-            val name = DownloadRules.fileName(track.title, track.bvid, track.page)
-            put(MediaStore.Audio.Media.DISPLAY_NAME, if (mp3) name.removeSuffix(".m4a") + ".mp3" else name)
-            put(MediaStore.Audio.Media.MIME_TYPE, if (mp3) "audio/mpeg" else "audio/mp4")
-            put(MediaStore.Audio.Media.RELATIVE_PATH, LocalMusicManager.MUSIC_DIRECTORY)
-            put(MediaStore.Audio.Media.TITLE, track.title)
-            put(MediaStore.Audio.Media.ARTIST, track.artist)
-            put(MediaStore.Audio.Media.IS_MUSIC, 1)
-            put(MediaStore.Audio.Media.IS_PENDING, 1)
-        }
         val resolver = context.contentResolver
-        val uri = resolver.insert(MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY), values)
-            ?: throw IOException("无法创建音乐文件，请检查存储空间")
+        val baseName = DownloadRules.fileName(track.title, track.bvid, track.page)
+        val name = if (mp3) baseName.removeSuffix(".m4a") + ".mp3" else baseName
+        val mime = if (mp3) "audio/mpeg" else "audio/mp4"
+        val tree = destination.tree?.let(Uri::parse)
+        val journal = if (tree == null) exportJournal else File(directory, "folder-export-${java.util.UUID.randomUUID()}.json")
+        val uri = if (tree != null) {
+            try { DocumentsContract.createDocument(resolver, DownloadFolders.root(tree), mime, name) }
+            catch (e: Exception) { throw IOException("无法写入所选文件夹，请检查存储设备或重新选择下载位置", e) }
+        } else {
+            val values = ContentValues().apply {
+                put(MediaStore.Audio.Media.DISPLAY_NAME, name)
+                put(MediaStore.Audio.Media.MIME_TYPE, mime)
+                put(MediaStore.Audio.Media.RELATIVE_PATH, LocalMusicManager.MUSIC_DIRECTORY)
+                put(MediaStore.Audio.Media.TITLE, track.title)
+                put(MediaStore.Audio.Media.ARTIST, track.artist)
+                put(MediaStore.Audio.Media.IS_MUSIC, 1)
+                put(MediaStore.Audio.Media.IS_PENDING, 1)
+            }
+            resolver.insert(MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY), values)
+        } ?: throw IOException("无法创建音乐文件，请检查下载位置和存储空间")
+        val record = ExportCommit(track, uri.toString(), file.length(), tree = destination.tree)
         try {
-            writeExportJournal(ExportCommit(track, uri.toString(), file.length()))
+            writeExportJournal(record, journal)
             resolver.openOutputStream(uri, "w")?.use { output ->
                 file.inputStream().use { input ->
                     val buffer = ByteArray(64 * 1024)
@@ -557,14 +589,70 @@ class DownloadCoordinator(
                 }
             } ?: throw IOException("无法写入音乐目录")
             checkRunning(track.id)
-            val published = resolver.update(uri, ContentValues().apply { put(MediaStore.Audio.Media.IS_PENDING, 0) }, null, null)
-            if (published != 1) throw IOException("无法完成文件保存")
-            return uri
+            if (tree == null) {
+                val published = resolver.update(uri, ContentValues().apply { put(MediaStore.Audio.Media.IS_PENDING, 0) }, null, null)
+                if (published != 1) throw IOException("无法完成文件保存")
+            } else {
+                if (!hasExpectedSize(uri, file.length())) throw IOException("所选文件夹中的音频不完整，请重试")
+                writeExportJournal(record.copy(complete = true), journal)
+            }
+            return PublishedFile(uri, journal, tree != null)
         } catch (error: Exception) {
-            resolver.delete(uri, null, null)
-            exportJournal.delete()
+            discardExport(PublishedFile(uri, journal, tree != null))
+            if (tree != null && (error is SecurityException || error is java.io.FileNotFoundException))
+                throw IOException("下载位置暂时不可用，请检查存储设备或重新选择文件夹", error)
             throw error
         }
+    }
+
+    private fun discardExport(file: PublishedFile) {
+        val resolver = context.contentResolver
+        val removed = runCatching {
+            if (file.document) DocumentsContract.deleteDocument(resolver, file.uri)
+            else resolver.delete(file.uri, null, null) > 0
+        }.getOrDefault(false)
+        if (removed) file.journal.delete()
+    }
+
+    private fun hasExpectedSize(uri: Uri, bytes: Long): Boolean {
+        val resolver = context.contentResolver
+        val size = resolver.openFileDescriptor(uri, "r")?.use { it.statSize } ?: return false
+        if (size >= 0) return bytes == size
+        return resolver.openInputStream(uri)?.use { input ->
+            val buffer = ByteArray(64 * 1024)
+            var count = 0L
+            while (count <= bytes) {
+                val length = input.read(buffer)
+                if (length < 0) break
+                count += length
+            }
+            count == bytes
+        } == true
+    }
+
+    private suspend fun recoverDocument(journal: File) {
+        val record = try { Json.decodeFromString<ExportCommit>(journal.readText()) }
+        catch (_: kotlinx.serialization.SerializationException) { return }
+        val tree = record.tree?.let(Uri::parse) ?: return
+        val uri = Uri.parse(record.uri)
+        if (uri.authority != tree.authority || !DocumentsContract.isTreeUri(uri) ||
+            DocumentsContract.getTreeDocumentId(uri) != DocumentsContract.getTreeDocumentId(tree) ||
+            DocumentsContract.getDocumentId(uri) == DocumentsContract.getTreeDocumentId(tree)) return
+        try {
+            if (!record.complete) {
+                if (DocumentsContract.deleteDocument(context.contentResolver, uri)) journal.delete()
+                return
+            }
+            if (library.saved(record.track.id) == null && hasExpectedSize(uri, record.bytes)) {
+                library.commitDownload(LocalTrack(record.track, record.uri, identityUri = localMusic.mediaIdentity(uri)),
+                    DownloadTask(record.track, DownloadStatus.COMPLETED, record.bytes, record.bytes, uri = record.uri))
+                deleteParts(record.track)
+            }
+            journal.delete()
+        } catch (e: CancellationException) { throw e }
+        catch (_: SecurityException) { /* Retry if the user restores the tree grant. */ }
+        catch (_: IOException) { /* Removable storage may be temporarily unavailable. */ }
+        catch (_: IllegalArgumentException) { /* The provider may be offline. */ }
     }
 
     private suspend fun recoverExportCommit() {
@@ -601,13 +689,13 @@ class DownloadCoordinator(
         exportJournal.delete()
     }
 
-    private fun writeExportJournal(record: ExportCommit) {
-        val temporary = File(directory, "export-commit.tmp")
+    private fun writeExportJournal(record: ExportCommit, journal: File) {
+        val temporary = File(directory, "${journal.name}.tmp")
         FileOutputStream(temporary).use { output ->
             output.write(Json.encodeToString(record).toByteArray())
             output.fd.sync()
         }
-        if (!temporary.renameTo(exportJournal)) {
+        if (!temporary.renameTo(journal)) {
             temporary.delete()
             throw IOException("无法保存下载记录，请检查存储空间")
         }
@@ -619,8 +707,8 @@ class DownloadCoordinator(
             val resolver = context.contentResolver
             val collection = MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
             resolver.query(collection, arrayOf(MediaStore.Audio.Media._ID),
-                "${MediaStore.Audio.Media.IS_PENDING} = ? AND ${MediaStore.Audio.Media.RELATIVE_PATH} = ? AND ${MediaStore.Audio.Media.OWNER_PACKAGE_NAME} = ?",
-                arrayOf("1", LocalMusicManager.MUSIC_DIRECTORY, context.packageName), null)?.use { cursor ->
+                "${MediaStore.Audio.Media.IS_PENDING} = ? AND ${MediaStore.Audio.Media.RELATIVE_PATH} IN (?, ?) AND ${MediaStore.Audio.Media.OWNER_PACKAGE_NAME} = ?",
+                arrayOf("1", LocalMusicManager.MUSIC_DIRECTORY, LocalMusicManager.LEGACY_MUSIC_DIRECTORY, context.packageName), null)?.use { cursor ->
                 while (cursor.moveToNext()) resolver.delete(Uri.withAppendedPath(collection, cursor.getLong(0).toString()), null, null)
             }
         }
@@ -699,7 +787,7 @@ class DownloadCoordinator(
     }
 
     @Serializable private data class ResumeInfo(val etag: String?, val total: Long, val bitrate: Long)
-    @Serializable private data class ExportCommit(val track: Track, val uri: String, val bytes: Long)
+    @Serializable private data class ExportCommit(val track: Track, val uri: String, val bytes: Long, val tree: String? = null, val complete: Boolean = false)
     private class LinkExpiredException(status: Int) : IOException(DownloadRules.httpMessage(status))
     private class RateLimitedException(status: Int) : IOException(DownloadRules.httpMessage(status))
     private class UnauthorizedMediaException : IOException(DownloadRules.httpMessage(401))

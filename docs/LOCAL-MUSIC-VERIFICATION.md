@@ -6,7 +6,7 @@
 
 | 功能 | 实现 | 验证重点 |
 |---|---|---|
-| 找回已下载音乐 | `LocalMusicManager.scan`、`LocalMusicRules` | 仅扫描 `Music/听屿/`，忽略未完成、空文件、回收站和非音频，真实读取音轨 |
+| 找回已下载音乐 | `LocalMusicManager.scan`、`LocalMusicRules` | 仅扫描旧版公共音乐目录，忽略未完成、空文件、回收站和非音频，真实读取音轨 |
 | 导入其他目录音频 | `MainActivity.localFiles`、`LocalMusicManager.importUris` | 系统多选、实际返回的读写授权、持久读取授权；不复制或转码 |
 | 保留旧记录并去重 | `LibraryStore.addDiscovered` | 原数据库版本不变，兼容旧 JSON；保留旧标题、作者、URI、保存时间；媒体 URI 别名去重 |
 | 本地播放与队列 | `PlaybackService.onAddMediaItems`、`TrackDataSource` | 本地编号从数据库查验；实际解码、暂停、进度跳转和下一曲；缺失本地文件不请求 B 站 |
@@ -42,7 +42,7 @@ GitHub 正式版无签名构建已成功：[运行 40800321949](https://github.c
 
 实际界面：
 
-![导入后扫描仍为 1 首](verification-logs/local-music-20261029/library-preview.png)
+[0.1.2 设备截图：导入后再次扫描仍为一首](https://github.com/JackkLau/mobile-music-dl/blob/v0.1.2/docs/verification-logs/local-music-20261029/library-preview.png)
 
 真实选择器验收补充了自动化中替代系统授权边界的测试。不同厂商文件提供方、外部媒体删除系统弹窗和真机版本差异仍需验收。
 

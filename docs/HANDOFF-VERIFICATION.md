@@ -1,4 +1,4 @@
-# 听屿 0.1.1：本机整合与逐项验收
+# 微乐 0.1.1：本机整合与逐项验收
 
 工作区：`/Users/tobin/Documents/projects/mobile-music-dl`。开始于 2026-10-28，验收于 2026-10-29（Asia/Hong_Kong）。本记录仅描述本轮源码与执行证据。
 

@@ -76,7 +76,7 @@ internal fun DownloadsScreen(state: AppUiState, actions: AppActions) {
                     Spacer(Modifier.width(12.dp))
                     Column {
                         Text("手机音乐目录", style = MaterialTheme.typography.titleMedium)
-                        Text("Music / 听屿", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Music / 微乐", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -191,10 +191,10 @@ internal fun AccountScreen(state: AppUiState, actions: AppActions) {
         item {
             if (state.debugAvailable) {
                 TextButton(onClick = actions::versionTap, modifier = Modifier.heightIn(min = 48.dp).testTag("app_version")) {
-                    Text("听屿 · ${BuildConfig.VERSION_NAME}")
+                    Text("微乐 · ${BuildConfig.VERSION_NAME}")
                 }
             } else {
-                Text("听屿 · ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.labelMedium,
+                Text("微乐 · ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 8.dp))
             }
         }

@@ -45,7 +45,7 @@ internal fun Cover(track: Track?, size: Dp, modifier: Modifier = Modifier) {
         // A square, locally drawn sleeve replaces video thumbnails; no network or fake album art.
         val flipped = (track?.id?.hashCode() ?: 0) and 1 == 0
         Canvas(Modifier.fillMaxSize()) {
-            drawRect(Brush.linearGradient(if (flipped) listOf(TingYuColors.Pine, TingYuColors.Ink) else listOf(TingYuColors.PlayerSurface, TingYuColors.Pine)))
+            drawRect(Brush.linearGradient(if (flipped) listOf(TingYuColors.Coral, TingYuColors.Ink) else listOf(TingYuColors.PlayerSurface, TingYuColors.Coral)))
             val center = Offset(this.size.width * 0.82f, this.size.height * 0.20f)
             listOf(0.37f, 0.45f, 0.53f).forEach { radius ->
                 drawCircle(TingYuColors.PlayerAccent.copy(alpha = 0.16f), this.size.minDimension * radius, center, style = Stroke(1.dp.toPx()))

@@ -13,35 +13,45 @@ import androidx.compose.ui.unit.sp
 
 /** Canonical palette: keep DESIGN.md in sync when changing these values. */
 object TingYuColors {
-    val Pine = Color(0xFF145B52)
-    val Background = Color(0xFFF3F7F4)
+    val Coral = Color(0xFFC04734)
+    val Background = Color(0xFFFFF8F4)
     val Surface = Color(0xFFFFFFFF)
-    val Ink = Color(0xFF132E2A)
-    val Muted = Color(0xFF48645D)
-    val Mint = Color(0xFFDAEEE6)
-    val Outline = Color(0xFFC5D6CE)
-    val Error = Color(0xFFA32F38)
-    val PlayerSurface = Color(0xFF20463F)
-    val PlayerMuted = Color(0xFFB3CDC2)
-    val PlayerAccent = Color(0xFFB5EFD6)
+    val Ink = Color(0xFF30211F)
+    val Muted = Color(0xFF70574F)
+    val Peach = Color(0xFFFFE4DA)
+    val Outline = Color(0xFFDBC7BF)
+    val Error = Color(0xFFA12640)
+    val PlayerSurface = Color(0xFF492E2A)
+    val PlayerMuted = Color(0xFFDEC2B8)
+    val PlayerAccent = Color(0xFFFFB69F)
     val PlayerError = Color(0xFFFFB4AB)
 }
 
 private val LightColors = lightColorScheme(
-    primary = TingYuColors.Pine,
+    primary = TingYuColors.Coral,
     onPrimary = TingYuColors.Surface,
-    primaryContainer = TingYuColors.Mint,
+    primaryContainer = TingYuColors.Peach,
     onPrimaryContainer = TingYuColors.Ink,
-    secondary = TingYuColors.Pine,
-    secondaryContainer = TingYuColors.Mint,
+    secondary = TingYuColors.Coral,
+    secondaryContainer = TingYuColors.Peach,
     onSecondaryContainer = TingYuColors.Ink,
     background = TingYuColors.Background,
     onBackground = TingYuColors.Ink,
     surface = TingYuColors.Surface,
     onSurface = TingYuColors.Ink,
-    surfaceVariant = TingYuColors.Mint,
+    surfaceVariant = TingYuColors.Peach,
     onSurfaceVariant = TingYuColors.Muted,
     outline = TingYuColors.Outline,
+    surfaceTint = TingYuColors.Coral,
+    surfaceContainerLowest = TingYuColors.Surface,
+    surfaceContainerLow = Color(0xFFFFF1EA),
+    surfaceContainer = Color(0xFFFAEBE4),
+    surfaceContainerHigh = Color(0xFFF7E6DE),
+    surfaceContainerHighest = Color(0xFFF1DED6),
+    inverseSurface = TingYuColors.Ink,
+    inverseOnSurface = TingYuColors.Background,
+    inversePrimary = TingYuColors.PlayerAccent,
+    outlineVariant = TingYuColors.Outline,
     error = TingYuColors.Error,
 )
 
@@ -58,6 +68,14 @@ private val PlayerColors = darkColorScheme(
     surfaceVariant = TingYuColors.PlayerSurface,
     onSurfaceVariant = TingYuColors.PlayerMuted,
     outline = TingYuColors.Muted,
+    surfaceTint = TingYuColors.PlayerAccent,
+    secondaryContainer = TingYuColors.PlayerSurface,
+    onSecondaryContainer = TingYuColors.PlayerAccent,
+    surfaceContainerLow = Color(0xFF382724),
+    surfaceContainer = Color(0xFF402B27),
+    surfaceContainerHigh = TingYuColors.PlayerSurface,
+    surfaceContainerHighest = Color(0xFF533831),
+    outlineVariant = TingYuColors.Muted,
     error = TingYuColors.PlayerError,
 )
 

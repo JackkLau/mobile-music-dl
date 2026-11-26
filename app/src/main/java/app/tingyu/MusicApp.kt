@@ -34,5 +34,7 @@ class AppContainer(context: Context) {
         catalog::lyricCandidates, lrclib::candidates, catalog::lyrics, lrclib::lyrics)
     val localMusic = LocalMusicManager(context, library)
     internal val musicShares = app.tingyu.data.music.MusicShareRepository(session = app.tingyu.auth.MusicWebSession::cookie)
-    val downloads = DownloadCoordinator(context, bilibili, library, musicShares::resolve, refreshMusic = { songDetails.apply(musicShares.refresh(it)) })
+    val downloadFolders = app.tingyu.download.DownloadFolders(context)
+    val downloads = DownloadCoordinator(context, bilibili, library, musicShares::resolve, refreshMusic = { songDetails.apply(musicShares.refresh(it)) },
+        downloadFolder = { downloadFolders.current.value })
 }

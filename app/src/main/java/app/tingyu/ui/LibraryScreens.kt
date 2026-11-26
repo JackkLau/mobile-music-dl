@@ -24,7 +24,6 @@ import androidx.compose.ui.unit.dp
 import app.tingyu.model.*
 import app.tingyu.BuildConfig
 import app.tingyu.R
-import app.tingyu.data.local.LocalMusicManager
 
 @Composable
 internal fun LibraryScreen(state: AppUiState, actions: AppActions) {
@@ -52,7 +51,7 @@ internal fun LibraryScreen(state: AppUiState, actions: AppActions) {
                     Icon(Icons.Rounded.FolderOpen, contentDescription = null)
                     Spacer(Modifier.width(6.dp)); Text("导入本地音频")
                 }
-                Text("扫描 ${LocalMusicManager.MUSIC_DIRECTORY} 中的旧文件；其他文件可手动选择导入。", style = MaterialTheme.typography.bodySmall,
+                Text("扫描下载目录中的音频，也可单独选择文件导入。", style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (state.libraryWorking) LinearProgressIndicator(Modifier.fillMaxWidth().testTag("library_progress"))
                 state.libraryStatus?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
@@ -108,23 +107,30 @@ internal fun DownloadsScreen(state: AppUiState, actions: AppActions) {
     val active = state.downloads.count { it.status in listOf(DownloadStatus.QUEUED, DownloadStatus.DOWNLOADING, DownloadStatus.SAVING) }
     LazyColumn(Modifier.fillMaxSize().testTag("downloads_list"), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item { PageTitle("下载", if (active > 0) "$active 个任务进行中" else "保存到手机，随时播放") }
-        item {
-            Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.primaryContainer) {
-                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.FolderOpen, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.width(12.dp))
-                    Column {
-                        Text("手机音乐目录", style = MaterialTheme.typography.titleMedium)
-                        Text(LocalMusicManager.MUSIC_DIRECTORY, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-            }
-        }
+        item { DownloadFolderCard(state, actions) }
         if (state.downloads.isEmpty()) {
             item { StatePanel(Icons.Rounded.Download, "还没有下载任务", "解析链接后，选择想保存的音频。", "去解析链接", { actions.tab(0) }) }
         }
         items(state.downloads.reversed(), key = { it.track.id }) { task ->
             DownloadCard(task, actions)
+        }
+    }
+}
+
+@Composable
+private fun DownloadFolderCard(state: AppUiState, actions: AppActions) {
+    Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface) {
+        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Icon(Icons.Rounded.FolderOpen, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Text("下载位置", style = MaterialTheme.typography.titleMedium)
+            }
+            Text(state.downloadFolder.label, style = MaterialTheme.typography.bodyMedium)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                OutlinedButton(onClick = actions::selectDownloadFolder, enabled = !state.folderBusy) { Text("选择文件夹") }
+                if (state.downloadFolder.tree != null) TextButton(onClick = actions::resetDownloadFolder, enabled = !state.folderBusy) { Text("恢复默认") }
+            }
+            state.folderError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         }
     }
 }
@@ -241,6 +247,7 @@ internal fun AccountScreen(state: AppUiState, actions: AppActions) {
             Text("登录会话仅保存在本机。退出登录会清除会话和私密列表，已下载的音频仍然保留。",
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        item(key = "download_folder") { DownloadFolderCard(state, actions) }
         item(key = "app_update") { AppUpdateCard() }
         item {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {

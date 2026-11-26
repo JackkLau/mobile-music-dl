@@ -1,6 +1,6 @@
 ---
 version: alpha
-name: "听屿"
+name: "微乐"
 description: "以雾蓝唱片意象承载链接解析、本地保存和持续聆听的 Android 原生播放器。"
 colors:
   primary: "#3F5D96"
@@ -49,7 +49,7 @@ components:
     textColor: "#FFFFFF"
 ---
 
-# 历史归档 · 听屿 0.1.1 Design System
+# 历史归档 · 微乐 0.1.1 Design System
 
 微乐的现行规范见[项目根目录文档](../DESIGN.md)。以下记录保留当时的名称和设计。
 

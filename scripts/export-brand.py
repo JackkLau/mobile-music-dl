@@ -19,7 +19,7 @@ def render_icon():
     height = mark.attrib[ANDROID + "viewportHeight"]
     svg = ET.Element("svg", xmlns="http://www.w3.org/2000/svg", width="512", height="512",
                      viewBox=f"0 0 {width} {height}", role="img", attrib={"aria-labelledby": "title"})
-    ET.SubElement(svg, "title", id="title").text = f"{name} · 唱片与唱针"
+    ET.SubElement(svg, "title", id="title").text = f"{name} · 微笑音符"
     ET.SubElement(svg, "rect", width=width, height=height, rx=f"{float(width) / 4:g}",
                   fill=color_map["brand_background"])
     for path in mark:

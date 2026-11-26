@@ -19,7 +19,7 @@ class BrandResourcesTest {
     @Test fun launcherNameAndColorsMatchTheInAppBrand() {
         val info = app.applicationInfo
         assertEquals(app.getString(R.string.app_name), info.loadLabel(app.packageManager).toString())
-        assertEquals(TingYuColors.Pine.toArgb(), app.getColor(R.color.brand_background))
+        assertEquals(TingYuColors.Coral.toArgb(), app.getColor(R.color.brand_background))
         assertEquals(TingYuColors.Background.toArgb(), app.getColor(R.color.brand_canvas))
 
         for (id in listOf(info.icon, R.mipmap.ic_launcher_round)) {
@@ -42,12 +42,13 @@ class BrandResourcesTest {
         }
     }
 
-    @Test fun notificationSilhouetteRetainsTheRecordHoleAndTonearm() {
+    @Test fun notificationSilhouetteRetainsTheNotesAndSmile() {
         val mark = render(requireNotNull(app.getDrawable(R.drawable.ic_brand_mark)))
         val highlight = app.getColor(R.color.brand_mark)
-        assertEquals(highlight, mark.getPixel(20, 27))
-        assertEquals(highlight, mark.getPixel(50, 14))
-        assertEquals(0, Color.alpha(mark.getPixel(28, 36)))
+        assertEquals(highlight, mark.getPixel(18, 38))
+        assertEquals(highlight, mark.getPixel(44, 32))
+        assertEquals(highlight, mark.getPixel(32, 53))
+        assertEquals(0, Color.alpha(mark.getPixel(32, 44)))
         assertEquals(0, Color.alpha(mark.getPixel(2, 2)))
     }
 

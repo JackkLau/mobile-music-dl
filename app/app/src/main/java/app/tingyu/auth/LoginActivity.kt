@@ -173,7 +173,7 @@ class LoginActivity : Activity() {
                 gravity = Gravity.CENTER
             })
             addView(Button(this@LoginActivity).apply {
-                text = "返回听屿"
+                text = "返回微乐"
                 minHeight = dp(48)
                 setOnClickListener { finish() }
             })
@@ -299,10 +299,10 @@ class LoginActivity : Activity() {
         successPanel.visibility = View.VISIBLE
         reload.visibility = View.GONE
         progress.visibility = View.GONE
-        complete.text = "返回听屿"
+        complete.text = "返回微乐"
         complete.isEnabled = true
         complete.setOnClickListener { finish() }
-        showStatus("登录成功，已登录 ${account.name}。可以返回听屿继续使用。")
+        showStatus("登录成功，已登录 ${account.name}。可以返回微乐继续使用。")
         setResult(RESULT_OK)
         SessionStore.clearWebSession()
     }

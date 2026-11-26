@@ -1,13 +1,13 @@
 # 微乐 0.1.8 · 品牌与升级验证
 
-应用在桌面、系统设置和发布页继续使用「微乐」。新版标识由松石绿底、米白唱片和唱针组成。[矢量预览](assets/weile-icon.svg) · [正式版下载](https://github.com/JackkLau/mobile-music-dl/releases/tag/v0.1.8)
+应用在桌面、系统设置和发布页继续使用「微乐」。该版本的标识由松石绿底、米白唱片和唱针组成。[矢量预览](https://github.com/JackkLau/mobile-music-dl/blob/v0.1.8/docs/assets/weile-icon.svg) · [正式版下载](https://github.com/JackkLau/mobile-music-dl/releases/tag/v0.1.8)
 
 | 检查范围 | 实现与验证方式 |
 |---|---|
 | 桌面与启动画面 | 标准、圆形、自适应及 Android 13 单色图标共用一个矢量前景。已检查正式 APK 中的前景和单色资源引用，模拟器测试检查唱片和唱针是否落在安全裁切区域内。 |
 | 应用内和通知 | 解析首页、“我的”、默认封面、下载与播放通知使用同一图形。通知以透明剪影显示，已选歌曲封面优先显示。资源测试检查唱片中心透明、唱针与盘体可见。 |
 | README 与发布页 | README 图标从 Android 矢量与颜色导出，源码检查会检测文档图标是否过期；发布标题读取应用名称。 |
-| 旧版升级 | 正式包名为 `app.tingyu`，版本 0.1.8（code 9），使用原有正式证书。新版使用 `weile-0.1.8-release.apk`；0.1.7 更新器使用同一文件的 `tingyu-0.1.8-release.apk` 副本。原音乐目录为 `Music/听屿/`。 |
+| 旧版升级 | 正式包名为 `app.tingyu`，版本 0.1.8（code 9），使用原有正式证书。新版使用 `weile-0.1.8-release.apk`；0.1.7 更新器使用同一文件的 `tingyu-0.1.8-release.apk` 副本。已有音乐保留在原位置。 |
 
 本机运行源码检查、41 项脚本测试、Android debug 和 release 单测（各 255 项）及 PC 工具单测（132 项）。PC 与应用测试存在重叠。两个构建变体均通过 Android lint，正式 APK 和 AAB 的签名、包名及版本通过校验。
 
