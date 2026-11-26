@@ -3,10 +3,13 @@ package app.tingyu.download
 import android.content.ContentValues
 import android.content.Context
 import android.content.ContextWrapper
+import android.graphics.Rect
 import android.net.Uri
 import android.os.SystemClock
 import android.provider.DocumentsContract
 import android.provider.MediaStore
+import android.view.InputDevice
+import android.view.MotionEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -60,7 +63,7 @@ class DownloadFolderDeviceTest {
             compose.onNodeWithText("下载").performClick()
             compose.onNodeWithText("选择文件夹").performClick()
             clickPicker { it.text?.toString() == folderName }
-            clickPicker { it.viewIdResourceName?.endsWith(":id/action_menu_select") == true ||
+            clickPicker(inFolder = folderName) { it.viewIdResourceName?.endsWith(":id/action_menu_select") == true ||
                 it.text?.toString()?.lowercase() in setOf("use this folder", "使用此文件夹") }
             clickPicker { it.viewIdResourceName?.endsWith(":id/button1") == true ||
                 it.text?.toString()?.lowercase() in setOf("allow", "允许") }
@@ -121,7 +124,7 @@ class DownloadFolderDeviceTest {
         }
     }
 
-    private fun clickPicker(match: (AccessibilityNodeInfo) -> Boolean) {
+    private fun clickPicker(inFolder: String? = null, match: (AccessibilityNodeInfo) -> Boolean) {
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
         val deadline = SystemClock.elapsedRealtime() + 15_000
         var visible = emptyList<String>()
@@ -132,14 +135,27 @@ class DownloadFolderDeviceTest {
                 var index = 0
                 while (index < nodes.size) {
                     val node = nodes[index++]
-                    if (match(node)) {
-                        var target: AccessibilityNodeInfo? = node
-                        while (target != null && !target.isClickable) target = target.parent
-                        if (target?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true) return
-                    }
                     for (child in 0 until node.childCount) node.getChild(child)?.let(nodes::add)
                 }
-                visible = nodes.mapNotNull { it.text?.toString() }.take(35)
+                visible = nodes.mapNotNull { it.text?.toString() }
+                // DocumentsUI routes pointer events through RecyclerView rather than the folder label.
+                val opened = inFolder == null || visible.any { it.equals("FILES IN $inFolder", ignoreCase = true) } ||
+                    visible.count { it == inFolder } >= 2
+                val target = nodes.firstOrNull { opened && it.isVisibleToUser && it.isEnabled && match(it) }
+                if (target != null) {
+                    val bounds = Rect()
+                    target.getBoundsInScreen(bounds)
+                    if (!bounds.isEmpty) {
+                        val down = SystemClock.uptimeMillis()
+                        for (action in listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP)) {
+                            val tap = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action,
+                                bounds.exactCenterX(), bounds.exactCenterY(), 0)
+                            tap.source = InputDevice.SOURCE_TOUCHSCREEN
+                            try { check(automation.injectInputEvent(tap, true)) } finally { tap.recycle() }
+                        }
+                        return
+                    }
+                }
             }
             SystemClock.sleep(180)
         }
