@@ -595,6 +595,42 @@
       "completeDownloadVerified": false,
       "physicalDeviceVerified": false
     },
-    "report": "docs/BILI2233-VERIFICATION.md"
+    "report": "docs/BILI2233-VERIFICATION.md",
+    "localRelease": {
+      "build": "passed",
+      "appJVM": 246,
+      "sameSuiteAsDebug": true,
+      "lintErrors": 0,
+      "lintWarnings": 26,
+      "signaturesIdentityAlignmentVerified": true,
+      "certificateMatchesPreviousRelease": true
+    },
+    "cloudRelease": {
+      "status": "published-and-independently-verified",
+      "runId": 45820920108,
+      "attempt": 2,
+      "firstAttemptFailure": "KSP plugin dependency resolution; compilation not reached",
+      "sourceCommit": "8067cc949c7464207ad94fd154ff1ca88f6d23d2",
+      "releaseUrl": "https://github.com/JackkLau/mobile-music-dl/releases/tag/v0.1.6",
+      "assets": [
+        {
+          "file": "tingyu-0.1.6-release.apk",
+          "bytes": 51574668,
+          "sha256": "04c39178da5b6b6c80ff70739b719d6012759d1e77dfeca0f70eab7aedd40979"
+        },
+        {
+          "file": "tingyu-0.1.6-release.aab",
+          "bytes": 14837501,
+          "sha256": "6b80090c048590d12d406e9812294b0befb4b253c2b3ba66464aab57ad3601f1"
+        }
+      ],
+      "publicDownloadDigestsMatched": true,
+      "publicDownloadSignaturesAndIdentityVerified": true,
+      "verificationRuns": [
+        45820920203,
+        45820920127
+      ],
+      "verificationConclusions": "success"
+    }
   }
 }

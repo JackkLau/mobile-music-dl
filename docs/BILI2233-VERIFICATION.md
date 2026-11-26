@@ -16,7 +16,11 @@ Android 粘贴、系统分享、网络调试和 PC 工具共用 `BiliLinkParser`
 - 修复后相同 39 项全部通过：原始分享文本、普通短链、Markdown、混合链接、查询值保真、精确域名校验、恶意跳转拒绝、两种短链串联的 Cookie 隔离，以及四入口的分 P／取流参数／Referer 一致性。
 - `bash scripts/check.sh` 退出 0：118 项结构检查、41 项脚本测试、246 项应用 JVM 测试、132 项 PC 共用 JVM 测试通过；应用与 PC 套件有重叠，数量不相加。
 - debug Lint 为 0 错误、25 警告，应用 APK、instrumentation APK、PC 工具构建通过。51 项设备测试仅编译，本轮未执行。
-- GitHub 正式构建与发布结果待补充。
+- 本机 release 构建通过：246 项 JVM 测试、Lint 0 错误／26 警告，正式 APK／AAB 的版本、原证书、非调试边界、ZIP 对齐与 AAB 全内容签名均通过校验。debug／release 为同一套应用测试，不相加。
+- [GitHub 正式构建与发布](https://github.com/JackkLau/mobile-music-dl/actions/runs/45820920108)第二次运行成功。第一次在解析 KSP 依赖时失败，未进入应用编译；官方 Maven 仓库确认固定版本存在后重试成功，未改变依赖或跳过检查。
+- master／标签的 [完整检查](https://github.com/JackkLau/mobile-music-dl/actions/runs/45820920203)均通过。`v0.1.6` 对应源提交 `8067cc949c7464207ad94fd154ff1ca88f6d23d2`。
+- 公开 APK／AAB 下载后，SHA-256、版本、原签名、非调试边界和内容完整性独立复核通过。首次 AAB 下载被截断，重新下载后与云端元数据一致。
+- [下载正式版与发行说明](https://github.com/JackkLau/mobile-music-dl/releases/tag/v0.1.6)。
 
 ## 实际网络结果与限制
 
@@ -32,3 +36,10 @@ Android 粘贴、系统分享、网络调试和 PC 工具共用 `BiliLinkParser`
 诊断进程退出 1 对应真实的 API 请求限制，不是链接不受支持。日志只保留状态、阶段与地址摘要；未记录完整带分享参数的跳转地址、Cookie 或签名音频 URL。
 
 本轮证明短链可识别和安全展开；没有证明该合集全部音轨可以下载、保存为 M4A 或在手机播放。未安装、卸载或清理已有设备数据，真机解析、完整下载与播放仍待验收。历史 HTTP 403／206 的结论边界不变，见 [网络调试](NETWORK-DEBUG.md)。
+
+## 云端公开产物
+
+| 文件 | 字节数 | SHA-256 |
+|---|---:|---|
+| tingyu-0.1.6-release.apk | 51574668 | `04c39178da5b6b6c80ff70739b719d6012759d1e77dfeca0f70eab7aedd40979` |
+| tingyu-0.1.6-release.aab | 14837501 | `6b80090c048590d12d406e9812294b0befb4b253c2b3ba66464aab57ad3601f1` |
