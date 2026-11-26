@@ -82,7 +82,7 @@ internal fun LoginScreen(
                 if (account != null) {
                     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp)) {
                         StatePanel(Icons.Rounded.CheckCircle, "登录成功", "已登录 ${account.name}",
-                            stringResource(R.string.return_to_app), onBack)
+                            stringResource(R.string.return_to_app, stringResource(R.string.app_name)), onBack)
                     }
                 } else {
                     if (!short) LoginMethodTabs(method, onMethod)
@@ -142,7 +142,7 @@ internal fun QrLoginCard(qr: QrPanel, onRefresh: () -> Unit, onRetryVerify: () -
                 }
                 Spacer(Modifier.height(12.dp))
                 val hint = when (qr) {
-                    is QrPanel.Ready -> if (qr.scanned) "在扫码的设备上确认后即可返回微乐。" else "请用另一台已登录哔哩哔哩的设备扫描上方二维码。"
+                    is QrPanel.Ready -> if (qr.scanned) stringResource(R.string.qr_confirm_return, stringResource(R.string.app_name)) else "请用另一台已登录哔哩哔哩的设备扫描上方二维码。"
                     QrPanel.Expired -> "刷新后，用哔哩哔哩重新扫描。"
                     is QrPanel.Failed -> qr.message
                     else -> null

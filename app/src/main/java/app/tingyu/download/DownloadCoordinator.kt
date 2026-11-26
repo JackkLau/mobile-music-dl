@@ -8,10 +8,10 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMuxer
 import android.net.Uri
-import android.os.Environment
 import android.os.StatFs
 import android.provider.MediaStore
 import androidx.core.content.ContextCompat
+import app.tingyu.data.local.LocalMusicManager
 import app.tingyu.data.bili.BilibiliRepository
 import app.tingyu.data.bili.ConnectionMetadata
 import app.tingyu.data.bili.MediaRequestPolicy
@@ -460,7 +460,7 @@ class DownloadCoordinator(
         val values = ContentValues().apply {
             put(MediaStore.Audio.Media.DISPLAY_NAME, DownloadRules.fileName(track.title, track.bvid, track.page))
             put(MediaStore.Audio.Media.MIME_TYPE, "audio/mp4")
-            put(MediaStore.Audio.Media.RELATIVE_PATH, "${Environment.DIRECTORY_MUSIC}/听屿/")
+            put(MediaStore.Audio.Media.RELATIVE_PATH, LocalMusicManager.MUSIC_DIRECTORY)
             put(MediaStore.Audio.Media.TITLE, track.title)
             put(MediaStore.Audio.Media.ARTIST, track.artist)
             put(MediaStore.Audio.Media.IS_MUSIC, 1)
@@ -546,7 +546,7 @@ class DownloadCoordinator(
             val collection = MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
             resolver.query(collection, arrayOf(MediaStore.Audio.Media._ID),
                 "${MediaStore.Audio.Media.IS_PENDING} = ? AND ${MediaStore.Audio.Media.RELATIVE_PATH} = ? AND ${MediaStore.Audio.Media.OWNER_PACKAGE_NAME} = ?",
-                arrayOf("1", "${Environment.DIRECTORY_MUSIC}/听屿/", context.packageName), null)?.use { cursor ->
+                arrayOf("1", LocalMusicManager.MUSIC_DIRECTORY, context.packageName), null)?.use { cursor ->
                 while (cursor.moveToNext()) resolver.delete(Uri.withAppendedPath(collection, cursor.getLong(0).toString()), null, null)
             }
         }

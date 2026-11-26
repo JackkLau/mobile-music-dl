@@ -20,13 +20,16 @@ private val digestFormat = Regex("[a-f0-9]{64}")
 
 internal class UpdateError(message: String) : IOException(message)
 
-internal data class GitHubRelease(val version: String, val size: Long, val sha256: String) {
+private fun apkName(version: String, legacy: Boolean) =
+    if (legacy) "tingyu-$version-release.apk" else "weile-$version-release.apk"
+
+internal data class GitHubRelease(val version: String, val size: Long, val sha256: String, val legacy: Boolean = false) {
     init {
         require(stableVersion.matches(version) && size in 1..256L * 1024 * 1024 && digestFormat.matches(sha256))
     }
 
-    val fileName get() = "tingyu-${version}-release.apk"
-    val url get() = "$DOWNLOAD_ROOT/v$version/$fileName"
+    val fileName get() = apkName(version, legacy = false)
+    val url get() = "$DOWNLOAD_ROOT/v$version/${apkName(version, legacy)}"
 
     fun compareToInstalled(installed: String): Int {
         val local = installed.split('.').map(String::toInt)
@@ -46,12 +49,12 @@ internal data class GitHubRelease(val version: String, val size: Long, val sha25
                 require(tag.startsWith("v"))
                 val version = tag.substring(1)
                 require(stableVersion.matches(version))
-                val asset = release.getValue("assets").jsonArray.map { it.jsonObject }.single {
-                    it["name"]?.jsonPrimitive?.content == "tingyu-${version}-release.apk"
-                }
+                val assets = release.getValue("assets").jsonArray.map { it.jsonObject }
+                val legacy = assets.none { it["name"]?.jsonPrimitive?.content == apkName(version, false) }
+                val asset = assets.single { it["name"]?.jsonPrimitive?.content == apkName(version, legacy) }
                 val digest = asset.getValue("digest").jsonPrimitive.content
                 require(digest.startsWith("sha256:"))
-                val apk = GitHubRelease(version, asset.getValue("size").jsonPrimitive.long, digest.substringAfter(':'))
+                val apk = GitHubRelease(version, asset.getValue("size").jsonPrimitive.long, digest.substringAfter(':'), legacy)
                 require(asset.getValue("browser_download_url").jsonPrimitive.content == apk.url)
                 return apk
             } catch (_: RuntimeException) {

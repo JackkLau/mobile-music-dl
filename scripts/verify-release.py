@@ -50,7 +50,7 @@ def verify(project, apk, aab, version, code, output):
     output.mkdir(parents=True, exist_ok=True)
     assets = []
     for source, suffix in ((apk, "apk"), (aab, "aab")):
-        target = output / f"tingyu-{version}-release.{suffix}"
+        target = output / f"weile-{version}-release.{suffix}"
         shutil.copyfile(source, target)
         checksum = hashlib.sha256()
         with target.open("rb") as file:
@@ -58,6 +58,10 @@ def verify(project, apk, aab, version, code, output):
                 checksum.update(block)
         digest = checksum.hexdigest()
         assets.append({"file": target.name, "bytes": target.stat().st_size, "sha256": digest})
+    # 0.1.7 clients require this exact name to discover an update.
+    legacy_apk = output / f"tingyu-{version}-release.apk"
+    shutil.copyfile(output / assets[0]["file"], legacy_apk)
+    assets.append({**assets[0], "file": legacy_apk.name})
     sha = run(["git", "-C", project, "rev-parse", "HEAD"]).strip()
     metadata = {"package": PACKAGE, "versionName": version, "versionCode": code,
                 "certificateSha256": CERTIFICATE_SHA256, "commit": sha, "assets": assets,

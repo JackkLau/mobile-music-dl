@@ -13,33 +13,33 @@ import androidx.compose.ui.unit.sp
 
 /** Canonical palette: keep DESIGN.md in sync when changing these values. */
 object TingYuColors {
-    val Blue = Color(0xFF3F5D96)
-    val Background = Color(0xFFF5F7FC)
+    val Pine = Color(0xFF145B52)
+    val Background = Color(0xFFF3F7F4)
     val Surface = Color(0xFFFFFFFF)
-    val Ink = Color(0xFF17243A)
-    val Muted = Color(0xFF59677C)
-    val SoftBlue = Color(0xFFE3EAF7)
-    val Outline = Color(0xFFCED7E6)
+    val Ink = Color(0xFF132E2A)
+    val Muted = Color(0xFF48645D)
+    val Mint = Color(0xFFDAEEE6)
+    val Outline = Color(0xFFC5D6CE)
     val Error = Color(0xFFA32F38)
-    val PlayerSurface = Color(0xFF24354F)
-    val PlayerMuted = Color(0xFFB7C6DF)
-    val PlayerAccent = Color(0xFFC2D5FF)
+    val PlayerSurface = Color(0xFF20463F)
+    val PlayerMuted = Color(0xFFB3CDC2)
+    val PlayerAccent = Color(0xFFB5EFD6)
     val PlayerError = Color(0xFFFFB4AB)
 }
 
 private val LightColors = lightColorScheme(
-    primary = TingYuColors.Blue,
+    primary = TingYuColors.Pine,
     onPrimary = TingYuColors.Surface,
-    primaryContainer = TingYuColors.SoftBlue,
+    primaryContainer = TingYuColors.Mint,
     onPrimaryContainer = TingYuColors.Ink,
-    secondary = TingYuColors.Blue,
-    secondaryContainer = TingYuColors.SoftBlue,
+    secondary = TingYuColors.Pine,
+    secondaryContainer = TingYuColors.Mint,
     onSecondaryContainer = TingYuColors.Ink,
     background = TingYuColors.Background,
     onBackground = TingYuColors.Ink,
     surface = TingYuColors.Surface,
     onSurface = TingYuColors.Ink,
-    surfaceVariant = TingYuColors.SoftBlue,
+    surfaceVariant = TingYuColors.Mint,
     onSurfaceVariant = TingYuColors.Muted,
     outline = TingYuColors.Outline,
     error = TingYuColors.Error,

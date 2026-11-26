@@ -3,6 +3,6 @@ dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories { google(); mavenCentral() }
 }
-rootProject.name = "TingYu"
+rootProject.name = "Weile"
 include(":app")
 include(":probe")

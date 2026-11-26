@@ -2,7 +2,7 @@
 
 <img src="docs/assets/weile-icon.svg" alt="微乐图标" width="80" height="80">
 
-面向 Android 的音乐播放器，原名听屿。
+面向 Android 的音乐播放器，支持在线收听和本地音乐管理。
 
 [![GitHub Release](https://img.shields.io/github/v/release/JackkLau/mobile-music-dl)](https://github.com/JackkLau/mobile-music-dl/releases/latest)
 [![Build](https://github.com/JackkLau/mobile-music-dl/actions/workflows/android.yml/badge.svg?branch=master&event=push)](https://github.com/JackkLau/mobile-music-dl/actions/workflows/android.yml)
@@ -12,7 +12,7 @@
 
 ## 下载与安装
 
-从 [GitHub Releases](https://github.com/JackkLau/mobile-music-dl/releases/latest) 下载最新版本的 `.apk` 文件，支持 **Android 10 及以上**。版本页面同时提供更新说明和 SHA-256 校验文件；`.aab` 用于商店提交，不能直接安装。
+从 [GitHub Releases](https://github.com/JackkLau/mobile-music-dl/releases/latest) 下载最新版本的 `weile-版本-release.apk` 文件，支持 **Android 10 及以上**。版本页面同时提供更新说明和 SHA-256 校验文件；`.aab` 用于商店提交，不能直接安装。
 
 升级已有正式版时请覆盖安装，不要卸载。正式版与调试版使用不同签名，不能直接互相覆盖。签名与校验方式见 [发布文档](docs/GITHUB-RELEASE.md)。
 

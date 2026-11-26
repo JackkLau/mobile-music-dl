@@ -49,7 +49,9 @@ components:
     textColor: "#FFFFFF"
 ---
 
-# 听屿 Design System
+# 历史归档 · 听屿 0.1.1 Design System
+
+微乐的现行规范见[项目根目录文档](../DESIGN.md)。以下记录保留当时的名称和设计。
 
 ## Overview
 

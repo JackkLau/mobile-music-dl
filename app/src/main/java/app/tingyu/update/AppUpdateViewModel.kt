@@ -38,7 +38,7 @@ internal class AppUpdateViewModel(app: Application, private val saved: SavedStat
         val size = saved.get<Long>("size")
         val sha256 = saved.get<String>("sha256")
         if (version != null && size != null && sha256 != null) {
-            val release = GitHubRelease(version, size, sha256)
+            val release = GitHubRelease(version, size, sha256, legacy = saved.get<Boolean>("legacyAsset") ?: true)
             mutable.value = UpdateState(UpdatePhase.AVAILABLE, release)
             // Recover a verified file after process death, including a return from installer settings.
             if (repo.file(release).isFile) {
@@ -62,6 +62,7 @@ internal class AppUpdateViewModel(app: Application, private val saved: SavedStat
                 saved["version"] = release.version
                 saved["size"] = release.size
                 saved["sha256"] = release.sha256
+                saved["legacyAsset"] = release.legacy
                 if (previous.phase == UpdatePhase.READY && release == previous.release && repo.file(release).isFile) {
                     mutable.value = previous.copy(message = null, error = null)
                 } else {

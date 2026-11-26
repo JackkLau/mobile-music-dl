@@ -10,6 +10,7 @@ import android.content.pm.ServiceInfo
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import app.tingyu.MusicApp
+import app.tingyu.R
 import app.tingyu.model.DownloadStatus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CancellationException
@@ -68,7 +69,7 @@ class DownloadService : Service() {
             ?: downloads.jobs.value.firstOrNull { it.status == DownloadStatus.QUEUED }
         val remaining = downloads.jobs.value.count { it.status in setOf(DownloadStatus.QUEUED, DownloadStatus.DOWNLOADING, DownloadStatus.SAVING) }
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_sys_download)
+            .setSmallIcon(R.drawable.ic_brand_mark)
             .setContentTitle(task?.track?.title ?: "准备下载")
             .setContentText(if (task?.status == DownloadStatus.SAVING) "正在保存到音乐目录" else "下载队列 · 剩余 $remaining 首")
             .setOnlyAlertOnce(true)

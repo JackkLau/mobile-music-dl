@@ -1,11 +1,13 @@
 <resources>
-    <style name="Theme.TingYu" parent="android:style/Theme.Material.Light.NoActionBar">
+    <style name="Theme.TingYu.Base" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightNavigationBar">true</item>
-        <item name="android:colorAccent">#3F5D96</item>
+        <item name="android:colorAccent">@color/brand_background</item>
         <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowBackground">@color/brand_canvas</item>
     </style>
+    <style name="Theme.TingYu" parent="Theme.TingYu.Base" />
 </resources>

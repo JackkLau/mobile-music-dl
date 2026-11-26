@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import app.tingyu.model.*
 import app.tingyu.BuildConfig
 import app.tingyu.R
+import app.tingyu.data.local.LocalMusicManager
 
 @Composable
 internal fun LibraryScreen(state: AppUiState, actions: AppActions) {
@@ -49,7 +50,7 @@ internal fun LibraryScreen(state: AppUiState, actions: AppActions) {
                     Icon(Icons.Rounded.FolderOpen, contentDescription = null)
                     Spacer(Modifier.width(6.dp)); Text("导入本地音频")
                 }
-                Text("扫描 Music / 听屿 中的旧文件；其他文件可手动选择导入。", style = MaterialTheme.typography.bodySmall,
+                Text("扫描 ${LocalMusicManager.MUSIC_DIRECTORY} 中的旧文件；其他文件可手动选择导入。", style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (state.libraryWorking) LinearProgressIndicator(Modifier.fillMaxWidth().testTag("library_progress"))
                 state.libraryStatus?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
@@ -112,7 +113,7 @@ internal fun DownloadsScreen(state: AppUiState, actions: AppActions) {
                     Spacer(Modifier.width(12.dp))
                     Column {
                         Text("手机音乐目录", style = MaterialTheme.typography.titleMedium)
-                        Text("Music / 听屿", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(LocalMusicManager.MUSIC_DIRECTORY, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }

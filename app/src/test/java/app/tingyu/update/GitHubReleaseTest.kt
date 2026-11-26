@@ -9,11 +9,12 @@ import java.io.ByteArrayOutputStream
 class GitHubReleaseTest {
     private val bytes = "APK fixture".toByteArray()
     private val release = GitHubRelease("0.10.2", bytes.size.toLong(), bytes.toByteString().sha256().hex())
-    private val metadata = """
+    private val apkAsset = """{"name":"${release.fileName}","size":${bytes.size},"digest":"sha256:${release.sha256}","browser_download_url":"${release.url}"}"""
+    private fun metadata(vararg apks: String) = """
         {"tag_name":"v0.10.2","draft":false,"prerelease":false,"assets":[
-        {"name":"tingyu-0.10.2-release.aab"},
-        {"name":"${release.fileName}","size":${bytes.size},"digest":"sha256:${release.sha256}","browser_download_url":"${release.url}"}]}
+        {"name":"weile-0.10.2-release.aab"},${apks.joinToString(",")}]}
     """.trimIndent()
+    private val metadata = metadata(apkAsset)
 
     @Test fun findsOnlyTheStableOfficialApkAndComparesVersionPartsAsNumbers() {
         val actual = GitHubRelease.parse(metadata)
@@ -21,6 +22,20 @@ class GitHubReleaseTest {
         assertTrue(actual.compareToInstalled("0.9.12") > 0)
         assertTrue(actual.compareToInstalled("1.0.0") < 0)
         assertEquals(0, actual.compareToInstalled("0.10.2"))
+    }
+
+    @Test fun prefersTheBrandedApkAndStillReadsOlderReleases() {
+        val oldAsset = apkAsset.replace("weile-", "tingyu-")
+        val legacy = GitHubRelease.parse(metadata(oldAsset))
+        assertTrue(legacy.legacy)
+        assertEquals(release.fileName, legacy.fileName)
+        assertTrue(legacy.url.endsWith("/tingyu-0.10.2-release.apk"))
+
+        val both = metadata(oldAsset, apkAsset)
+        assertEquals(release, GitHubRelease.parse(both))
+        assertThrows(UpdateError::class.java) {
+            GitHubRelease.parse(both.replace(release.url, "https://other.example/wrong.apk"))
+        }
     }
 
     @Test fun rejectsWrongRepositoryOrUnverifiableRelease() {

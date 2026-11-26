@@ -85,6 +85,8 @@ for path in (ROOT / "scripts").rglob("*.sh"):
     check(subprocess.run(["bash", "-n", str(path)]).returncode == 0, "shell syntax: " + path.name)
 for required in ["DESIGN.md", "UX-CONTRACT.md", "README.md", "app/build.gradle.kts"]:
     check((ROOT / required).is_file(), "required file: " + required)
+check(subprocess.run([sys.executable, str(ROOT / "scripts/export-brand.py"), "--check"]).returncode == 0,
+      "README icon matches the Android brand resources")
 config = json.loads((ROOT / "premium-ui.json").read_text())
 check(all((ROOT / value).is_file() for value in config["evidence"].values()), "UI test evidence files exist")
 failed = [description for passed, description in checks if not passed]

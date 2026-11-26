@@ -25,6 +25,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.painterResource
+import app.tingyu.R
 import app.tingyu.model.Track
 import coil.compose.AsyncImage
 import java.util.Locale
@@ -39,7 +41,7 @@ internal fun Cover(track: Track?, size: Dp, modifier: Modifier = Modifier) {
         // A square, locally drawn sleeve replaces video thumbnails; no network or fake album art.
         val flipped = (track?.id?.hashCode() ?: 0) and 1 == 0
         Canvas(Modifier.fillMaxSize()) {
-            drawRect(Brush.linearGradient(if (flipped) listOf(TingYuColors.Blue, TingYuColors.Ink) else listOf(TingYuColors.PlayerSurface, TingYuColors.Blue)))
+            drawRect(Brush.linearGradient(if (flipped) listOf(TingYuColors.Pine, TingYuColors.Ink) else listOf(TingYuColors.PlayerSurface, TingYuColors.Pine)))
             val center = Offset(this.size.width * 0.82f, this.size.height * 0.20f)
             listOf(0.37f, 0.45f, 0.53f).forEach { radius ->
                 drawCircle(TingYuColors.PlayerAccent.copy(alpha = 0.16f), this.size.minDimension * radius, center, style = Stroke(1.dp.toPx()))
@@ -47,7 +49,7 @@ internal fun Cover(track: Track?, size: Dp, modifier: Modifier = Modifier) {
         }
         if (size > 100.dp) {
             Column(Modifier.fillMaxSize().padding(size * 0.10f), verticalArrangement = Arrangement.SpaceBetween) {
-                Icon(Icons.Rounded.MusicNote, contentDescription = null, tint = TingYuColors.PlayerAccent, modifier = Modifier.size(28.dp))
+                Icon(painterResource(R.drawable.ic_brand_mark), contentDescription = null, tint = TingYuColors.PlayerAccent, modifier = Modifier.size(28.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(track?.title.orEmpty(), color = TingYuColors.Surface, style = MaterialTheme.typography.titleLarge,
                         maxLines = 3, overflow = TextOverflow.Ellipsis)
@@ -55,7 +57,7 @@ internal fun Cover(track: Track?, size: Dp, modifier: Modifier = Modifier) {
                         style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
-        } else Icon(Icons.Rounded.MusicNote, contentDescription = null, tint = TingYuColors.PlayerAccent,
+        } else Icon(painterResource(R.drawable.ic_brand_mark), contentDescription = null, tint = TingYuColors.PlayerAccent,
             modifier = Modifier.size(size * 0.42f))
         if (!track?.coverUrl.isNullOrBlank()) {
             AsyncImage(model = track?.coverUrl, contentDescription = null,

@@ -61,7 +61,7 @@ jobs:
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: tingyu-${{ steps.release.outputs.version }}-cloud-unsigned
+          name: weile-${{ steps.release.outputs.version }}-cloud-unsigned
           path: artifacts/cloud-unsigned/
           if-no-files-found: error
           retention-days: 30

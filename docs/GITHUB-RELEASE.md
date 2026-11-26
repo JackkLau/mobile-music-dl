@@ -1,10 +1,12 @@
 # GitHub 正式签名构建与发布
 
-仓库：`JackkLau/mobile-music-dl`。当前发布版本 `v0.1.4`，对应 `versionName=0.1.4`、`versionCode=5`。工作流读取 `app/build.gradle.kts` 的真实版本，标签必须与其一致。
+微乐通过 [GitHub Releases](https://github.com/JackkLau/mobile-music-dl/releases/latest) 发布正式版。工作流从 `app/build.gradle.kts` 读取版本、从 Android 资源读取产品名。标签必须与构建版本一致。
+
+0.1.8 起，正式文件名为 `weile-版本-release.apk` 和 `weile-版本-release.aab`。另附同一 APK 的 `tingyu-版本-release.apk` 兼容副本，供 0.1.7 内置更新器识别。两份 APK 的 SHA-256 相同。
 
 ## 无需上传私钥的发布路径
 
-`Android release build`（`.github/workflows/release-build.yml`）提供本机签名入口：在 GitHub Actions 手动选择 `master`，执行 release 单元测试、lint、APK/AAB 编译及 PC 共用代码检查，不读取任何签名 Secrets。输出 `tingyu-版本-cloud-unsigned` artifact，其中 `cloud-build.json` 记录提交、工作流地址和每个原始文件的 SHA-256；这些文件尚未签名，不能直接作为正式安装包发布。
+`Android release build`（`.github/workflows/release-build.yml`）提供本机签名入口：在 GitHub Actions 手动选择 `master`，执行 release 单元测试、lint、APK/AAB 编译及 PC 共用代码检查，不读取任何签名 Secrets。输出 `weile-版本-cloud-unsigned` artifact，其中 `cloud-build.json` 记录提交、工作流地址和每个原始文件的 SHA-256；这些文件尚未签名，不能直接作为正式安装包发布。
 
 下载该运行的 artifact，核对提交及哈希后，在本机用已有正式证书执行 APK 的 `zipalign` / `apksigner` 和 AAB 的 `jarsigner`，再用 `scripts/verify-release.py --apk ... --aab ...` 校验。对照签名前后 ZIP 载荷，确保签名过程中没有替换云端编译内容。最终 APK/AAB、SHA256SUMS、release.json 及 cloud-build.json 上传到该构建提交对应的 GitHub Release。私钥和密码始终留在本机。
 
@@ -21,7 +23,7 @@
 
 工作流仅在 `JackkLau/mobile-music-dl` 仓库执行，PR 和其他分支不能触发带签名的构建。构建任务只有仓库读取权限；单独的发布任务在成功后获得 `contents: write`。同一 ref 的发布串行执行，不会中断正在签名的任务。
 
-产物命名为 `tingyu-0.1.2-release.apk`、`tingyu-0.1.2-release.aab`、`SHA256SUMS`、`release.json`。Actions artifact 保存 30 天，测试和 lint 报告保存 14 天；tag 触发的四个发布文件还会成为 GitHub Release 附件。APK 可以安装，AAB 用于商店提交；本流程不上传任何应用商店。
+发布附件包括正式 APK、AAB、旧版更新器所需的 APK 副本、`SHA256SUMS` 和 `release.json`。Actions artifact 保存 30 天，测试和 lint 报告保存 14 天。APK 可以安装，AAB 用于商店提交；本流程不上传任何应用商店。
 
 已有同名 Release 时，`gh release create` 会失败，不自动覆盖已发布的文件。修复发布问题后，应先检查已有 Release 的实际状态，再决定后续操作。
 
@@ -71,7 +73,7 @@ python3 scripts/verify-release.py
 
 这些检查证明构建、签名及静态发布边界，不证明完整网络下载、M4A 保存、手机播放或商店验收。正式签名不能覆盖 debug 签名安装；不要为试装删除含个人数据的应用。
 
-## 当前本地验证记录
+## 历史本地验证记录
 
 2026-10-29：13 项发布工具单元测试通过（包含于本轮共 29 项脚本测试）；发布 YAML 可解析，8 个 shell 步骤语法检查通过。0.1.2 正式 APK/AAB 已在本机重新构建并通过同证书、真实版本、AAB 全部载荷签名和 APK 对齐校验。此项是本地结果，不是云端构建结果。
 

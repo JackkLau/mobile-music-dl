@@ -9,10 +9,12 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import app.tingyu.MainActivity
 import app.tingyu.MusicApp
+import app.tingyu.R
 import app.tingyu.data.bili.BiliResponseParser
 import app.tingyu.model.Track
 import com.google.common.util.concurrent.Futures
@@ -48,6 +50,9 @@ class PlaybackService : MediaSessionService() {
 
     override fun onCreate() {
         super.onCreate()
+        setMediaNotificationProvider(DefaultMediaNotificationProvider(this).apply {
+            setSmallIcon(R.drawable.ic_brand_mark)
+        })
         val http = OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS).readTimeout(30, TimeUnit.SECONDS)
             .addNetworkInterceptor { chain ->
                 val url = chain.request().url

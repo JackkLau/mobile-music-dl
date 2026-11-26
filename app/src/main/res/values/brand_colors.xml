@@ -1,4 +1,5 @@
 <resources>
-    <!-- Launcher adapter for TingYuColors.Blue; keep the accepted brand token in sync. -->
-    <color name="brand_background">#3F5D96</color>
+    <color name="brand_background">#145B52</color>
+    <color name="brand_mark">#FAFBEF</color>
+    <color name="brand_canvas">#F3F7F4</color>
 </resources>

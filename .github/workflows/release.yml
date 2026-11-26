@@ -22,6 +22,7 @@ jobs:
     timeout-minutes: 40
     outputs:
       version: ${{ steps.release.outputs.version }}
+      brand: ${{ steps.release.outputs.brand }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -72,7 +73,7 @@ jobs:
       - name: Upload verified release assets
         uses: actions/upload-artifact@v4
         with:
-          name: tingyu-${{ steps.release.outputs.version }}-release
+          name: weile-${{ steps.release.outputs.version }}-release
           path: |
             artifacts/github-release/*.apk
             artifacts/github-release/*.aab
@@ -102,18 +103,20 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: tingyu-${{ needs.build.outputs.version }}-release
+          name: weile-${{ needs.build.outputs.version }}-release
           path: release-assets
       - name: Publish this version tag
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          RELEASE_BRAND: ${{ needs.build.outputs.brand }}
           RELEASE_TAG: ${{ github.ref_name }}
           RELEASE_VERSION: ${{ needs.build.outputs.version }}
         run: |
           cd release-assets
           sha256sum -c SHA256SUMS
           gh release create "$RELEASE_TAG" \
-            "tingyu-$RELEASE_VERSION-release.apk" \
-            "tingyu-$RELEASE_VERSION-release.aab" SHA256SUMS release.json \
-            --verify-tag --title "微乐 $RELEASE_VERSION" --generate-notes
+            "weile-$RELEASE_VERSION-release.apk" \
+            "tingyu-$RELEASE_VERSION-release.apk#$RELEASE_BRAND APK（供 0.1.7 自动更新）" \
+            "weile-$RELEASE_VERSION-release.aab" SHA256SUMS release.json \
+            --verify-tag --title "$RELEASE_BRAND $RELEASE_VERSION" --generate-notes

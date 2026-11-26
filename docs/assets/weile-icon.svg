@@ -1,1 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 108 108" role="img" aria-labelledby="title"><title id="title">微乐应用图标</title><rect width="108" height="108" rx="24" fill="#3F5D96"/><path d="M31,41 C33,56 36,68 42,68 C47,68 51,56 54,48 C57,56 61,68 67,68 C73,68 76,54 76,42 L76,36 L66,39" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<svg aria-labelledby="title" xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 64 64" role="img">
+  <title id="title">微乐 · 唱片与唱针</title>
+  <rect width="64" height="64" rx="16" fill="#145B52" />
+  <path fill-rule="evenodd" fill="#FAFBEF" d="M40,16.38 L40,23.3 L34.55,29.2 C31.6,32.35 31.8,36.95 34.7,39.75 C37.7,42.55 42.35,42.15 45.1,39.15 L50.8,32.9 A23,23 0 1,1 40,16.38 Z M31.5,36 A3.5,3.5 0 1,0 24.5,36 A3.5,3.5 0 1,0 31.5,36 Z M11.8,37 C12.8,45.5 18.6,51.8 27.2,53 C28.35,53.15 29.1,52.45 29.25,51.5 C29.4,50.4 28.7,49.5 27.65,49.35 C20.8,48.3 16.45,43.6 15.45,36.55 C15.3,35.5 14.5,34.8 13.45,34.9 C12.45,35 11.7,35.9 11.8,37 Z" />
+  <path fill-rule="nonzero" fill="#FAFBEF" d="M48.5,5.5 L52.5,5.5 Q55.5,5.5 55.5,8.5 L55.5,20.7 Q55.5,23.65 53.45,25.85 L41.65,38.25 Q40.05,39.95 38.35,38.35 L36.2,36.35 Q34.5,34.75 36.1,33.05 L46.2,22.45 Q47,21.55 47,20.3 L47,8 Q47,5.5 48.5,5.5 Z" />
+</svg>

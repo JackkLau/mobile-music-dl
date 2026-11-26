@@ -1,4 +1,6 @@
-# 听屿 UX Contract
+# 历史归档 · 听屿 0.1.1 UX Contract
+
+微乐的现行规范见[项目根目录文档](../UX-CONTRACT.md)。以下记录保留当时的名称和设计。
 
 ## Product context
 

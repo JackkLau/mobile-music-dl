@@ -41,7 +41,7 @@ internal fun SongDetailsDialog(state: AppUiState, actions: AppActions, track: Tr
     AlertDialog(onDismissRequest = dismiss, title = { Text("歌曲信息") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("只修改微乐中的显示信息，保留原音频和视频来源。", style = MaterialTheme.typography.bodyMedium)
+                Text("修改仅保存在本机，原音频和视频来源会保留。", style = MaterialTheme.typography.bodyMedium)
                 OutlinedTextField(title, { title = it.take(200) }, label = { Text("歌名") }, singleLine = true,
                     enabled = !state.musicSaving, isError = title.isBlank(), modifier = Modifier.fillMaxWidth(),
                     trailingIcon = { if (title.isNotEmpty()) IconButton(onClick = { title = "" }, enabled = !state.musicSaving) { Icon(Icons.Rounded.Close, "清空歌名") } })
