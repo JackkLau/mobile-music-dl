@@ -291,7 +291,8 @@ class DownloadCoordinator(
             val exists = try { context.contentResolver.openFileDescriptor(savedUri, "r")?.use { true } == true }
             catch (e: SecurityException) { throw IOException("已有文件的访问授权已失效，请在下载位置重新选择原文件夹", e) }
             catch (e: java.io.FileNotFoundException) {
-                if (DocumentsContract.isTreeUri(savedUri)) throw IOException("已有文件暂时不可用，请检查原下载文件夹", e)
+                if (DocumentsContract.isTreeUri(savedUri) && !DownloadFolders.confirmsFileRemoved(context.contentResolver, savedUri))
+                    throw IOException("已有文件暂时不可用，请检查原下载文件夹", e)
                 false
             }
             if (exists) {

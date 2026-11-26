@@ -53,5 +53,20 @@ class DownloadFolders(context: Context) {
     companion object {
         const val READ_WRITE = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
         fun root(tree: Uri): Uri = DocumentsContract.buildDocumentUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree))
+
+        /** All exported tracks are direct children. A missing volume or incomplete listing is inconclusive. */
+        internal fun confirmsFileRemoved(resolver: ContentResolver, file: Uri): Boolean {
+            return try {
+                if (resolver.getType(root(file)) != Document.MIME_TYPE_DIR) return false
+                val children = DocumentsContract.buildChildDocumentsUriUsingTree(file, DocumentsContract.getTreeDocumentId(file))
+                val fileId = DocumentsContract.getDocumentId(file)
+                resolver.query(children, arrayOf(Document.COLUMN_DOCUMENT_ID), null, null, null)?.use { cursor ->
+                    if (cursor.extras.getBoolean(DocumentsContract.EXTRA_LOADING) ||
+                        cursor.extras.containsKey(DocumentsContract.EXTRA_ERROR)) return false
+                    while (cursor.moveToNext()) if (cursor.getString(0) == fileId) return false
+                    true
+                } == true
+            } catch (_: Exception) { false }
+        }
     }
 }

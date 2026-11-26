@@ -3,8 +3,10 @@ package app.tingyu
 import android.Manifest
 import android.app.Activity
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.DocumentsContract
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -24,6 +26,7 @@ import app.tingyu.model.MusicLoginMethod
 import app.tingyu.model.AppActions
 import app.tingyu.model.MusicSource
 import app.tingyu.data.music.MusicShareLink
+import app.tingyu.download.DownloadFolders
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import app.tingyu.model.Track
 import app.tingyu.ui.TingYuApp
@@ -121,10 +124,10 @@ class MainActivity : ComponentActivity() {
                 else audioPermission.launch(permission)
             }
             override fun selectDownloadFolder() {
-                val previous = model.state.value.downloadFolder.tree?.let(android.net.Uri::parse)
-                val initial = previous ?: android.provider.DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", "primary:Music")
+                val initial = model.state.value.downloadFolder.tree?.let { DownloadFolders.root(Uri.parse(it)) }
+                    ?: DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", "primary:Music")
                 val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
-                    putExtra(android.provider.DocumentsContract.EXTRA_INITIAL_URI, initial)
+                    putExtra(DocumentsContract.EXTRA_INITIAL_URI, initial)
                     putExtra(Intent.EXTRA_LOCAL_ONLY, true)
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
                         Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION or Intent.FLAG_GRANT_PREFIX_URI_PERMISSION)

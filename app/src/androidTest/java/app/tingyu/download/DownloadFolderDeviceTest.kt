@@ -84,15 +84,21 @@ class DownloadFolderDeviceTest {
             }, client, {}, downloadFolder = { folders.current.value })
             runBlocking {
                 withTimeout(30_000) {
-                    coordinator.enqueue(listOf(song))
-                    coordinator.jobs.first { it.any { task -> task.status == DownloadStatus.QUEUED } }
-                    coordinator.runPending {}
-                    val job = coordinator.jobs.value.single()
-                    assertEquals(job.error, DownloadStatus.COMPLETED, job.status)
-                    saved = Uri.parse(requireNotNull(job.uri))
+                    suspend fun downloadSong(): Uri {
+                        coordinator.enqueue(listOf(song))
+                        coordinator.jobs.first { it.any { task -> task.status == DownloadStatus.QUEUED } }
+                        coordinator.runPending {}
+                        val job = coordinator.jobs.value.single()
+                        assertEquals(job.error, DownloadStatus.COMPLETED, job.status)
+                        return Uri.parse(requireNotNull(job.uri))
+                    }
+                    saved = downloadSong()
                     assertTrue(DocumentsContract.getDocumentId(saved!!).startsWith("primary:Music/$folderName/"))
                     LocalMusicManager(app, db).scan(tree)
                     assertEquals(1, db.readLocal().count { it.uri == saved.toString() })
+                    assertTrue(DocumentsContract.deleteDocument(resolver, saved!!))
+                    saved = downloadSong()
+                    assertEquals(saved.toString(), db.saved(song.id)?.uri)
                 }
             }
             compose.onNodeWithText("恢复默认").performClick()
