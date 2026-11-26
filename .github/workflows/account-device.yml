@@ -44,7 +44,14 @@ jobs:
           # Leave room for the guest image and its writable data on this disposable host.
           sudo rm -rf /usr/local/lib/android/sdk/ndk /usr/share/dotnet
           sdkmanager 'emulator' 'system-images;android-30;google_apis;x86_64' > "$RUNNER_TEMP/sdk-install.log"
-          echo no | avdmanager create avd -n account-ui -k 'system-images;android-30;google_apis;x86_64' -d pixel_4
+          export ANDROID_USER_HOME="$RUNNER_TEMP/account-android"
+          export ANDROID_AVD_HOME="$ANDROID_USER_HOME/avd"
+          mkdir -p "$ANDROID_AVD_HOME"
+          echo no | avdmanager create avd -n account-ui -p "$ANDROID_AVD_HOME/account-ui.avd" -k 'system-images;android-30;google_apis;x86_64' -d pixel_4
+          # Some SDK tools store the index under XDG_CONFIG_HOME despite the explicit AVD path.
+          test -s "$ANDROID_AVD_HOME/account-ui.avd/config.ini"
+          printf 'avd.ini.encoding=UTF-8\npath=%s\ntarget=android-30\n' "$ANDROID_AVD_HOME/account-ui.avd" > "$ANDROID_AVD_HOME/account-ui.ini"
+          "$ANDROID_HOME/emulator/emulator" -list-avds | grep -qx account-ui
           sudo setfacl -m "u:$(id -un):rw" /dev/kvm
           adb start-server
           "$ANDROID_HOME/emulator/emulator" -avd account-ui -port 5554 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader -feature -Vulkan -cores 2 -memory 2048 -partition-size 2048 > "$RUNNER_TEMP/emulator.log" 2>&1 &
