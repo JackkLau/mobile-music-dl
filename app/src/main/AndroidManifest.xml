@@ -37,6 +37,7 @@
                 <data android:mimeType="text/plain" />
             </intent-filter>
         </activity>
+        <activity android:name=".auth.MusicAccountActivity" android:exported="false" />
         <activity android:name=".auth.LoginActivity" android:exported="false" />
         <service android:name=".playback.PlaybackService" android:exported="true" android:foregroundServiceType="mediaPlayback">
             <intent-filter><action android:name="androidx.media3.session.MediaSessionService" /></intent-filter>

@@ -2,6 +2,8 @@ package app.tingyu.model
 
 import kotlinx.serialization.Serializable
 
+enum class MusicSource(val label: String) { BILIBILI("哔哩哔哩"), NETEASE("网易云音乐"), QQ("QQ音乐") }
+
 @Serializable
 data class Track(
     val bvid: String,
@@ -18,6 +20,7 @@ data class Track(
     val sourceArtist: String = "",
     val videoCoverUrl: String = "",
     val metadataVersion: Int = 0,
+    val source: MusicSource = MusicSource.BILIBILI,
 ) { val id: String get() = "$bvid:p$page" }
 
 data class ParseResult(
@@ -34,6 +37,8 @@ data class AudioStream(
     val bitrate: Long = 0,
     val headers: Map<String, String> = emptyMap(),
     val expectedDurationMs: Long = 0,
+    val expectedBytes: Long = -1,
+    val source: MusicSource = MusicSource.BILIBILI,
 )
 
 @Serializable

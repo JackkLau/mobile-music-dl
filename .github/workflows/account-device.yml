@@ -10,6 +10,10 @@ on:
       - 'app/src/main/java/app/tingyu/update/**'
       - 'app/src/main/java/app/tingyu/ui/AppUpdateCard.kt'
       - 'app/src/main/res/**'
+      - 'app/src/main/java/app/tingyu/data/music/**'
+      - 'app/src/main/java/app/tingyu/download/**'
+      - 'app/src/main/java/app/tingyu/ui/ParseScreen.kt'
+      - 'app/src/androidTest/java/app/tingyu/download/**'
       - 'app/src/androidTest/java/app/tingyu/ui/BrandResourcesTest.kt'
       - 'app/src/androidTest/java/app/tingyu/ui/LoginScreenTest.kt'
       - 'app/src/androidTest/java/app/tingyu/update/**'
@@ -39,7 +43,7 @@ jobs:
       - name: Run brand, login and update checks on a disposable Android device
         env:
           TINGYU_TEST_DEVICE: emulator-5554
-          TINGYU_TEST_CLASSES: app.tingyu.ui.BrandResourcesTest,app.tingyu.ui.LoginScreenTest,app.tingyu.update.UpdatePackageIntegrationTest,app.tingyu.ui.TingYuUiTest#accountProvidesUpdatesWithoutLoginOrDeveloperMode
+          TINGYU_TEST_CLASSES: app.tingyu.download.MusicDownloadIntegrationTest,app.tingyu.ui.TingYuUiTest#sharedSongHasPlatformOptionsAndDownloadAction,app.tingyu.ui.TingYuUiTest#failedDownloadKeepsErrorAndOffersTargetedRetry,app.tingyu.ui.BrandResourcesTest,app.tingyu.ui.LoginScreenTest,app.tingyu.update.UpdatePackageIntegrationTest,app.tingyu.ui.TingYuUiTest#accountProvidesUpdatesWithoutLoginOrDeveloperMode
         run: |
           set -euo pipefail
           sudo apt-get install -y libpulse0 libxkbcommon-x11-0 libxcb-cursor0

@@ -26,6 +26,8 @@ import app.tingyu.model.DownloadStatus
 import app.tingyu.model.DownloadTask
 import app.tingyu.model.LocalTrack
 import app.tingyu.model.Track
+import app.tingyu.model.MusicSource
+import app.tingyu.data.music.MusicMedia
 import app.tingyu.util.userMessage
 import java.io.File
 import java.io.FileOutputStream
@@ -66,6 +68,13 @@ class DownloadCoordinator(
     context: Context,
     private val bilibili: BilibiliRepository,
     private val library: LibraryStore,
+    private val resolveMusic: suspend (Track) -> AudioStream,
+    private val client: OkHttpClient = OkHttpClient.Builder().followRedirects(false).followSslRedirects(false)
+        .eventListenerFactory { NetworkConnectionListener() }
+        .connectTimeout(20, TimeUnit.SECONDS).readTimeout(45, TimeUnit.SECONDS).build(),
+    private val launchService: (Context) -> Unit = {
+        ContextCompat.startForegroundService(it, Intent(it, DownloadService::class.java))
+    },
 ) {
     private val context = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -76,9 +85,6 @@ class DownloadCoordinator(
     private val interrupted = ConcurrentHashMap.newKeySet<String>()
     private val _jobs = MutableStateFlow<List<DownloadTask>>(emptyList())
     val jobs: StateFlow<List<DownloadTask>> = _jobs.asStateFlow()
-    private val client = OkHttpClient.Builder().followRedirects(false).followSslRedirects(false)
-        .eventListenerFactory { NetworkConnectionListener() }
-        .connectTimeout(20, TimeUnit.SECONDS).readTimeout(45, TimeUnit.SECONDS).build()
     private val directory = File(this.context.filesDir, "download-parts").apply { mkdirs() }
     private val exportJournal = File(directory, "export-commit.json")
     @Volatile private var activeId: String? = null
@@ -108,13 +114,11 @@ class DownloadCoordinator(
         scope.launch {
             try {
                 ready.await()
-                tracks.filterNot { it.localOnly }.distinctBy { it.id }.forEach { track ->
-                    if (activeId == track.id) return@forEach
-                    val old = _jobs.value.firstOrNull { it.track.id == track.id }
-                    if (old?.status in activeStatuses) return@forEach
-                    cancelled.remove(track.id)
-                    interrupted.remove(track.id)
-                    update(DownloadTask(track))
+                stateMutex.withLock {
+                    tracks.filterNot { it.localOnly }.distinctBy { it.id }.forEach { track ->
+                        val old = _jobs.value.firstOrNull { it.track.id == track.id }
+                        if (old?.status !in activeStatuses) queueLocked(track)
+                    }
                 }
                 if (_jobs.value.any { it.status == DownloadStatus.QUEUED }) startService()
             } catch (_: Exception) {
@@ -125,9 +129,40 @@ class DownloadCoordinator(
         }
     }
 
-    fun retry(id: String) {
-        val task = _jobs.value.firstOrNull { it.track.id == id } ?: return
-        if (task.status !in activeStatuses && task.status != DownloadStatus.COMPLETED) enqueue(listOf(task.track))
+    private suspend fun queueLocked(track: Track) {
+        cancelled.remove(track.id)
+        interrupted.remove(track.id)
+        try {
+            updateLocked(DownloadTask(track))
+        } catch (e: CancellationException) { throw e }
+        catch (e: Exception) {
+            _jobs.value = replaceTask(_jobs.value, DownloadTask(track, DownloadStatus.FAILED,
+                error = userMessage(e, "无法创建下载任务，请检查手机存储空间")))
+        }
+    }
+
+    suspend fun retry(id: String) {
+        ready.await()
+        val queued = stateMutex.withLock {
+            val task = _jobs.value.firstOrNull { it.track.id == id } ?: return@withLock false
+            if (task.status !in retryable) return@withLock false
+            queueLocked(task.track)
+            _jobs.value.any { it.track.id == id && it.status == DownloadStatus.QUEUED }
+        }
+        if (queued) startService()
+    }
+
+    suspend fun remove(id: String) {
+        ready.await()
+        stateMutex.withLock {
+            val task = _jobs.value.firstOrNull { it.track.id == id } ?: return
+            if (task.status in activeStatuses) throw IOException("请先取消进行中的下载")
+            deleteParts(task.track)
+            library.removeDownload(id)
+            cancelled.remove(id)
+            interrupted.remove(id)
+            _jobs.value = _jobs.value.filterNot { it.track.id == id }
+        }
     }
 
     fun forgetCompleted(id: String) {
@@ -145,34 +180,25 @@ class DownloadCoordinator(
     }
 
     fun cancel(id: String) {
-        val task = _jobs.value.firstOrNull { it.track.id == id } ?: return
-        if (task.status == DownloadStatus.COMPLETED) return
-        cancelled.add(id)
-        if (activeId == id) activeCall?.cancel()
         scope.launch {
             stateMutex.withLock {
-                val latest = _jobs.value.firstOrNull { it.track.id == id }
-                if (latest != null && latest.status != DownloadStatus.COMPLETED) {
-                    val next = latest.copy(status = DownloadStatus.CANCELLED, error = null)
-                    updateLocked(next)
+                val task = _jobs.value.firstOrNull { it.track.id == id && it.status in activeStatuses } ?: return@withLock
+                cancelled.add(id)
+                if (activeId == id) activeCall?.cancel() else {
+                    deleteParts(task.track)
+                    updateLocked(task.copy(status = DownloadStatus.CANCELLED, error = null))
                 }
             }
-            if (activeId != id) deleteParts(task.track)
         }
     }
 
-    fun interruptAll() {
-        val tasks = _jobs.value.filter { it.status in activeStatuses }
-        tasks.forEach { interrupted.add(it.track.id) }
-        activeCall?.cancel()
+    fun interruptAll(source: MusicSource? = null) {
         scope.launch {
-            tasks.forEach { task ->
-                stateMutex.withLock {
-                    val latest = _jobs.value.firstOrNull { it.track.id == task.track.id }
-                    if (latest != null && latest.status in activeStatuses) {
-                        val next = latest.copy(status = DownloadStatus.INTERRUPTED, error = "下载已中断，点击重试继续")
-                        updateLocked(next)
-                    }
+            stateMutex.withLock {
+                _jobs.value.filter { it.status in activeStatuses && (source == null || it.track.source == source) }.forEach { task ->
+                    interrupted.add(task.track.id)
+                    if (activeId == task.track.id) activeCall?.cancel()
+                    else updateLocked(task.copy(status = DownloadStatus.INTERRUPTED, error = "下载已中断，点击重试继续"))
                 }
             }
         }
@@ -183,8 +209,9 @@ class DownloadCoordinator(
         runnerMutex.withLock {
             while (true) {
                 currentCoroutineContext().ensureActive()
-                val task = _jobs.value.firstOrNull { it.status == DownloadStatus.QUEUED } ?: break
-                activeId = task.track.id
+                val task = stateMutex.withLock {
+                    _jobs.value.firstOrNull { it.status == DownloadStatus.QUEUED }?.also { activeId = it.track.id }
+                } ?: break
                 try {
                     download(task.track, onProgress)
                 } catch (error: Exception) {
@@ -194,15 +221,17 @@ class DownloadCoordinator(
                         else -> DownloadStatus.FAILED
                     }
                     withContext(NonCancellable) {
+                        if (state == DownloadStatus.CANCELLED) deleteParts(task.track)
                         val latest = _jobs.value.firstOrNull { it.track.id == task.track.id } ?: task
                         update(latest.copy(status = state, error = when (state) {
                             DownloadStatus.CANCELLED -> null
                             DownloadStatus.INTERRUPTED -> "下载已中断，点击重试继续"
                             else -> friendlyError(error)
                         }))
-                        if (state == DownloadStatus.CANCELLED) deleteParts(task.track)
                     }
-                    if (error is CancellationException) throw error
+                    if (error is CancellationException) {
+                        throw error
+                    }
                 } finally {
                     activeId = null
                     activeCall = null
@@ -228,7 +257,8 @@ class DownloadCoordinator(
         }
         update(DownloadTask(track, DownloadStatus.DOWNLOADING))
         onProgress()
-        var stream = bilibili.resolveAudio(track, profile, requestId)
+        suspend fun resolve() = if (track.source == MusicSource.BILIBILI) bilibili.resolveAudio(track, profile, requestId) else resolveMusic(track)
+        var stream = resolve()
         var refreshAttempt = 0
         checkRunning(track.id)
         try {
@@ -237,7 +267,7 @@ class DownloadCoordinator(
             checkRunning(track.id)
             refreshAttempt = 1
             bilibili.log(profile, requestId, mapOf("stage" to "cdn", "event" to "refresh_link", "attempt" to "1"))
-            stream = bilibili.resolveAudio(track, profile, requestId)
+            stream = resolve()
             checkRunning(track.id)
             transfer(track, stream, profile, requestId, refreshAttempt, onProgress)
         }
@@ -250,17 +280,19 @@ class DownloadCoordinator(
         var stage = "remux"
         try {
             ensureSpace(source.length() + SPACE_RESERVE)
-            remuxAudio(source, output, track, stream.expectedDurationMs)
+            val mp3 = stream.source != MusicSource.BILIBILI
+            if (mp3 && stream.expectedBytes != source.length()) throw IOException("歌曲文件大小不符，请重新下载")
+            val audio = prepareAudio(source, output, track, stream.expectedDurationMs, mp3)
             checkRunning(track.id)
             stage = "save"
-            val uri = publish(track, output)
+            val uri = publish(track, audio, mp3)
             // Persist ownership before exposing success. No cancellation is accepted halfway through commit.
             withContext(NonCancellable) {
                 try {
-                    val completed = latest.copy(status = DownloadStatus.COMPLETED, bytes = output.length(), totalBytes = output.length(), uri = uri.toString(), error = null)
+                    val completed = latest.copy(status = DownloadStatus.COMPLETED, bytes = audio.length(), totalBytes = audio.length(), uri = uri.toString(), error = null)
                     library.commitDownload(LocalTrack(track, uri.toString()), completed)
                     updateMemory(completed)
-                    bilibili.log(profile, requestId, mapOf("stage" to "save", "event" to "saved", "bytes" to output.length().toString()))
+                    bilibili.log(profile, requestId, mapOf("stage" to "save", "event" to "saved", "bytes" to audio.length().toString()))
                     exportJournal.delete()
                 } catch (error: Exception) {
                     context.contentResolver.delete(uri, null, null)
@@ -309,7 +341,8 @@ class DownloadCoordinator(
         var stage = "content"
         try { response.use {
             checkHttp(it)
-            val total = MediaResponsePolicy.validate(it, if (append) offset else 0L)
+            val total = MediaResponsePolicy.validate(it, if (append) offset else 0L, mp3 = stream.source != MusicSource.BILIBILI)
+            if (stream.expectedBytes > 0 && total >= 0 && stream.expectedBytes != total) throw IOException("下载地址与完整歌曲的大小不符")
             val body = it.body ?: throw IOException("音频内容为空")
             stage = "transfer"
             if (total > MAX_AUDIO_BYTES) throw IOException("音频超过 2 GB，请选择较短的视频")
@@ -360,7 +393,8 @@ class DownloadCoordinator(
     private suspend fun fetch(original: String, stream: AudioStream, offset: Long, etag: String?, profile: NetworkProfile, requestId: String, attempt: Int): Response {
         var url = original
         repeat(5) { redirects ->
-            val request = MediaRequestPolicy.request(url, stream, profile.audioUa, offset, etag)
+            val request = if (stream.source == MusicSource.BILIBILI) MediaRequestPolicy.request(url, stream, profile.audioUa, offset, etag)
+                else MusicMedia.request(url, stream.source, offset, etag)
             val call = client.newCall(request)
             activeCall = call
             val response = try { call.await() }
@@ -397,15 +431,15 @@ class DownloadCoordinator(
         if (!response.isSuccessful) throw IOException("下载服务暂时不可用（${response.code}），请稍后重试")
     }
 
-    private suspend fun remuxAudio(source: File, target: File, track: Track, resolvedDurationMs: Long) {
+    private suspend fun prepareAudio(source: File, target: File, track: Track, resolvedDurationMs: Long, mp3: Boolean): File {
         val extractor = MediaExtractor()
         var muxer: MediaMuxer? = null
         var started = false
         try {
             extractor.setDataSource(source.absolutePath)
             val audioIndex = (0 until extractor.trackCount).firstOrNull {
-                extractor.getTrackFormat(it).getString(MediaFormat.KEY_MIME) == "audio/mp4a-latm"
-            } ?: throw IOException("此音轨不是受支持的 AAC 格式")
+                extractor.getTrackFormat(it).getString(MediaFormat.KEY_MIME) == (if (mp3) "audio/mpeg" else "audio/mp4a-latm")
+            } ?: throw IOException(if (mp3) "平台返回的文件不是 MP3 歌曲" else "此音轨不是受支持的 AAC 格式")
             val format = extractor.getTrackFormat(audioIndex)
             val durationUs = if (format.containsKey(MediaFormat.KEY_DURATION)) format.getLong(MediaFormat.KEY_DURATION) else 0L
             val sourceDurationMs = resolvedDurationMs.takeIf { it > 0 } ?: track.durationMs
@@ -414,10 +448,16 @@ class DownloadCoordinator(
                 throw IOException("音频时长与视频不符，可能只有试看片段")
             }
             extractor.selectTrack(audioIndex)
-            muxer = MediaMuxer(target.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
-            val outputTrack = muxer.addTrack(format)
-            muxer.start()
-            started = true
+            val outputTrack = if (mp3) {
+                if (extractor.trackCount != 1) throw IOException("平台返回的不是单音轨 MP3 文件")
+                -1
+            } else {
+                muxer = MediaMuxer(target.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
+                val index = muxer.addTrack(format)
+                muxer.start()
+                started = true
+                index
+            }
             val maxInput = if (format.containsKey(MediaFormat.KEY_MAX_INPUT_SIZE)) format.getInteger(MediaFormat.KEY_MAX_INPUT_SIZE) else 256 * 1024
             val buffer = ByteBuffer.allocateDirect(max(maxInput, 256 * 1024).coerceAtMost(2 * 1024 * 1024))
             val info = MediaCodec.BufferInfo()
@@ -433,7 +473,7 @@ class DownloadCoordinator(
                 if (extractor.sampleFlags and MediaExtractor.SAMPLE_FLAG_PARTIAL_FRAME != 0) throw IOException("此音轨包含无法独立处理的音频帧")
                 val flags = if (extractor.sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC != 0) MediaCodec.BUFFER_FLAG_KEY_FRAME else 0
                 info.set(0, bytes, extractor.sampleTime, flags)
-                muxer.writeSampleData(outputTrack, buffer, info)
+                muxer?.writeSampleData(outputTrack, buffer, info)
                 lastSampleTime = extractor.sampleTime
                 samples++
                 if (!extractor.advance()) break
@@ -443,8 +483,9 @@ class DownloadCoordinator(
             if (expectedMs > 10_000 && lastSampleTime / 1000 < expectedMs - max(3_000L, expectedMs / 50)) {
                 throw IOException("音频内容不完整，请重新下载")
             }
-            muxer.stop()
+            muxer?.stop()
             started = false
+            return if (mp3) source else target
         } catch (error: Exception) {
             target.delete()
             throw error
@@ -455,11 +496,12 @@ class DownloadCoordinator(
         }
     }
 
-    private suspend fun publish(track: Track, file: File): Uri {
+    private suspend fun publish(track: Track, file: File, mp3: Boolean): Uri {
         ensureSpace(file.length() + SPACE_RESERVE)
         val values = ContentValues().apply {
-            put(MediaStore.Audio.Media.DISPLAY_NAME, DownloadRules.fileName(track.title, track.bvid, track.page))
-            put(MediaStore.Audio.Media.MIME_TYPE, "audio/mp4")
+            val name = DownloadRules.fileName(track.title, track.bvid, track.page)
+            put(MediaStore.Audio.Media.DISPLAY_NAME, if (mp3) name.removeSuffix(".m4a") + ".mp3" else name)
+            put(MediaStore.Audio.Media.MIME_TYPE, if (mp3) "audio/mpeg" else "audio/mp4")
             put(MediaStore.Audio.Media.RELATIVE_PATH, LocalMusicManager.MUSIC_DIRECTORY)
             put(MediaStore.Audio.Media.TITLE, track.title)
             put(MediaStore.Audio.Media.ARTIST, track.artist)
@@ -588,10 +630,12 @@ class DownloadCoordinator(
 
     private suspend fun startService() {
         try {
-            ContextCompat.startForegroundService(context, Intent(context, DownloadService::class.java))
+            launchService(context)
         } catch (_: RuntimeException) {
-            _jobs.value.filter { it.status == DownloadStatus.QUEUED }.forEach {
-                update(it.copy(status = DownloadStatus.INTERRUPTED, error = "请返回应用后点击重试，继续下载"))
+            stateMutex.withLock {
+                _jobs.value.filter { it.status == DownloadStatus.QUEUED }.forEach {
+                    updateLocked(it.copy(status = DownloadStatus.INTERRUPTED, error = "请返回应用后点击重试，继续下载"))
+                }
             }
         }
     }
@@ -633,6 +677,7 @@ class DownloadCoordinator(
     companion object {
         private const val SPACE_RESERVE = 16L * 1024 * 1024
         private const val MAX_AUDIO_BYTES = 2L * 1024 * 1024 * 1024
+        private val retryable = setOf(DownloadStatus.FAILED, DownloadStatus.INTERRUPTED, DownloadStatus.CANCELLED)
         private val activeStatuses = setOf(DownloadStatus.QUEUED, DownloadStatus.DOWNLOADING, DownloadStatus.SAVING)
     }
 }

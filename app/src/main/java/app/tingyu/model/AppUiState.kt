@@ -9,6 +9,7 @@ import app.tingyu.catalog.LyricCandidate
 
 data class AppUiState(
     val input: String = "",
+    val linkSource: MusicSource = MusicSource.BILIBILI,
     val parsing: Boolean = false,
     val loadingMore: Boolean = false,
     val result: ParseResult? = null,
@@ -55,6 +56,9 @@ data class AppUiState(
 
 interface AppActions {
     fun input(value: String)
+    fun chooseLinkSource(source: MusicSource)
+    fun openMusicPage(track: Track) {}
+    fun clearParse()
     fun parse()
     fun loadMore()
     fun tab(index: Int)
@@ -85,6 +89,7 @@ interface AppActions {
     fun useLyricVersion(candidate: LyricCandidate) {}
     fun cancelDownload(id: String)
     fun retryDownload(id: String)
+    fun removeDownload(id: String)
     fun login()
     fun logout()
     fun sessionMode(mode: SessionMode)

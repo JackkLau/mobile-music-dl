@@ -7,7 +7,7 @@ import okhttp3.Response
 /** Checks the response before its bytes enter a download or a resumed local file. */
 object MediaResponsePolicy {
     /** Returns the complete entity length, or -1 for a response with unknown length. */
-    fun validate(response: Response, offset: Long): Long {
+    fun validate(response: Response, offset: Long, mp3: Boolean = false): Long {
         require(offset >= 0)
         if (response.code !in setOf(200, 206)) {
             throw InvalidMediaResponseException("http_status", "音频服务器未返回可下载内容，请重新解析")
@@ -49,7 +49,11 @@ object MediaResponsePolicy {
                     size += count
                 }
             }
-            if (!MediaRequestPolicy.containsMp4Header(preview.copyOf(size))) {
+            if (mp3) {
+                val id3 = size >= 10 && String(preview, 0, 3, Charsets.US_ASCII) == "ID3"
+                val frame = size >= 4 && preview[0] == 0xff.toByte() && (preview[1].toInt() and 0xe0) == 0xe0
+                if (!id3 && !frame) throw InvalidMediaResponseException("content_header", "平台未返回有效的 MP3 文件")
+            } else if (!MediaRequestPolicy.containsMp4Header(preview.copyOf(size))) {
                 throw InvalidMediaResponseException("content_header", "服务器未返回有效的 MP4 音频内容，请重新解析")
             }
         }

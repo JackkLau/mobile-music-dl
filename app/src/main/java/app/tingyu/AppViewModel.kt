@@ -1,5 +1,7 @@
 package app.tingyu
 
+import app.tingyu.data.bili.BiliLinkParser
+import app.tingyu.data.music.MusicShareLink
 import android.app.Application
 import android.app.PendingIntent
 import android.content.ComponentName
@@ -96,7 +98,7 @@ class AppViewModel(application: Application, private val savedStateHandle: Saved
                 if (!initial) {
                     parseJob?.cancel(); requestVersion++
                     cancelUaComparison()
-                    container.downloads.interruptAll()
+                    container.downloads.interruptAll(MusicSource.BILIBILI)
                     pendingPlay = null
                     mutable.update { it.copy(result = null, error = null, parsing = false, loadingMore = false,
                         probeTrackId = null, probeLines = emptyList(), probeError = null) }
@@ -115,11 +117,34 @@ class AppViewModel(application: Application, private val savedStateHandle: Saved
         viewModelScope.launch { while (true) { delay(500); syncPlayback() } }
     }
 
-    override fun input(value: String) { mutable.update { it.copy(input = value.take(8192)) } }
+    override fun input(value: String) {
+        val text = value.take(8192)
+        val source = MusicShareLink.first(text)?.let { MusicShareLink.platform(it.host) }
+            ?: runCatching { BiliLinkParser.parse(text); MusicSource.BILIBILI }.getOrNull()
+        val state = mutable.value
+        if (source != null && source != state.linkSource) chooseLinkSource(source)
+        else if (text != state.input && (state.parsing || state.result != null || state.error != null)) clearParse()
+        mutable.update { it.copy(input = text) }
+    }
+
+    override fun clearParse() {
+        parseJob?.cancel()
+        requestVersion++
+        cancelUaComparison()
+        mutable.update { it.copy(input = "", result = null, error = null, parsing = false, loadingMore = false,
+            probeTrackId = null, probeLines = emptyList(), probeError = null) }
+    }
+
+    override fun chooseLinkSource(source: MusicSource) {
+        if (source == mutable.value.linkSource) return
+        clearParse()
+        mutable.update { it.copy(linkSource = source) }
+    }
     fun receiveShare(value: String) { input(value); tab(0) }
     override fun parse() {
         val input = mutable.value.input.trim()
-        if (input.isBlank()) { mutable.update { it.copy(error = "请先粘贴 B 站视频或收藏夹链接") }; return }
+        val source = mutable.value.linkSource
+        if (input.isBlank()) { mutable.update { it.copy(error = "请先粘贴歌曲、视频或收藏夹链接") }; return }
         parseJob?.cancel()
         cancelUaComparison()
         val version = ++requestVersion
@@ -127,7 +152,10 @@ class AppViewModel(application: Application, private val savedStateHandle: Saved
             probeTrackId = null, probeLines = emptyList(), probeError = null) }
         parseJob = viewModelScope.launch {
             try {
-                val result = container.bilibili.parse(input)
+                val result = if (source == MusicSource.BILIBILI) container.bilibili.parse(input) else {
+                    val url = MusicShareLink.first(input) ?: throw java.io.IOException("请粘贴${source.label}的单曲分享链接")
+                    container.musicShares.parse(url)
+                }
                 if (version == requestVersion) mutable.update { it.copy(result = result.copy(tracks = result.tracks.map(container.songDetails::apply))) }
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) { if (version == requestVersion) mutable.update { it.copy(error = displayError(e)) } }
@@ -180,7 +208,14 @@ class AppViewModel(application: Application, private val savedStateHandle: Saved
         tracks?.let(::download)
     }
     override fun cancelDownload(id: String) = container.downloads.cancel(id)
-    override fun retryDownload(id: String) = container.downloads.retry(id)
+    override fun retryDownload(id: String) { manageDownload { container.downloads.retry(id) } }
+    override fun removeDownload(id: String) { manageDownload { container.downloads.remove(id) } }
+    private fun manageDownload(action: suspend () -> Unit) {
+        viewModelScope.launch {
+            try { action() } catch (e: CancellationException) { throw e }
+            catch (e: Exception) { mutable.update { it.copy(message = app.tingyu.util.userMessage(e, "下载记录未能更新，请重试")) } }
+        }
+    }
     override fun togglePlayback() {
         controller?.let {
             if (it.playWhenReady && it.playbackState != Player.STATE_ENDED && it.playerError == null) it.pause()
@@ -541,14 +576,14 @@ class AppViewModel(application: Application, private val savedStateHandle: Saved
     }
 
     override fun selectProbeTrack(id: String) {
-        if (mutable.value.probeRunning || mutable.value.result?.tracks?.none { it.id == id } != false) return
+        if (mutable.value.probeRunning || mutable.value.result?.tracks?.none { it.id == id && it.source == MusicSource.BILIBILI } != false) return
         mutable.update { it.copy(probeTrackId = id, probeLines = emptyList(), probeError = null) }
     }
 
     override fun startUaComparison() {
         val current = mutable.value
         if (!current.debugAvailable || !current.debugSettings.enabled || current.probeRunning) return
-        val tracks = current.result?.tracks.orEmpty()
+        val tracks = current.result?.tracks.orEmpty().filter { it.source == MusicSource.BILIBILI }
         val track = tracks.firstOrNull { it.id == current.probeTrackId } ?: tracks.firstOrNull() ?: return
         val profile = container.debugSettings.snapshot()
         val version = ++probeVersion

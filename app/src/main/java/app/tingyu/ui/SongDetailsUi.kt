@@ -41,7 +41,7 @@ internal fun SongDetailsDialog(state: AppUiState, actions: AppActions, track: Tr
     AlertDialog(onDismissRequest = dismiss, title = { Text("歌曲信息") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("修改仅保存在本机，原音频和视频来源会保留。", style = MaterialTheme.typography.bodyMedium)
+                Text("修改仅保存在本机，原音频和来源会保留。", style = MaterialTheme.typography.bodyMedium)
                 OutlinedTextField(title, { title = it.take(200) }, label = { Text("歌名") }, singleLine = true,
                     enabled = !state.musicSaving, isError = title.isBlank(), modifier = Modifier.fillMaxWidth(),
                     trailingIcon = { if (title.isNotEmpty()) IconButton(onClick = { title = "" }, enabled = !state.musicSaving) { Icon(Icons.Rounded.Close, "清空歌名") } })
@@ -60,7 +60,7 @@ internal fun SongDetailsDialog(state: AppUiState, actions: AppActions, track: Tr
                 if (changed || track.artist.isBlank()) Text("请先保存完整歌名和歌手，再查找封面。", style = MaterialTheme.typography.bodySmall)
                 if (state.coverSource.isNotBlank()) Text("封面来源：${state.coverSource}", style = MaterialTheme.typography.bodySmall)
                 if (track.sourceTitle.isNotBlank()) {
-                    Text("${if (track.localOnly) "原始名称" else "原视频"}：${track.sourceTitle}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("${if (track.localOnly || track.source != MusicSource.BILIBILI) "原始名称" else "原视频"}：${track.sourceTitle}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (track.sourceArtist.isNotBlank()) Text("上传者：${track.sourceArtist}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 state.musicError?.let { Text(it, color = MaterialTheme.colorScheme.error) }

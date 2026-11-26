@@ -28,7 +28,7 @@ import app.tingyu.model.AppUiState
 internal fun DeveloperToolsScreen(state: AppUiState, actions: AppActions) {
     var chooseTrack by remember { mutableStateOf(false) }
     val settings = state.debugSettings
-    val tracks = state.result?.tracks.orEmpty()
+    val tracks = state.result?.tracks.orEmpty().filter { it.source == app.tingyu.model.MusicSource.BILIBILI }
     val selected = tracks.firstOrNull { it.id == state.probeTrackId } ?: tracks.firstOrNull()
     DisposableEffect(Unit) { onDispose { actions.cancelUaComparison() } }
     LazyColumn(Modifier.fillMaxSize().testTag("developer_list"), contentPadding = PaddingValues(20.dp),

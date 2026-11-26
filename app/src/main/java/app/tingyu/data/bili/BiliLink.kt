@@ -26,11 +26,7 @@ object BiliLinkParser {
         if (text.isEmpty()) throw BiliException("请粘贴 B 站视频或收藏夹链接")
         if (bv.matches(text)) return BiliLink.Video(bvid = text)
         av.matchEntire(text)?.let { return BiliLink.Video(aid = positive(it.groupValues[1])) }
-        val candidates = urlStart.findAll(text).map { match ->
-            // Some copied Markdown escapes the scheme's colon (https\://).
-            // Normalize only the matched scheme, never backslashes in URL values.
-            extractUrl(text, match.range.first).replaceRange(0, match.value.length, match.value.replace("\\", ""))
-        }.toList()
+        val candidates = shareUrls(text)
         // A share description may contain a preceding unrelated URL. Select a known
         // Bilibili host, then apply the normal credential and port validation below.
         val raw = candidates.firstOrNull { it.toHttpUrlOrNull()?.host in videoHosts + shortHosts }
@@ -64,6 +60,15 @@ object BiliLinkParser {
         throw BiliException("暂不支持此类 B 站链接，请使用普通视频或具体收藏夹链接")
     }
 
+    internal fun shareUrls(input: String): List<String> {
+        val text = input.replace(invisible, "").trim()
+        return urlStart.findAll(text).map { match ->
+            // Some copied Markdown escapes the scheme's colon (https\://).
+            // Normalize only the matched scheme, never backslashes in URL values.
+            extractUrl(text, match.range.first).replaceRange(0, match.value.length, match.value.replace("\\", ""))
+        }.toList()
+    }
+
     private fun extractUrl(text: String, start: Int): String {
         val quote = text.getOrNull(start - 1)?.takeIf { it == '\'' }
         val balance = mutableMapOf(')' to 0, ']' to 0, '}' to 0)
@@ -86,7 +91,7 @@ object BiliLinkParser {
         raw = raw.replace("\\&", "&")
         // Sentence punctuation after a path, or a numeric identity parameter, is
         // wrapping text. Keep punctuation inside arbitrary query/fragment values.
-        if ('?' !in raw && '#' !in raw || Regex("[?&](?:p|fid)=[0-9]+[.,;!]+$").containsMatchIn(raw)) {
+        if ('?' !in raw && '#' !in raw || Regex("[?&](?:p|fid|id|songid)=[0-9]+[.,;!]+$").containsMatchIn(raw)) {
             raw = raw.trimEnd('.', ',', ';', '!')
         }
         return raw

@@ -19,8 +19,10 @@ import androidx.compose.ui.unit.dp
 import app.tingyu.R
 import app.tingyu.model.AppActions
 import app.tingyu.model.AppUiState
+import app.tingyu.model.MusicSource
 import app.tingyu.model.Track
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ParseScreen(state: AppUiState, actions: AppActions) {
     val clipboard = LocalClipboardManager.current
@@ -47,13 +49,24 @@ internal fun ParseScreen(state: AppUiState, actions: AppActions) {
             Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.surface) {
                 Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("从一个链接开始", style = MaterialTheme.typography.titleLarge)
-                    Text("粘贴视频或收藏夹链接，也可以从哔哩哔哩分享过来。",
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        MusicSource.entries.forEach { source ->
+                            FilterChip(selected = state.linkSource == source, onClick = { actions.chooseLinkSource(source) },
+                                label = { Text(source.label) })
+                        }
+                    }
+                    val bili = state.linkSource == MusicSource.BILIBILI
+                    Text(if (bili) "粘贴视频或收藏夹链接，也可以从哔哩哔哩分享过来。" else "粘贴${state.linkSource.label}的单曲链接或分享文本。",
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     OutlinedTextField(value = state.input, onValueChange = actions::input, modifier = Modifier.fillMaxWidth(),
-                        label = { Text("哔哩哔哩链接") }, placeholder = { Text("https://www.bilibili.com/video/…") },
+                        label = { Text("${state.linkSource.label}链接") }, placeholder = { Text(when (state.linkSource) {
+                            MusicSource.BILIBILI -> "https://www.bilibili.com/video/…"
+                            MusicSource.NETEASE -> "https://music.163.com/song?id=…"
+                            MusicSource.QQ -> "https://y.qq.com/n/ryqq/songDetail/…"
+                        }) },
                         minLines = 2, maxLines = 4, enabled = !state.parsing,
                         trailingIcon = if (state.input.isNotBlank()) ({
-                            ActionIcon(Icons.Rounded.Close, "清空链接", enabled = !state.parsing) { actions.input("") }
+                            ActionIcon(Icons.Rounded.Close, "清空链接", enabled = !state.parsing) { actions.clearParse() }
                         }) else null,
                         shape = RoundedCornerShape(16.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -77,9 +90,38 @@ internal fun ParseScreen(state: AppUiState, actions: AppActions) {
                 if (result != null && result.nextPage != null) actions::loadMore else actions::parse, error = true) }
         }
         if (result == null && !state.parsing && state.error == null) {
-            item { StatePanel(Icons.Rounded.Headphones, "先听，再决定留下", "解析后可以直接播放。喜欢的音频可以下载，离线也能听。") }
+            item {
+                if (state.linkSource == MusicSource.BILIBILI)
+                    StatePanel(Icons.Rounded.Headphones, "先听，再决定留下", "解析后可以直接播放。喜欢的音频可以下载，离线也能听。")
+                else StatePanel(Icons.Rounded.Headphones, "分享一首歌", "解析后可查看歌名与歌手，下载的歌曲会出现在音乐库。")
+            }
         }
         if (result != null) {
+            item {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text("解析结果", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                    TextButton(onClick = actions::clearParse) { Text("清除解析结果") }
+                }
+            }
+        }
+        val song = result?.tracks?.singleOrNull()?.takeIf { it.source != MusicSource.BILIBILI }
+        if (song != null) {
+            item {
+                Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(song.title, style = MaterialTheme.typography.titleLarge)
+                        Text(listOf(song.artist, song.source.label).filter(String::isNotBlank).joinToString(" · "),
+                            style = MaterialTheme.typography.bodyMedium)
+                        if (song.id in savedIds) Button(onClick = { actions.play(song, listOf(song)) }) { Text("播放已下载歌曲") }
+                        else Button(onClick = { actions.download(listOf(song)) }) { Text("下载到手机") }
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            TextButton(onClick = { actions.openMusicPage(song) }) { Text("去官方歌曲页") }
+                            MusicAccountButton(song.source)
+                        }
+                    }
+                }
+            }
+        } else if (result != null) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(result.title, style = MaterialTheme.typography.titleLarge)

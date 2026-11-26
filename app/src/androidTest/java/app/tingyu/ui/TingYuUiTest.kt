@@ -311,6 +311,20 @@ class TingYuUiTest {
         assertTrue(actions.downloaded.isEmpty())
     }
 
+    @Test fun sharedSongHasPlatformOptionsAndDownloadAction() {
+        val actions = RecordingActions()
+        val song = track.copy(bvid = "netease-3463213367", title = "污点证人 (Live)", artist = "薛之谦", source = MusicSource.NETEASE)
+        compose.setContent {
+            TingYuApp(AppUiState(linkSource = MusicSource.NETEASE, result = ParseResult(song.title,listOf(song))), actions)
+        }
+        compose.onNodeWithText("QQ音乐").performClick()
+        assertEquals(MusicSource.QQ,actions.chosenSource)
+        compose.onNodeWithText("下载到手机").performScrollTo().performClick()
+        assertEquals(listOf(song),actions.downloaded)
+        compose.onNodeWithText("清除解析结果").performScrollTo().performClick()
+        assertTrue(actions.cleared)
+    }
+
     @Test fun failedDownloadKeepsErrorAndOffersTargetedRetry() {
         val actions = RecordingActions()
         val failure = DownloadTask(track, status = DownloadStatus.FAILED, error = "网络连接已断开")
@@ -318,6 +332,8 @@ class TingYuUiTest {
         compose.onNodeWithText("网络连接已断开").assertExists()
         compose.onNodeWithContentDescription("重试下载 测试钢琴曲").performClick()
         assertEquals(track.id, actions.retried)
+        compose.onNodeWithContentDescription("移除记录 测试钢琴曲").performClick()
+        assertEquals(track.id, actions.removed)
     }
 
     @Test fun fullPlayerExposesPlaybackAndModeControls() {
@@ -481,6 +497,12 @@ class TingYuUiTest {
         override fun clearLyrics() { lyricsRemovals++ }
         override fun selectSongCover(track: Track) { coverImport = track }
         override fun resetSongCover(track: Track) {}
+        var chosenSource: MusicSource? = null
+        var cleared = false
+        override fun chooseLinkSource(source: MusicSource) { chosenSource = source }
+        override fun clearParse() { cleared = true }
+        override fun removeDownload(id: String) { removed = id }
+        var removed: String? = null
         override fun cancelDownload(id: String) {}
         override fun retryDownload(id: String) { retried = id }
         override fun login() { loginCount++ }

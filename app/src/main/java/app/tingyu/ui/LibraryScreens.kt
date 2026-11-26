@@ -13,6 +13,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -151,7 +153,7 @@ private fun DownloadCard(task: DownloadTask, actions: AppActions) {
                 }
                 if (active) ActionIcon(Icons.Rounded.Close, "取消下载 ${task.track.title}") { actions.cancelDownload(task.track.id) }
                 else if (task.status == DownloadStatus.COMPLETED) ActionIcon(Icons.Rounded.PlayArrow, "播放 ${task.track.title}") { actions.play(task.track, listOf(task.track)) }
-                else ActionIcon(Icons.Rounded.Refresh, "重试下载 ${task.track.title}") { actions.retryDownload(task.track.id) }
+
             }
             if (task.status == DownloadStatus.DOWNLOADING) {
                 if (task.totalBytes > 0) {
@@ -166,8 +168,22 @@ private fun DownloadCard(task: DownloadTask, actions: AppActions) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
             task.error?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error) }
-            if (task.status == DownloadStatus.INTERRUPTED) Text("点右侧重试，继续处理这个任务。", style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (!active) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (task.status != DownloadStatus.COMPLETED) {
+                        OutlinedButton(onClick = { actions.retryDownload(task.track.id) },
+                            modifier = Modifier.semantics { contentDescription = "重试下载 ${task.track.title}" }) { Text("重试下载") }
+                    }
+                    TextButton(onClick = { actions.removeDownload(task.track.id) },
+                        modifier = Modifier.semantics { contentDescription = "移除记录 ${task.track.title}" }) { Text("移除记录") }
+                }
+                if (task.status == DownloadStatus.FAILED && task.track.source != MusicSource.BILIBILI) {
+                    Row {
+                        MusicAccountButton(task.track.source)
+                        TextButton(onClick = { actions.openMusicPage(task.track) }) { Text("去官方歌曲页") }
+                    }
+                }
+            }
         }
     }
 }

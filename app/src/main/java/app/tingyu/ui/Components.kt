@@ -27,6 +27,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.painterResource
 import app.tingyu.R
+import android.content.Intent
+import androidx.compose.ui.platform.LocalContext
+import app.tingyu.auth.MusicAccountActivity
+import app.tingyu.model.MusicSource
 import app.tingyu.model.Track
 import coil.compose.AsyncImage
 import java.util.Locale
@@ -155,4 +159,13 @@ internal fun formatBytes(bytes: Long): String = when {
     bytes < 0 -> "未知大小"
     bytes < 1_048_576 -> String.format(Locale.CHINA, "%.0f KB", bytes / 1024.0)
     else -> String.format(Locale.CHINA, "%.1f MB", bytes / 1_048_576.0)
+}
+
+@Composable
+internal fun MusicAccountButton(source: MusicSource) {
+    val context = LocalContext.current
+    TextButton(onClick = {
+        context.startActivity(Intent(context, MusicAccountActivity::class.java)
+            .putExtra("source", source.name))
+    }) { Text("登录${source.label}") }
 }

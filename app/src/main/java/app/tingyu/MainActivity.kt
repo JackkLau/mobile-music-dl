@@ -19,6 +19,9 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.media3.common.util.UnstableApi
 import app.tingyu.model.AppActions
+import app.tingyu.model.MusicSource
+import app.tingyu.data.music.MusicShareLink
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import app.tingyu.model.Track
 import app.tingyu.ui.TingYuApp
 import kotlinx.coroutines.launch
@@ -99,6 +102,14 @@ class MainActivity : ComponentActivity() {
                 }
                 try { localFiles.launch(picker) }
                 catch (_: Exception) { model.localPickerUnavailable() }
+            }
+            override fun openMusicPage(track: Track) {
+                val url = track.sourceUrl.toHttpUrlOrNull() ?: return
+                val song = runCatching { MusicShareLink.direct(url, track.source) }.getOrNull() ?: return
+                val official = if (song.source == MusicSource.NETEASE)
+                    "https://music.163.com/song?id=${song.id}" else "https://y.qq.com/n/ryqq/songDetail/${song.id}"
+                try { startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(official))) }
+                catch (_: android.content.ActivityNotFoundException) { android.widget.Toast.makeText(this@MainActivity, "没有可打开歌曲页的应用", android.widget.Toast.LENGTH_SHORT).show() }
             }
             override fun download(tracks: List<Track>) {
                 if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED && !getPreferences(MODE_PRIVATE).getBoolean("asked_notification", false)) {
