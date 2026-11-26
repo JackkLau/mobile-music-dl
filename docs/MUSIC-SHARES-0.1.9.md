@@ -8,3 +8,7 @@
 | 下载记录 | 失败、取消和中断可重试、移除。移除记录清理对应分片，保留已保存的音乐。重新启动按持久化队列恢复，不重复创建已移除项。 |
 
 设备测试使用专用 Android 用户和生成的静音 MP3，覆盖失败后重试、实际写入 MediaStore、移除后音乐仍可读，以及旧任务重新加载后可移除。个人账号的实际可下载范围取决于地区、歌曲授权与平台返回，以上公开样例没有取得可保存的完整文件。
+
+Android 11 模拟器通过 13 项设备测试，其中包括新来源选择、清除解析、失败项重试与移除及实际 MP3 写入。Debug 和 release 各通过 260 项应用 JVM 测试与 Android lint。脚本 41 项通过，PC 工具 132 项通过，测试集有重叠。尚待使用有权限的个人账号在真机验证登录、平台下发的完整音源及离线播放。
+
+[Android 设备测试](https://github.com/JackkLau/mobile-music-dl/actions/runs/45843398401) · [常规检查](https://github.com/JackkLau/mobile-music-dl/actions/runs/45843398316) · [0.1.9 正式包](https://github.com/JackkLau/mobile-music-dl/releases/tag/v0.1.9)
