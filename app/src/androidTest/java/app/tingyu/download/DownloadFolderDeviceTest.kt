@@ -1,15 +1,10 @@
 package app.tingyu.download
 
-import android.content.ContentValues
 import android.content.Context
 import android.content.ContextWrapper
-import android.graphics.Rect
 import android.net.Uri
 import android.os.SystemClock
 import android.provider.DocumentsContract
-import android.provider.MediaStore
-import android.view.InputDevice
-import android.view.MotionEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -44,15 +39,11 @@ class DownloadFolderDeviceTest {
         val app = compose.activity.application as MusicApp
         val folders = app.container.downloadFolders
         val resolver = app.contentResolver
-        val folderName = "Weile-Test-" + UUID.randomUUID().toString().take(8)
-        val marker = requireNotNull(resolver.insert(MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY),
-            ContentValues().apply {
-                put(MediaStore.Audio.Media.DISPLAY_NAME, "folder-fixture.mp3")
-                put(MediaStore.Audio.Media.MIME_TYPE, "audio/mpeg")
-                put(MediaStore.Audio.Media.RELATIVE_PATH, "Music/$folderName/")
-            }))
-        val db = LibraryStore(app, folderName)
-        val dir = File(app.cacheDir, folderName).apply { mkdirs() }
+        val fixture = "Weile-Test-" + UUID.randomUUID().toString().take(8)
+        val db = LibraryStore(app, fixture)
+        val dir = File(app.cacheDir, fixture).apply { mkdirs() }
+        val previous = folders.current.value
+        val previousGrants = resolver.persistedUriPermissions.map { it.uri }
         val context = object : ContextWrapper(app) {
             override fun getApplicationContext(): Context = this
             override fun getFilesDir(): File = dir
@@ -60,15 +51,18 @@ class DownloadFolderDeviceTest {
         var tree: Uri? = null
         var saved: Uri? = null
         try {
+            runBlocking { folders.select(null) }
             compose.onNodeWithText("下载").performClick()
             compose.onNodeWithText("选择文件夹").performClick()
-            clickPicker { it.text?.toString() == folderName }
-            clickPicker(inFolder = folderName) { it.viewIdResourceName?.endsWith(":id/action_menu_select") == true ||
+            // Select Music itself, distinct from the default MediaStore Music/微乐/ subdirectory.
+            clickPicker { it.viewIdResourceName?.endsWith(":id/action_menu_select") == true ||
                 it.text?.toString()?.lowercase() in setOf("use this folder", "使用此文件夹") }
             clickPicker { it.viewIdResourceName?.endsWith(":id/button1") == true ||
                 it.text?.toString()?.lowercase() in setOf("allow", "允许") }
-            compose.waitUntil(12_000) { folders.current.value.label.endsWith(folderName) }
+            compose.waitUntil(12_000) { folders.current.value.tree != null }
             tree = Uri.parse(requireNotNull(folders.current.value.tree))
+            assertEquals("primary:Music", DocumentsContract.getTreeDocumentId(tree))
+            assertEquals("Music", folders.current.value.label)
             assertEquals(folders.current.value, DownloadFolders(app).current.value)
             assertTrue(resolver.persistedUriPermissions.any { it.uri == tree && it.isReadPermission && it.isWritePermission })
 
@@ -76,7 +70,7 @@ class DownloadFolderDeviceTest {
             val audio = ByteArray(417 * 40) { i -> when (i % 417) {
                 0 -> 0xff.toByte(); 1 -> 0xfb.toByte(); 2 -> 0x90.toByte(); else -> 0
             } }
-            val song = Track("netease-321", 321, "文件夹测试", durationMs = 1045, source = MusicSource.NETEASE)
+            val song = Track("netease-321", 321, fixture, durationMs = 1045, source = MusicSource.NETEASE)
             val client = OkHttpClient.Builder().addInterceptor { chain ->
                 Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1).message("OK").code(200)
                     .header("Content-Length", audio.size.toString()).body(audio.toResponseBody("audio/mpeg".toMediaType())).build()
@@ -96,10 +90,11 @@ class DownloadFolderDeviceTest {
                         return Uri.parse(requireNotNull(job.uri))
                     }
                     saved = downloadSong()
-                    assertTrue(DocumentsContract.getDocumentId(saved!!).startsWith("primary:Music/$folderName/"))
+                    assertEquals("primary:Music", DocumentsContract.getDocumentId(saved!!).substringBeforeLast('/'))
                     LocalMusicManager(app, db).scan(tree)
                     assertEquals(1, db.readLocal().count { it.uri == saved.toString() })
                     assertTrue(DocumentsContract.deleteDocument(resolver, saved!!))
+                    saved = null
                     saved = downloadSong()
                     assertEquals(saved.toString(), db.saved(song.id)?.uri)
                 }
@@ -110,21 +105,16 @@ class DownloadFolderDeviceTest {
             assertArrayEquals(audio, resolver.openInputStream(saved!!)!!.use { it.readBytes() })
         } finally {
             saved?.let { DocumentsContract.deleteDocument(resolver, it) }
-            resolver.delete(marker, null, null)
-            if (tree != null) {
-                runBlocking { folders.select(null) }
-                // Only remove the uniquely named, test-created directory.
-                DocumentsContract.deleteDocument(resolver, DownloadFolders.root(tree))
-                if (resolver.persistedUriPermissions.any { it.uri == tree })
-                    resolver.releasePersistableUriPermission(tree, DownloadFolders.READ_WRITE)
-            }
+            runBlocking { folders.select(previous.tree?.let(Uri::parse), DownloadFolders.READ_WRITE) }
+            if (tree != null && tree !in previousGrants && resolver.persistedUriPermissions.any { it.uri == tree })
+                resolver.releasePersistableUriPermission(tree, DownloadFolders.READ_WRITE)
             db.close()
-            app.deleteDatabase(folderName)
+            app.deleteDatabase(fixture)
             dir.deleteRecursively()
         }
     }
 
-    private fun clickPicker(inFolder: String? = null, match: (AccessibilityNodeInfo) -> Boolean) {
+    private fun clickPicker(match: (AccessibilityNodeInfo) -> Boolean) {
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
         val deadline = SystemClock.elapsedRealtime() + 15_000
         var visible = emptyList<String>()
@@ -138,24 +128,8 @@ class DownloadFolderDeviceTest {
                     for (child in 0 until node.childCount) node.getChild(child)?.let(nodes::add)
                 }
                 visible = nodes.mapNotNull { it.text?.toString() }
-                // DocumentsUI routes pointer events through RecyclerView rather than the folder label.
-                val opened = inFolder == null || visible.any { it.equals("FILES IN $inFolder", ignoreCase = true) } ||
-                    visible.count { it == inFolder } >= 2
-                val target = nodes.firstOrNull { opened && it.isVisibleToUser && it.isEnabled && match(it) }
-                if (target != null) {
-                    val bounds = Rect()
-                    target.getBoundsInScreen(bounds)
-                    if (!bounds.isEmpty) {
-                        val down = SystemClock.uptimeMillis()
-                        for (action in listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP)) {
-                            val tap = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action,
-                                bounds.exactCenterX(), bounds.exactCenterY(), 0)
-                            tap.source = InputDevice.SOURCE_TOUCHSCREEN
-                            try { check(automation.injectInputEvent(tap, true)) } finally { tap.recycle() }
-                        }
-                        return
-                    }
-                }
+                val target = nodes.firstOrNull { it.isEnabled && it.isClickable && match(it) }
+                if (target?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true) return
             }
             SystemClock.sleep(180)
         }
