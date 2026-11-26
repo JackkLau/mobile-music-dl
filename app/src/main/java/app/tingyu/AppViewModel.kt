@@ -1,6 +1,7 @@
 package app.tingyu
 
 import app.tingyu.data.bili.BiliLinkParser
+import app.tingyu.data.music.MusicLoginRequired
 import app.tingyu.data.music.MusicShareLink
 import android.app.Application
 import android.app.PendingIntent
@@ -44,7 +45,9 @@ import kotlinx.serialization.json.Json
 @UnstableApi
 class AppViewModel(application: Application, private val savedStateHandle: SavedStateHandle) : AndroidViewModel(application), AppActions {
     private val container = (application as MusicApp).container
+    private val restoredLogin = savedStateHandle.get<String>("music_parse_login")?.let { Json.decodeFromString<MusicLoginChallenge>(it) }
     private val mutable = MutableStateFlow(AppUiState(
+        parseLogin = restoredLogin, input = restoredLogin?.parseUrl.orEmpty(), linkSource = restoredLogin?.source ?: MusicSource.BILIBILI,
         debugAvailable = container.debugSettings.available,
         debugSettings = container.debugSettings.state.value,
     ))
@@ -96,6 +99,7 @@ class AppViewModel(application: Application, private val savedStateHandle: Saved
             var initial = true
             container.sessions.state.collect { session ->
                 if (!initial) {
+                    setParseLogin(null)
                     parseJob?.cancel(); requestVersion++
                     cancelUaComparison()
                     container.downloads.interruptAll(MusicSource.BILIBILI)
@@ -123,11 +127,17 @@ class AppViewModel(application: Application, private val savedStateHandle: Saved
             ?: runCatching { BiliLinkParser.parse(text); MusicSource.BILIBILI }.getOrNull()
         val state = mutable.value
         if (source != null && source != state.linkSource) chooseLinkSource(source)
-        else if (text != state.input && (state.parsing || state.result != null || state.error != null)) clearParse()
+        else if (text != state.input && (state.parsing || state.result != null || state.error != null || state.parseLogin != null)) clearParse()
         mutable.update { it.copy(input = text) }
     }
 
+    private fun setParseLogin(challenge: MusicLoginChallenge?) {
+        savedStateHandle["music_parse_login"] = challenge?.let { Json.encodeToString(it) }
+        mutable.update { it.copy(parseLogin = challenge) }
+    }
+
     override fun clearParse() {
+        setParseLogin(null)
         parseJob?.cancel()
         requestVersion++
         cancelUaComparison()
@@ -141,8 +151,11 @@ class AppViewModel(application: Application, private val savedStateHandle: Saved
         mutable.update { it.copy(linkSource = source) }
     }
     fun receiveShare(value: String) { input(value); tab(0) }
-    override fun parse() {
-        val input = mutable.value.input.trim()
+    override fun parse() = parseLink(afterLogin = false)
+
+    private fun parseLink(afterLogin: Boolean, resumeUrl: String? = null) {
+        setParseLogin(null)
+        val input = resumeUrl ?: mutable.value.input.trim()
         val source = mutable.value.linkSource
         if (input.isBlank()) { mutable.update { it.copy(error = "请先粘贴歌曲、视频或收藏夹链接") }; return }
         parseJob?.cancel()
@@ -156,12 +169,42 @@ class AppViewModel(application: Application, private val savedStateHandle: Saved
                     val url = MusicShareLink.first(input) ?: throw java.io.IOException("请粘贴${source.label}的单曲分享链接")
                     container.musicShares.parse(url)
                 }
-                if (version == requestVersion) mutable.update { it.copy(result = result.copy(tracks = result.tracks.map(container.songDetails::apply))) }
+                if (version == requestVersion) {
+                    val tracks = result.tracks.map(container.songDetails::apply)
+                    mutable.update { it.copy(result = result.copy(tracks = tracks)) }
+                    if (afterLogin) {
+                        container.downloads.enqueue(tracks, MusicLoginRetry.ALREADY_PARSED)
+                        mutable.update { it.copy(tab = 2, message = "已重新解析，继续下载") }
+                    }
+                }
             } catch (e: CancellationException) { throw e }
+            catch (e: MusicLoginRequired) {
+                if (version == requestVersion) {
+                    mutable.update { it.copy(error = displayError(e)) }
+                    val shared = MusicShareLink.first(input)
+                    val url = if (shared != null && MusicShareLink.isShort(shared)) e.songUrl ?: shared else shared
+                    if (!afterLogin && source == e.source && url != null) {
+                        setParseLogin(MusicLoginChallenge(source, java.util.UUID.randomUUID().toString(), parseUrl = url.toString()))
+                    }
+                }
+            }
             catch (e: Exception) { if (version == requestVersion) mutable.update { it.copy(error = displayError(e)) } }
             finally { if (version == requestVersion) mutable.update { it.copy(parsing = false) } }
         }
     }
+    override fun loginForDownload(id: String) { manageDownload { container.downloads.requestMusicLogin(id) } }
+
+    override fun dismissMusicLogin(id: String) = finishMusicLogin(id, signedIn = false)
+
+    fun finishMusicLogin(id: String, signedIn: Boolean) {
+        val parse = mutable.value.parseLogin
+        if (parse?.id == id) {
+            if (signedIn) parseLink(afterLogin = true, resumeUrl = parse.parseUrl) else setParseLogin(null)
+        } else manageDownload {
+            container.downloads.finishMusicLogin(id, signedIn)
+        }
+    }
+
     override fun loadMore() {
         val current = mutable.value.result ?: return
         val id = current.favoriteId ?: return

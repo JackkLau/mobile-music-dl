@@ -17,7 +17,13 @@ import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.assertion.ViewAssertions.matches
 import androidx.test.espresso.matcher.ViewMatchers.isAssignableFrom
 import androidx.test.espresso.matcher.ViewMatchers.isDisplayed
+import android.app.Activity
+import android.content.Intent
+import androidx.test.platform.app.InstrumentationRegistry
 import android.webkit.WebView
+import app.tingyu.auth.MusicAccountActivity
+import app.tingyu.auth.MusicWebSession
+import app.tingyu.model.MusicSource
 import app.tingyu.auth.LoginActivity
 import app.tingyu.auth.LoginMethod
 import app.tingyu.auth.LoginScreen
@@ -51,6 +57,23 @@ class LoginScreenTest {
             compose.onNodeWithText("完成登录").assertDoesNotExist()
             compose.onNodeWithContentDescription("返回").performClick()
             compose.waitUntil(5_000) { scenario.state == Lifecycle.State.DESTROYED }
+        }
+    }
+
+    @Test fun providerAccountCanSwitchMethodsAndReturnWithoutResumingOnCancel() {
+        val intent = Intent(InstrumentationRegistry.getInstrumentation().targetContext, MusicAccountActivity::class.java)
+            .putExtra("source", MusicSource.NETEASE.name).putExtra("method", "PHONE").putExtra("challenge", "device-check")
+        ActivityScenario.launchActivityForResult<MusicAccountActivity>(intent).use { scenario ->
+            compose.onNodeWithText("网易云音乐账号").assertIsDisplayed()
+            if (MusicWebSession.supported()) {
+                compose.onNodeWithText("请在网易云音乐官网填写手机号并完成验证。").assertIsDisplayed()
+                compose.onNodeWithText("二维码登录").performClick()
+                compose.onNodeWithText("请用另一台设备扫描官网二维码并确认。").assertIsDisplayed()
+            } else {
+                compose.onNodeWithText("请更新 Android 系统 WebView 后重试", substring = true).assertIsDisplayed()
+            }
+            compose.onNodeWithText("返回").performClick()
+            assertEquals(Activity.RESULT_CANCELED, scenario.result.resultCode)
         }
     }
 

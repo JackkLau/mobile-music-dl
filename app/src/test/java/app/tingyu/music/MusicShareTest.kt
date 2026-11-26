@@ -45,11 +45,81 @@ class MusicShareTest {
         assertEquals("张学友",track.artist)
         val audio = repo.resolve(track)
         assertEquals(12345L,audio.expectedBytes)
-        assertEquals(listOf(null,null,"MUSIC_U=fixture"),calls.map { it.second })
+        assertEquals(listOf(null,"MUSIC_U=fixture","MUSIC_U=fixture"),calls.map { it.second })
         val request = MusicMedia.request(audio.url,track.source,0,null)
         assertNull(request.header("Cookie"))
         assertEquals("bytes=0-",request.header("Range"))
         assertThrows(IOException::class.java) { MusicMedia.request("https://y.qq.com/media",track.source,0,null) }
+    }
+
+    @Test fun loginGatesOnParseAndDownloadReplayWithThatProvidersSession() = runBlocking {
+        for (source in listOf(MusicSource.NETEASE, MusicSource.QQ)) {
+            val url = (if (source == MusicSource.NETEASE) net else qq).toHttpUrl()
+            val cookie = if (source == MusicSource.NETEASE) "MUSIC_U=test" else "uin=12345; qm_keyst=test"
+            val gated = if (source == MusicSource.NETEASE) """{"code":301}""" else """{"code":0,"song":{"code":1000}}"""
+            var signedIn = false
+            val repo = MusicShareRepository(BiliTransport { req, headers ->
+                val body = when {
+                    headers["Cookie"] != cookie -> gated
+                    req.encodedPath.contains("download") -> neAsset
+                    source == MusicSource.NETEASE -> neInfo
+                    req.queryParameter("data")!!.contains("CgiGetVkey") -> qqAsset
+                    else -> qqInfo
+                }
+                BiliResponse(200, body)
+            }) { assertEquals(source, it); if (signedIn) cookie else "" }
+            assertEquals(source, assertThrows(MusicLoginRequired::class.java) { runBlocking { repo.parse(url) } }.source)
+            signedIn = true
+            val track = repo.parse(url).tracks.single()
+            signedIn = false
+            assertThrows(MusicLoginRequired::class.java) { runBlocking { repo.resolve(track) } }
+            signedIn = true
+            assertEquals(12345L, repo.resolve(repo.refresh(track)).expectedBytes)
+        }
+    }
+
+    @Test fun onlyAuthenticationFailuresOfferLogin() {
+        val url = "https://163cn.tv/short".toHttpUrl()
+        for (response in listOf(BiliResponse(401, ""), BiliResponse(302, "", "https://music.163.com/m/login"))) {
+            val repo = MusicShareRepository(BiliTransport { _, _ -> response })
+            assertThrows(MusicLoginRequired::class.java) { runBlocking { repo.parse(url) } }
+        }
+        for (response in listOf(BiliResponse(403, ""), BiliResponse(429, ""),
+            BiliResponse(302, "", "https://example.com/login"), BiliResponse(200, """{"code":403}"""))) {
+            val repo = MusicShareRepository(BiliTransport { _, _ -> response })
+            assertFalse(assertThrows(IOException::class.java) { runBlocking { repo.parse(url) } } is MusicLoginRequired)
+        }
+    }
+
+    @Test fun loginRedirectOnlyResumesAnOfficialSongOnTheSamePlatform() {
+        val short = "https://163cn.tv/short".toHttpUrl()
+        for (target in listOf("https://music.163.com/m/song?id=3463213367", "https://evil.example/song?id=7", qq)) {
+            val login = "https://music.163.com/m/login".toHttpUrl().newBuilder().addQueryParameter("redirect_url", target).build()
+            val repo = MusicShareRepository(BiliTransport { _, headers ->
+                assertNull(headers["Cookie"])
+                BiliResponse(302, "", login.toString())
+            })
+            val challenge = assertThrows(MusicLoginRequired::class.java) { runBlocking { repo.parse(short) } }
+            assertEquals(if (target.startsWith("https://music.163.com/")) target else null, challenge.songUrl?.toString())
+        }
+    }
+
+    @Test fun officialMethodsAreDistinctAndSessionsRequireAPlatformCredential() {
+        for (source in listOf(MusicSource.NETEASE, MusicSource.QQ)) {
+            val urls = MusicLoginMethod.entries.map { MusicLogin.entry(source, it).toHttpUrl() }
+            assertNotEquals(urls.first(), urls.last())
+            assertTrue(urls.all { MusicLogin.permits(source, it) })
+            assertFalse(MusicLogin.permits(source, "https://music.163.com.example.org/login".toHttpUrl()))
+            assertFalse(MusicLogin.permits(source, "https://y.qq.com:444/login".toHttpUrl()))
+            if (source == MusicSource.QQ) {
+                assertEquals("y.qq.com", urls.first().queryParameter("redirect_uri")!!.toHttpUrl().host)
+                assertEquals("y.qq.com", urls.last().queryParameter("s_url")!!.toHttpUrl().host)
+            }
+        }
+        assertEquals("", MusicLogin.sessionCookie(MusicSource.QQ, "uin=o12345; login_type=1"))
+        assertEquals("", MusicLogin.sessionCookie(MusicSource.QQ, "qm_keyst=test"))
+        assertEquals("uin=o12345; qm_keyst=test", MusicLogin.sessionCookie(MusicSource.QQ, "MUSIC_U=other; qm_keyst=test; uin=o12345"))
+        assertEquals("MUSIC_U=abc=def", MusicLogin.sessionCookie(MusicSource.NETEASE, "uin=12345; MUSIC_U=abc=def"))
     }
 
     @Test fun refusesCrossSiteRedirectsAndLoops() {

@@ -179,7 +179,7 @@ private fun DownloadCard(task: DownloadTask, actions: AppActions) {
                 }
                 if (task.status == DownloadStatus.FAILED && task.track.source != MusicSource.BILIBILI) {
                     Row {
-                        MusicAccountButton(task.track.source)
+                        TextButton(onClick = { actions.loginForDownload(task.track.id) }) { Text("登录${task.track.source.label}") }
                         TextButton(onClick = { actions.openMusicPage(task.track) }) { Text("去官方歌曲页") }
                     }
                 }

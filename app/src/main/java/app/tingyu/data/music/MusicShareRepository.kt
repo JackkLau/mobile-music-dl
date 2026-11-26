@@ -25,13 +25,14 @@ internal class MusicShareRepository(
                 val track = when (source) {
                     MusicSource.NETEASE -> {
                         val base = "https://music.163.com/api/song/detail/".toHttpUrl().newBuilder()
-                        val data = json(base.addQueryParameter("ids", "[${song.id}]").addQueryParameter("id", song.id).build(), source)
+                        val data = json(base.addQueryParameter("ids", "[${song.id}]").addQueryParameter("id", song.id).build(), source, session(source))
+                        MusicLogin.checkCode(source, data.number("code"))
                         if (data.number("code") != 200L) throw IOException("网易云音乐无法获取歌曲资料")
                         val info = data.rows("songs").firstOrNull { it.text("id") == song.id } ?: throw IOException("歌曲不存在或已下架")
                         track(song, info.text("name"), info.rows("artists"), info.number("duration") ?: 0)
                     }
                     MusicSource.QQ -> {
-                        val info = qqDetail(song)
+                        val info = qqDetail(song, session(source))
                         val mid = info.text("mid")
                         if (!MusicShareLink.qqMid.matches(mid) || (if (song.numericQqId) info.text("id") else mid) != song.id)
                             throw IOException("QQ音乐返回了不同的歌曲，请重新分享")
@@ -48,7 +49,9 @@ internal class MusicShareRepository(
                 200 -> htmlRedirect.find(response.text)?.groupValues?.get(1)?.replace("&amp;", "&")
                 else -> throw IOException("${source.label}分享链接无法打开（HTTP ${response.status}）")
             }
-            url = target?.let(url::resolve)?.let(MusicShareLink::secureUrl)?.takeIf { MusicShareLink.permitted(it, source) }
+            val next = target?.let(url::resolve)?.let(MusicShareLink::secureUrl)
+            MusicLogin.checkRedirect(source, next, "分享页要求登录")
+            url = next?.takeIf { MusicShareLink.permitted(it, source) }
                 ?: throw IOException("分享短链未跳转到本站歌曲，请复制官方歌曲页链接")
         }
         throw IOException("分享短链跳转次数过多")
@@ -71,8 +74,9 @@ internal class MusicShareRepository(
                 val endpoint = "https://music.163.com/api/song/enhance/download/url".toHttpUrl().newBuilder()
                     .addQueryParameter("id", song.id).addQueryParameter("br", "128000").build()
                 val response = json(endpoint, song.source, session(song.source))
-                if (response.number("code") == 301L) throw IOException("网易云音乐要求登录后下载（301），请登录后重试")
+                MusicLogin.checkCode(song.source, response.number("code"))
                 val data = response["data"] as? JsonObject
+                MusicLogin.checkCode(song.source, data?.number("code"))
                 if (response.number("code") != 200L || data == null || data.number("code") != 200L ||
                     data.text("id") != song.id || data["freeTrialInfo"]?.let { it !is JsonNull } == true)
                     throw IOException("网易云音乐未授权下载此歌曲，请在官方歌曲页查看权限")
@@ -105,6 +109,7 @@ internal class MusicShareRepository(
                 }
                 val data = qq("vkey.GetVkeyServer", "CgiGetVkey", param, cookie)
                 val entry = data.rows("midurlinfo").singleOrNull()
+                MusicLogin.checkCode(song.source, entry?.number("result"))
                 val path = entry?.text("purl").orEmpty()
                 if (entry?.text("songmid") != song.id || entry.number("result") != 0L || path.isBlank() ||
                     !path.substringBefore('?').substringAfterLast('/').equals(filename, true))
@@ -136,6 +141,8 @@ internal class MusicShareRepository(
         }
         val url = "https://u.y.qq.com/cgi-bin/musicu.fcg".toHttpUrl().newBuilder().addQueryParameter("data",payload.toString()).build()
         val root = json(url, MusicSource.QQ, cookie)
+        MusicLogin.checkCode(MusicSource.QQ, root.number("code"))
+        MusicLogin.checkCode(MusicSource.QQ, root.obj("song").number("code"))
         if (root.number("code") != 0L || root.obj("song").number("code") != 0L) throw IOException("QQ音乐暂未提供此歌曲的数据，请稍后重试")
         return root.obj("song").obj("data")
     }
@@ -144,12 +151,21 @@ internal class MusicShareRepository(
         val headers = mutableMapOf("User-Agent" to UserAgentProfile.DESKTOP.value,
             "Referer" to if (source == MusicSource.QQ) "https://y.qq.com/" else "https://music.163.com/")
         val accountEndpoint = when (source) {
-            MusicSource.NETEASE -> url.host == "music.163.com" && url.encodedPath == "/api/song/enhance/download/url"
+            MusicSource.NETEASE -> url.host == "music.163.com" && url.encodedPath in setOf("/api/song/enhance/download/url", "/api/song/detail/")
             MusicSource.QQ -> url.host == "u.y.qq.com" && url.encodedPath == "/cgi-bin/musicu.fcg"
             else -> false
         }
         if (accountEndpoint && cookie.isNotBlank()) headers["Cookie"] = cookie
-        return try { transport.get(url, headers) } catch (e: IOException) { throw IOException("无法连接${source.label}，请检查网络后重试",e) }
+        val response = try { transport.get(url, headers) } catch (e: IOException) { throw IOException("无法连接${source.label}，请检查网络后重试",e) }
+        if (response.status == 401) throw MusicLoginRequired(source, "HTTP 401")
+        if (response.status in 300..399) MusicLogin.checkRedirect(source, response.location?.let(url::resolve), "HTTP ${response.status}")
+        return response
+    }
+
+    suspend fun refresh(track: Track): Track {
+        val url = track.sourceUrl.toHttpUrlOrNull() ?: throw IOException("歌曲地址无效")
+        return parse(url).tracks.singleOrNull()?.takeIf { it.source == track.source && it.id == track.id }
+            ?: throw IOException("平台返回了不同的歌曲，请重新分享")
     }
 
     private suspend fun json(url: HttpUrl, source: MusicSource, cookie: String = ""): JsonObject {

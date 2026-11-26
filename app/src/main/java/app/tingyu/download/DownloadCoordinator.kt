@@ -26,6 +26,8 @@ import app.tingyu.model.DownloadStatus
 import app.tingyu.model.DownloadTask
 import app.tingyu.model.LocalTrack
 import app.tingyu.model.Track
+import app.tingyu.data.music.MusicLoginRequired
+import app.tingyu.model.MusicLoginRetry
 import app.tingyu.model.MusicSource
 import app.tingyu.data.music.MusicMedia
 import app.tingyu.util.userMessage
@@ -75,6 +77,7 @@ class DownloadCoordinator(
     private val launchService: (Context) -> Unit = {
         ContextCompat.startForegroundService(it, Intent(it, DownloadService::class.java))
     },
+    private val refreshMusic: suspend (Track) -> Track = { it },
 ) {
     private val context = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -110,14 +113,14 @@ class DownloadCoordinator(
         }
     }
 
-    fun enqueue(tracks: List<Track>) {
+    fun enqueue(tracks: List<Track>, loginRetry: MusicLoginRetry? = null) {
         scope.launch {
             try {
                 ready.await()
                 stateMutex.withLock {
                     tracks.filterNot { it.localOnly }.distinctBy { it.id }.forEach { track ->
                         val old = _jobs.value.firstOrNull { it.track.id == track.id }
-                        if (old?.status !in activeStatuses) queueLocked(track)
+                        if (old?.status !in activeStatuses) queueLocked(track, loginRetry)
                     }
                 }
                 if (_jobs.value.any { it.status == DownloadStatus.QUEUED }) startService()
@@ -129,11 +132,11 @@ class DownloadCoordinator(
         }
     }
 
-    private suspend fun queueLocked(track: Track) {
+    private suspend fun queueLocked(track: Track, loginRetry: MusicLoginRetry? = null) {
         cancelled.remove(track.id)
         interrupted.remove(track.id)
         try {
-            updateLocked(DownloadTask(track))
+            updateLocked(DownloadTask(track, loginRetry = loginRetry))
         } catch (e: CancellationException) { throw e }
         catch (e: Exception) {
             _jobs.value = replaceTask(_jobs.value, DownloadTask(track, DownloadStatus.FAILED,
@@ -148,6 +151,28 @@ class DownloadCoordinator(
             if (task.status !in retryable) return@withLock false
             queueLocked(task.track)
             _jobs.value.any { it.track.id == id && it.status == DownloadStatus.QUEUED }
+        }
+        if (queued) startService()
+    }
+
+    suspend fun requestMusicLogin(id: String) {
+        ready.await()
+        stateMutex.withLock {
+            val task = _jobs.value.firstOrNull { it.track.id == id && it.status == DownloadStatus.FAILED } ?: return
+            if (task.track.source != MusicSource.BILIBILI && task.loginRequestId == null)
+                updateLocked(task.copy(loginRequestId = java.util.UUID.randomUUID().toString()))
+        }
+    }
+
+    /** Match a particular failed attempt even after activity recreation, removal or a manual retry. */
+    suspend fun finishMusicLogin(requestId: String, signedIn: Boolean) {
+        ready.await()
+        val queued = stateMutex.withLock {
+            val task = _jobs.value.firstOrNull { it.status == DownloadStatus.FAILED && it.loginRequestId == requestId }
+                ?: return@withLock false
+            if (signedIn) queueLocked(task.track, MusicLoginRetry.REPARSE)
+            else updateLocked(task.copy(loginRequestId = null))
+            signedIn && _jobs.value.any { it.track.id == task.track.id && it.status == DownloadStatus.QUEUED }
         }
         if (queued) startService()
     }
@@ -213,7 +238,7 @@ class DownloadCoordinator(
                     _jobs.value.firstOrNull { it.status == DownloadStatus.QUEUED }?.also { activeId = it.track.id }
                 } ?: break
                 try {
-                    download(task.track, onProgress)
+                    download(task, onProgress)
                 } catch (error: Exception) {
                     val state = when {
                         cancelled.contains(task.track.id) -> DownloadStatus.CANCELLED
@@ -223,7 +248,9 @@ class DownloadCoordinator(
                     withContext(NonCancellable) {
                         if (state == DownloadStatus.CANCELLED) deleteParts(task.track)
                         val latest = _jobs.value.firstOrNull { it.track.id == task.track.id } ?: task
-                        update(latest.copy(status = state, error = when (state) {
+                        val challenge = if (state == DownloadStatus.FAILED && error is MusicLoginRequired &&
+                            error.source == task.track.source && task.loginRetry == null) java.util.UUID.randomUUID().toString() else null
+                        update(latest.copy(status = state, loginRequestId = challenge, error = when (state) {
                             DownloadStatus.CANCELLED -> null
                             DownloadStatus.INTERRUPTED -> "下载已中断，点击重试继续"
                             else -> friendlyError(error)
@@ -241,21 +268,26 @@ class DownloadCoordinator(
         }
     }
 
-    private suspend fun download(track: Track, onProgress: () -> Unit) {
+    private suspend fun download(task: DownloadTask, onProgress: () -> Unit) {
+        val original = task.track
         val profile = bilibili.profileSnapshot()
         val requestId = NetworkTrace.requestId()
-        checkRunning(track.id)
-        val existing = library.saved(track.id)
+        checkRunning(original.id)
+        val existing = library.saved(original.id)
         if (existing != null) {
             val exists = runCatching { context.contentResolver.openFileDescriptor(Uri.parse(existing.uri), "r")?.use { true } == true }.getOrDefault(false)
             if (exists) {
-                update(DownloadTask(track, DownloadStatus.COMPLETED, uri = existing.uri))
+                update(DownloadTask(original, DownloadStatus.COMPLETED, uri = existing.uri))
                 bilibili.log(profile, requestId, mapOf("stage" to "save", "event" to "local_hit"))
                 return
             }
-            library.removeLocal(track.id)
+            library.removeLocal(original.id)
         }
-        update(DownloadTask(track, DownloadStatus.DOWNLOADING))
+        update(task.copy(status = DownloadStatus.DOWNLOADING))
+        val track = if (task.loginRetry == MusicLoginRetry.REPARSE) refreshMusic(original).also {
+            if (it.id != original.id || it.source != original.source) throw IOException("平台返回了不同的歌曲，请重新分享")
+            checkRunning(original.id)
+        } else original
         onProgress()
         suspend fun resolve() = if (track.source == MusicSource.BILIBILI) bilibili.resolveAudio(track, profile, requestId) else resolveMusic(track)
         var stream = resolve()

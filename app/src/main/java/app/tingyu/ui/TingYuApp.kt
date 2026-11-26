@@ -15,6 +15,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.tingyu.model.AppActions
 import app.tingyu.model.AppUiState
+import app.tingyu.model.MusicLoginMethod
 
 @Composable
 fun TingYuApp(state: AppUiState, actions: AppActions) {
@@ -61,6 +62,26 @@ fun TingYuApp(state: AppUiState, actions: AppActions) {
         }
         if (state.playerVisible) PlayerDialog(state, actions)
         if (state.queueVisible && !state.playerVisible) QueueSheet(state, actions)
+        state.musicLogin?.let { challenge ->
+            val dismiss = { actions.dismissMusicLogin(challenge.id) }
+            AlertDialog(
+                onDismissRequest = dismiss,
+                title = { Text("登录${challenge.source.label}") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(challenge.title?.let { "《$it》需要登录。登录后会重新解析并继续下载。" }
+                            ?: "这个分享链接需要登录。登录后会重新解析并下载这首歌。")
+                        Button(onClick = { actions.startMusicLogin(challenge, MusicLoginMethod.QR) }, modifier = Modifier.fillMaxWidth()) {
+                            Text(MusicLoginMethod.QR.label)
+                        }
+                        OutlinedButton(onClick = { actions.startMusicLogin(challenge, MusicLoginMethod.PHONE) }, modifier = Modifier.fillMaxWidth()) {
+                            Text(MusicLoginMethod.PHONE.label)
+                        }
+                    }
+                },
+                confirmButton = { TextButton(onClick = dismiss) { Text("暂不登录") } },
+            )
+        }
     }
 }
 

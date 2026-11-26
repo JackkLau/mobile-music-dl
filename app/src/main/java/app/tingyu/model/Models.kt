@@ -56,6 +56,7 @@ data class LocalTrack(
     val identityUri: String? = null,
 )
 
+enum class MusicLoginRetry { REPARSE, ALREADY_PARSED }
 enum class DownloadStatus { QUEUED, DOWNLOADING, SAVING, COMPLETED, FAILED, CANCELLED, INTERRUPTED }
 @Serializable
 data class DownloadTask(
@@ -65,6 +66,8 @@ data class DownloadTask(
     val totalBytes: Long = -1,
     val error: String? = null,
     val uri: String? = null,
+    val loginRequestId: String? = null,
+    val loginRetry: MusicLoginRetry? = null,
 )
 
 enum class PlayMode { SEQUENTIAL, REPEAT_ALL, REPEAT_ONE, SHUFFLE }

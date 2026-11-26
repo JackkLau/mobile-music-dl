@@ -7,9 +7,15 @@ import app.tingyu.lyrics.LyricsDocument
 import app.tingyu.catalog.ArtworkCandidate
 import app.tingyu.catalog.LyricCandidate
 
+enum class MusicLoginMethod(val label: String) { QR("二维码登录"), PHONE("手机号快捷登录") }
+
+@kotlinx.serialization.Serializable
+data class MusicLoginChallenge(val source: MusicSource, val id: String, val title: String? = null, val parseUrl: String? = null)
+
 data class AppUiState(
     val input: String = "",
     val linkSource: MusicSource = MusicSource.BILIBILI,
+    val parseLogin: MusicLoginChallenge? = null,
     val parsing: Boolean = false,
     val loadingMore: Boolean = false,
     val result: ParseResult? = null,
@@ -52,9 +58,18 @@ data class AppUiState(
     val probeTrackId: String? = null,
     val probeLines: List<String> = emptyList(),
     val probeError: String? = null,
-)
+) {
+    val musicLogin: MusicLoginChallenge? get() = parseLogin ?: downloads.firstNotNullOfOrNull { task ->
+        task.loginRequestId?.takeIf { task.status == DownloadStatus.FAILED }?.let {
+            MusicLoginChallenge(task.track.source, it, title = task.track.title)
+        }
+    }
+}
 
 interface AppActions {
+    fun startMusicLogin(challenge: MusicLoginChallenge, method: MusicLoginMethod) {}
+    fun dismissMusicLogin(id: String) {}
+    fun loginForDownload(id: String) {}
     fun input(value: String)
     fun chooseLinkSource(source: MusicSource)
     fun openMusicPage(track: Track) {}

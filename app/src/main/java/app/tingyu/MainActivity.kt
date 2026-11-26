@@ -18,6 +18,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.media3.common.util.UnstableApi
+import app.tingyu.auth.MusicAccountActivity
+import app.tingyu.model.MusicLoginChallenge
+import app.tingyu.model.MusicLoginMethod
 import app.tingyu.model.AppActions
 import app.tingyu.model.MusicSource
 import app.tingyu.data.music.MusicShareLink
@@ -31,6 +34,13 @@ class MainActivity : ComponentActivity() {
     private val model: AppViewModel by viewModels()
     private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
         model.continueDownloadAfterPermission()
+    }
+    private var launchedMusicLogin: String? = null
+    private val musicAccount = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val expected = launchedMusicLogin
+        launchedMusicLogin = null
+        if (expected != null) model.finishMusicLogin(expected,
+            result.resultCode == Activity.RESULT_OK && result.data?.getStringExtra("challenge") == expected)
     }
     private val audioPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
         // Even a denied request can still discover this installation's own downloads.
@@ -64,6 +74,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        launchedMusicLogin = savedInstanceState?.getString("music_login_activity")
         model.pendingDeleteResultId?.let(::deleteLauncher)
         if (savedInstanceState == null) acceptIntent(intent)
         lifecycleScope.launch {
@@ -78,6 +89,17 @@ class MainActivity : ComponentActivity() {
             }
         }
         val actions = object : AppActions by model {
+            override fun startMusicLogin(challenge: MusicLoginChallenge, method: MusicLoginMethod) {
+                if (launchedMusicLogin != null || model.state.value.musicLogin?.id != challenge.id) return
+                launchedMusicLogin = challenge.id
+                try {
+                    musicAccount.launch(Intent(this@MainActivity, MusicAccountActivity::class.java)
+                        .putExtra("source", challenge.source.name).putExtra("method", method.name).putExtra("challenge", challenge.id))
+                } catch (_: android.content.ActivityNotFoundException) {
+                    launchedMusicLogin = null
+                    model.dismissMusicLogin(challenge.id)
+                }
+            }
             override fun importLyrics(track: Track) {
                 if (!model.beginSongFile("lyrics", track)) return
                 try { lyricsFile.launch(arrayOf("text/*", "application/x-subrip", "application/octet-stream")) }
@@ -123,6 +145,10 @@ class MainActivity : ComponentActivity() {
             val state by model.state.collectAsStateWithLifecycle()
             TingYuApp(state, actions)
         }
+    }
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putString("music_login_activity", launchedMusicLogin)
+        super.onSaveInstanceState(outState)
     }
     override fun onDestroy() {
         localDeleteLaunchers.values.toList().forEach { it.unregister() }

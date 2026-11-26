@@ -43,7 +43,7 @@ jobs:
       - name: Run brand, login and update checks on a disposable Android device
         env:
           TINGYU_TEST_DEVICE: emulator-5554
-          TINGYU_TEST_CLASSES: app.tingyu.download.MusicDownloadIntegrationTest,app.tingyu.ui.TingYuUiTest#sharedSongHasPlatformOptionsAndDownloadAction,app.tingyu.ui.TingYuUiTest#failedDownloadKeepsErrorAndOffersTargetedRetry,app.tingyu.ui.BrandResourcesTest,app.tingyu.ui.LoginScreenTest,app.tingyu.update.UpdatePackageIntegrationTest,app.tingyu.ui.TingYuUiTest#accountProvidesUpdatesWithoutLoginOrDeveloperMode
+          TINGYU_TEST_CLASSES: app.tingyu.download.MusicDownloadIntegrationTest,app.tingyu.ui.TingYuUiTest#musicLoginDialogOffersBothMethodsForTheExactRequest,app.tingyu.ui.TingYuUiTest#sharedSongHasPlatformOptionsAndDownloadAction,app.tingyu.ui.TingYuUiTest#failedDownloadKeepsErrorAndOffersTargetedRetry,app.tingyu.ui.BrandResourcesTest,app.tingyu.ui.LoginScreenTest,app.tingyu.update.UpdatePackageIntegrationTest,app.tingyu.ui.TingYuUiTest#accountProvidesUpdatesWithoutLoginOrDeveloperMode
         run: |
           set -euo pipefail
           sudo apt-get install -y libpulse0 libxkbcommon-x11-0 libxcb-cursor0

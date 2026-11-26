@@ -5,6 +5,7 @@ import android.content.ContextWrapper
 import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import app.tingyu.data.music.MusicLoginRequired
 import app.tingyu.data.bili.BilibiliRepository
 import app.tingyu.data.local.LibraryStore
 import app.tingyu.model.*
@@ -39,6 +40,7 @@ class MusicDownloadIntegrationTest {
                 when (idx % 417) { 0 -> 0xff.toByte(); 1 -> 0xfb.toByte(); 2 -> 0x90.toByte(); else -> 0 }
             }
             var available = false
+            var reparses = 0
             var uri: Uri? = null
             val client = OkHttpClient.Builder().addInterceptor { chain ->
                 assertNull(chain.request().header("Cookie"))
@@ -47,20 +49,38 @@ class MusicDownloadIntegrationTest {
                     .header("Content-Length", audio.size.toString()).body(audio.toResponseBody("audio/mpeg".toMediaType())).build()
             }.build()
             val coordinator = DownloadCoordinator(context,BilibiliRepository({ "" }),db,{ track ->
-                if (!available) throw IOException("平台暂时拒绝下载")
+                if (!available) throw MusicLoginRequired(track.source, "业务码 301")
                 AudioStream("https://m701.music.126.net/fixture.mp3", mimeType = "audio/mpeg",
                     expectedDurationMs = track.durationMs, expectedBytes = audio.size.toLong(), source = track.source)
-            },client,{})
+            },client,{}, refreshMusic = { reparses++; it })
             try {
                 coordinator.enqueue(listOf(song))
                 coordinator.jobs.first { it.any { job -> job.status == DownloadStatus.QUEUED } }
                 coordinator.runPending {}
                 assertEquals(DownloadStatus.FAILED,coordinator.jobs.value.single().status)
-                available = true
+                val challenge = coordinator.jobs.value.single().loginRequestId!!
+                coordinator.finishMusicLogin("obsolete", true)
+                assertEquals(challenge, coordinator.jobs.value.single().loginRequestId)
+                coordinator.finishMusicLogin(challenge, true)
+                coordinator.runPending {}
+                assertEquals(1, reparses)
+                assertEquals(DownloadStatus.FAILED, coordinator.jobs.value.single().status)
+                assertNull(coordinator.jobs.value.single().loginRequestId) // Rejection after login stays actionable without looping.
                 coordinator.retry(song.id)
+                coordinator.runPending {}
+                val second = coordinator.jobs.value.single().loginRequestId!!
+                coordinator.finishMusicLogin(second, false)
+                assertNull(coordinator.jobs.value.single().loginRequestId)
+                coordinator.retry(song.id)
+                coordinator.runPending {}
+                available = true
+                val fresh = coordinator.jobs.value.single().loginRequestId!!
+                coordinator.finishMusicLogin(fresh, true)
+                coordinator.finishMusicLogin(fresh, true)
                 coordinator.runPending {}
                 val task = coordinator.jobs.value.single()
                 assertEquals(task.error, DownloadStatus.COMPLETED,task.status)
+                assertEquals(2, reparses)
                 uri = Uri.parse(task.uri!!)
                 assertEquals("audio/mpeg",app.contentResolver.getType(uri))
                 val saved = app.contentResolver.openInputStream(uri)!!.use { it.readBytes() }

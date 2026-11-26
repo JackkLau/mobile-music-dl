@@ -441,9 +441,31 @@ class TingYuUiTest {
         bitmap.recycle()
     }
 
+    @Test fun musicLoginDialogOffersBothMethodsForTheExactRequest() {
+        val actions = RecordingActions()
+        val parse = MusicLoginChallenge(MusicSource.NETEASE, "parse-1", parseUrl = "https://music.163.com/song?id=123")
+        val download = DownloadTask(track.copy(source = MusicSource.QQ), DownloadStatus.FAILED, loginRequestId = "download-1")
+        val state = mutableStateOf(AppUiState(parseLogin = parse, downloads = listOf(download)))
+        compose.setContent { TingYuApp(state.value, actions) }
+        compose.onNodeWithText("二维码登录").performClick()
+        assertEquals(parse to MusicLoginMethod.QR, actions.musicLogin)
+        compose.onNodeWithText("暂不登录").performClick()
+        assertEquals(parse.id, actions.dismissedLogin)
+        compose.runOnIdle { state.value = state.value.copy(parseLogin = null) }
+        compose.onNodeWithText("手机号快捷登录").performClick()
+        assertEquals("download-1", actions.musicLogin?.first?.id)
+        assertEquals(MusicLoginMethod.PHONE, actions.musicLogin?.second)
+        compose.runOnIdle { state.value = state.value.copy(downloads = emptyList()) }
+        compose.onNodeWithText("手机号快捷登录").assertDoesNotExist()
+    }
+
     private class RecordingActions : AppActions {
         var inputValue: String? = null
         var parseCount = 0
+        var musicLogin: Pair<MusicLoginChallenge, MusicLoginMethod>? = null
+        var dismissedLogin: String? = null
+        override fun startMusicLogin(challenge: MusicLoginChallenge, method: MusicLoginMethod) { musicLogin = challenge to method }
+        override fun dismissMusicLogin(id: String) { dismissedLogin = id }
         var loginCount = 0
         var nextCount = 0
         var modeCount = 0
