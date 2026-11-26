@@ -288,12 +288,19 @@ class DownloadCoordinator(
         val existing = library.saved(original.id)
         if (existing != null) {
             val savedUri = Uri.parse(existing.uri)
-            val exists = try { context.contentResolver.openFileDescriptor(savedUri, "r")?.use { true } == true }
-            catch (e: SecurityException) { throw IOException("已有文件的访问授权已失效，请在下载位置重新选择原文件夹", e) }
-            catch (e: java.io.FileNotFoundException) {
-                if (DocumentsContract.isTreeUri(savedUri) && !DownloadFolders.confirmsFileRemoved(context.contentResolver, savedUri))
-                    throw IOException("已有文件暂时不可用，请检查原下载文件夹", e)
-                false
+            val exists = try {
+                context.contentResolver.openFileDescriptor(savedUri, "r")?.use { true } ?: throw IOException("暂时无法读取已有文件")
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) {
+                val tree = DocumentsContract.isTreeUri(savedUri)
+                // Some documents providers wrap a missing child in a runtime exception during tree traversal.
+                when {
+                    tree && DownloadFolders.confirmsFileRemoved(context.contentResolver, savedUri) -> false
+                    e is SecurityException -> throw IOException("已有文件的访问授权已失效，请在下载位置重新选择原文件夹", e)
+                    tree -> throw IOException("已有文件暂时不可用，请检查原下载文件夹", e)
+                    e is java.io.FileNotFoundException -> false
+                    else -> throw e
+                }
             }
             if (exists) {
                 update(DownloadTask(original, DownloadStatus.COMPLETED, uri = existing.uri))

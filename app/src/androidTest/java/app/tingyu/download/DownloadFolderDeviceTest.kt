@@ -14,6 +14,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import app.tingyu.MainActivity
 import app.tingyu.MusicApp
 import app.tingyu.data.bili.BilibiliRepository
+import app.tingyu.data.bili.NetworkProfile
 import app.tingyu.data.local.LibraryStore
 import app.tingyu.data.local.LocalMusicManager
 import app.tingyu.model.*
@@ -75,27 +76,31 @@ class DownloadFolderDeviceTest {
                 Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1).message("OK").code(200)
                     .header("Content-Length", audio.size.toString()).body(audio.toResponseBody("audio/mpeg".toMediaType())).build()
             }.build()
-            val coordinator = DownloadCoordinator(context, BilibiliRepository({ "" }), db, { track ->
+            val trace = mutableListOf<String>()
+            val bili = BilibiliRepository({ "" }, { NetworkProfile(loggingEnabled = true) }, { trace.add(it) })
+            val coordinator = DownloadCoordinator(context, bili, db, { track ->
                 AudioStream("https://m701.music.126.net/fixture.mp3", mimeType = "audio/mpeg", expectedDurationMs = track.durationMs,
                     expectedBytes = audio.size.toLong(), source = track.source)
             }, client, {}, downloadFolder = { folders.current.value })
             runBlocking {
                 withTimeout(30_000) {
-                    suspend fun downloadSong(): Uri {
+                    suspend fun downloadSong(step: String): Uri {
+                        trace.clear()
                         coordinator.enqueue(listOf(song))
                         coordinator.jobs.first { it.any { task -> task.status == DownloadStatus.QUEUED } }
                         coordinator.runPending {}
                         val job = coordinator.jobs.value.single()
-                        assertEquals(job.error, DownloadStatus.COMPLETED, job.status)
+                        assertEquals("$step: ${job.error}, trace=$trace", DownloadStatus.COMPLETED, job.status)
                         return Uri.parse(requireNotNull(job.uri))
                     }
-                    saved = downloadSong()
+                    saved = downloadSong("First SAF download")
                     assertEquals("primary:Music", DocumentsContract.getDocumentId(saved!!).substringBeforeLast('/'))
                     LocalMusicManager(app, db).scan(tree)
                     assertEquals(1, db.readLocal().count { it.uri == saved.toString() })
                     assertTrue(DocumentsContract.deleteDocument(resolver, saved!!))
+                    assertTrue("Parent must confirm removal", DownloadFolders.confirmsFileRemoved(resolver, saved!!))
                     saved = null
-                    saved = downloadSong()
+                    saved = downloadSong("Download after external deletion")
                     assertEquals(saved.toString(), db.saved(song.id)?.uri)
                 }
             }
