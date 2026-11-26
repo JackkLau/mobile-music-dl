@@ -632,5 +632,36 @@
       ],
       "verificationConclusions": "success"
     }
+  },
+  "account_update_0_1_7": {
+    "versionName": "0.1.7",
+    "versionCode": 8,
+    "localAppJvm": 254,
+    "localAppJvmDebugReleaseOverlap": true,
+    "sharedPcJvm": 132,
+    "scripts": 41,
+    "deviceRun": 45826094138,
+    "deviceTestsPassed": 7,
+    "androidApi": 30,
+    "qrGenerateAndWaitingVerified": true,
+    "realAccountConfirmationVerified": false,
+    "physicalUpgradeVerified": false,
+    "cloudReleaseRun": 45829636077,
+    "sourceCommit": "0c0b12c79e700cc35cc4b037cb63d9a44f2fb86d",
+    "publicLatestApkSizeAndDigestVerifiedByAppCode": true,
+    "publicSignaturesVerified": true,
+    "assets": [
+      {
+        "file": "tingyu-0.1.7-release.apk",
+        "bytes": 51689968,
+        "sha256": "ac11372f0bc74d3550e5374e01946b03d52a8b5bae852b1e0c974d2007df614b"
+      },
+      {
+        "file": "tingyu-0.1.7-release.aab",
+        "bytes": 14883167,
+        "sha256": "1682fe951d67edac60bc796ddcb9b906bf36b65233f354d538366f14ceea7164"
+      }
+    ],
+    "report": "docs/ACCOUNT-UPDATE-0.1.7.md"
   }
 }
