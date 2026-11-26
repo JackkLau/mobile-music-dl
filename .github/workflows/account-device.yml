@@ -1,0 +1,60 @@
+name: Account and update device checks
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - '.github/workflows/account-device.yml'
+      - 'app/src/main/java/app/tingyu/auth/**'
+      - 'app/src/main/java/app/tingyu/data/auth/**'
+      - 'app/src/main/java/app/tingyu/update/**'
+      - 'app/src/main/java/app/tingyu/ui/AppUpdateCard.kt'
+      - 'app/src/androidTest/java/app/tingyu/ui/LoginScreenTest.kt'
+      - 'app/src/androidTest/java/app/tingyu/update/**'
+permissions:
+  contents: read
+jobs:
+  device:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Build debug app and device tests
+        run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+      - name: Run login and update checks on a disposable Android device
+        env:
+          TINGYU_TEST_DEVICE: emulator-5554
+          TINGYU_TEST_CLASSES: app.tingyu.ui.LoginScreenTest,app.tingyu.update.UpdatePackageIntegrationTest,app.tingyu.ui.TingYuUiTest#accountProvidesUpdatesWithoutLoginOrDeveloperMode
+        run: |
+          set -euo pipefail
+          sdkmanager 'emulator' 'system-images;android-30;google_apis;x86_64'
+          echo no | avdmanager create avd -n account-ui -k 'system-images;android-30;google_apis;x86_64' -d pixel_4
+          sudo setfacl -m "u:$(id -un):rw" /dev/kvm
+          adb start-server
+          "$ANDROID_HOME/emulator/emulator" -avd account-ui -port 5554 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > "$RUNNER_TEMP/emulator.log" 2>&1 &
+          trap 'adb -s emulator-5554 emu kill || true' EXIT
+          timeout 240 adb -s "$TINGYU_TEST_DEVICE" wait-for-device
+          timeout 240 bash -c 'until [[ "$(adb shell getprop sys.boot_completed | tr -d "\r")" == 1 ]]; do sleep 2; done'
+          adb shell input keyevent 82
+          TINGYU_TEST_USER=$(adb shell pm create-user WeileTest | sed -nE 's/.* id ([0-9]+).*/\1/p')
+          [[ "$TINGYU_TEST_USER" =~ ^[1-9][0-9]*$ ]]
+          export TINGYU_TEST_USER
+          adb shell am switch-user "$TINGYU_TEST_USER"
+          timeout 90 bash -c 'until adb shell am get-current-user | tr -d "\r" | grep -qx "$TINGYU_TEST_USER" && adb shell am get-started-user-state "$TINGYU_TEST_USER" | grep -q RUNNING_UNLOCKED; do sleep 1; done'
+          adb shell wm dismiss-keyguard
+          # Exercise archive parsing with a genuine earlier release, including signature checks.
+          curl --fail --location --retry 3 -o "$RUNNER_TEMP/official.apk" https://github.com/JackkLau/mobile-music-dl/releases/download/v0.1.6/tingyu-0.1.6-release.apk
+          echo "04c39178da5b6b6c80ff70739b719d6012759d1e77dfeca0f70eab7aedd40979  $RUNNER_TEMP/official.apk" | sha256sum -c -
+          adb install --user "$TINGYU_TEST_USER" -r app/build/outputs/apk/debug/app-debug.apk
+          adb shell -T "run-as app.tingyu --user $TINGYU_TEST_USER sh -c 'mkdir -p cache && cat > cache/update-test-release.apk'" < "$RUNNER_TEMP/official.apk"
+          bash scripts/check-device.sh

@@ -176,7 +176,7 @@ internal fun AccountScreen(state: AppUiState, actions: AppActions) {
     var confirmLogout by remember { mutableStateOf(false) }
     val account = state.session.account
     LazyColumn(Modifier.fillMaxSize().testTag("account_list"), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        item { PageTitle("我的", "选择这次聆听的方式") }
+        item { PageTitle("我的", "账号与应用设置") }
         item {
             Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.surface) {
                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -224,6 +224,7 @@ internal fun AccountScreen(state: AppUiState, actions: AppActions) {
             Text("登录会话仅保存在本机。退出登录会清除会话和私密列表，已下载的音频仍然保留。",
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        item(key = "app_update") { AppUpdateCard() }
         item {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 BrandIcon(36.dp)

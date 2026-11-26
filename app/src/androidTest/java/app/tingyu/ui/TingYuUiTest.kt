@@ -347,6 +347,15 @@ class TingYuUiTest {
         compose.onNodeWithContentDescription("下一首").assertIsDisplayed().assertIsNotEnabled()
     }
 
+    @Test fun accountProvidesUpdatesWithoutLoginOrDeveloperMode() {
+        val actions = RecordingActions()
+        compose.setContent { TingYuApp(AppUiState(tab = 3), actions) }
+        compose.onNodeWithText("登录哔哩哔哩").performClick()
+        assertEquals(1, actions.loginCount)
+        compose.onNodeWithTag("account_list").performScrollToNode(hasText("检查更新"))
+        compose.onNodeWithText("检查更新").assertIsDisplayed().assertIsEnabled()
+    }
+
     @Test fun developerToolsAreHiddenUntilDebugModeEnabled() {
         val actions = RecordingActions()
         compose.setContent { TingYuApp(AppUiState(tab = 3, debugAvailable = true), actions) }

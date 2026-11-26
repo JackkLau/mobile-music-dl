@@ -1,373 +1,271 @@
 package app.tingyu.auth
 
-import android.annotation.SuppressLint
-import android.app.Activity
-import android.graphics.Bitmap
-import android.net.http.SslError
 import android.os.Bundle
-import android.view.View
-import android.view.ViewGroup
-import android.view.Gravity
+import android.os.SystemClock
 import android.webkit.CookieManager
-import android.webkit.SslErrorHandler
-import android.webkit.WebResourceError
-import android.webkit.WebResourceRequest
-import android.webkit.WebResourceResponse
-import android.webkit.WebSettings
 import android.webkit.WebView
-import android.webkit.WebViewClient
-import android.widget.Button
-import android.widget.LinearLayout
-import android.widget.ProgressBar
-import android.widget.TextView
-import androidx.compose.ui.graphics.toArgb
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.lifecycleScope
 import app.tingyu.data.auth.CookiePolicy
-import app.tingyu.data.auth.LoginResponse
 import app.tingyu.data.auth.LoginVerificationGate
+import app.tingyu.data.auth.QrLoginChallenge
+import app.tingyu.data.auth.QrLoginClient
+import app.tingyu.data.auth.QrLoginException
+import app.tingyu.data.auth.QrLoginStatus
 import app.tingyu.data.auth.SessionStore
 import app.tingyu.model.Account
-import app.tingyu.ui.TingYuColors
-import app.tingyu.R
-import java.io.ByteArrayInputStream
-import java.io.IOException
-import java.util.concurrent.TimeUnit
+import app.tingyu.ui.TingYuTheme
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
-import okhttp3.Call
-import okhttp3.Callback
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.Response
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.withContext
 
-/** The app owns this isolated WebView; it never reads an external browser's cookies. */
-class LoginActivity : Activity() {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val client = OkHttpClient.Builder()
-        .followRedirects(false).followSslRedirects(false)
-        .connectTimeout(15, TimeUnit.SECONDS).readTimeout(20, TimeUnit.SECONDS)
-        .callTimeout(30, TimeUnit.SECONDS).build()
-    private lateinit var webView: WebView
-    private lateinit var status: TextView
-    private lateinit var complete: Button
-    private lateinit var reload: Button
-    private lateinit var progress: ProgressBar
-    private lateinit var successPanel: LinearLayout
-    private val verification = LoginVerificationGate()
-    private var pollingJob: Job? = null
-    private var verificationJob: Job? = null
-    private var activeAttempt: LoginVerificationGate.Attempt? = null
+/** Rotation retains the current challenge in memory. Credentials never enter a saved-state bundle. */
+internal class LoginState : ViewModel() {
+    var method by mutableStateOf(LoginMethod.Qr)
+    var qr by mutableStateOf<QrPanel>(QrPanel.Loading)
+    var account by mutableStateOf<Account?>(null)
+    var challenge: QrLoginChallenge? = null
+    var expiresAt = 0L
+    var confirmedCookie = ""
+    var webSessionInitialized = false
+
+    fun resetQr() {
+        challenge = null
+        expiresAt = 0
+        confirmedCookie = ""
+        qr = QrPanel.Loading
+    }
+}
+
+class LoginActivity : ComponentActivity() {
+    private val state: LoginState by viewModels()
+    private val client = QrLoginClient()
+    private val store by lazy { SessionStore(applicationContext) }
+    private var gate = LoginVerificationGate()
+    private var polling: Job? = null
+    private var verifying: Job? = null
+    private var web: WebView? = null
+    private var webStatus by mutableStateOf(WebStatus())
     private var resumed = false
-    private var ready = false
-    private var succeededMid: Long? = null
-    private val checking: Boolean get() = activeAttempt != null
 
-    @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(TingYuColors.Surface.toArgb())
-            fitsSystemWindows = true
-        }
-        root.setOnApplyWindowInsetsListener { view, insets ->
-            @Suppress("DEPRECATION")
-            view.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop, insets.systemWindowInsetRight, insets.systemWindowInsetBottom)
-            insets
-        }
-        val toolbar = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = android.view.Gravity.CENTER_VERTICAL }
-        toolbar.addView(Button(this).apply { text = "返回"; setOnClickListener { finish() } })
-        toolbar.addView(TextView(this).apply { text = "登录 B 站"; textSize = 18f; setTextColor(TingYuColors.Ink.toArgb()) }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        complete = Button(this).apply { text = "完成登录"; setOnClickListener { verifyLogin(manual = true) } }
-        toolbar.addView(complete)
-        root.addView(toolbar)
-        status = TextView(this).apply {
-            text = "请在 B 站官方页面登录，成功后会自动提示；也可点击「完成登录」手动检查。"
-            textSize = 13f
-            setTextColor(TingYuColors.Muted.toArgb())
-            minLines = 2
-            setPadding(dp(16), dp(8), dp(16), dp(8))
-            accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
-        }
-        root.addView(status)
-        progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply { isIndeterminate = true }
-        root.addView(progress, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(3)))
-        webView = WebView(this).apply {
-            settings.javaScriptEnabled = true // Required by the first-party login and CAPTCHA UI.
-            settings.domStorageEnabled = true
-            settings.allowFileAccess = false
-            settings.allowContentAccess = false
-            settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
-            settings.javaScriptCanOpenWindowsAutomatically = false
-            settings.setSupportMultipleWindows(false)
-            settings.cacheMode = WebSettings.LOAD_NO_CACHE
-            settings.safeBrowsingEnabled = true
-            // No JavascriptInterface, password bridge, client certificate, or native file picker.
-            setDownloadListener { _, _, _, _, _ -> showStatus("登录页不支持下载文件，请返回后重试。", true) }
-        }
-        WebView.setWebContentsDebuggingEnabled(false)
-        CookieManager.getInstance().apply {
-            setAcceptCookie(true)
-            setAcceptThirdPartyCookies(webView, false)
-        }
-        webView.webViewClient = object : WebViewClient() {
-            override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
-                if (succeededMid != null) { view.stopLoading(); return }
-                if (!CookiePolicy.isTrustedPage(url)) {
-                    view.stopLoading()
-                    showStatus("仅支持在 B 站官方页面完成登录。", true)
-                }
-            }
-
-            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-                val allowed = CookiePolicy.isTrustedPage(request.url.toString())
-                if (!allowed && request.isForMainFrame) showStatus("请在 B 站网页登录页面完成登录；暂不支持跳转到其他应用。", true)
-                return !allowed
-            }
-
-            @Deprecated("Required for older WebView implementations")
-            override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean = !CookiePolicy.isTrustedPage(url)
-
-            override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
-                // Permit HTTPS CAPTCHA/CDN subresources, but never local files, cleartext, or native schemes.
-                val allowed = request.url.scheme == "https" &&
-                    (!request.isForMainFrame || CookiePolicy.isTrustedPage(request.url.toString()))
-                return if (allowed) null else WebResourceResponse("text/plain", "utf-8", 403, "Blocked", emptyMap(), ByteArrayInputStream(ByteArray(0)))
-            }
-
-            override fun onPageFinished(view: WebView, url: String) {
-                if (!checking) progress.visibility = View.GONE
-                if (CookiePolicy.isTrustedPage(url)) verifyLogin()
-            }
-
-            override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
-                if (request.isForMainFrame) {
-                    progress.visibility = View.GONE
-                    showStatus("登录页面未能加载，请检查网络后点击「重新加载」。", true)
-                }
-            }
-
-            override fun onReceivedSslError(view: WebView, handler: SslErrorHandler, error: SslError) {
-                handler.cancel()
-                showStatus("无法验证登录页面的安全连接，请检查网络和系统时间。", true)
-            }
-        }
-        root.addView(webView, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
-        successPanel = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(dp(20), dp(20), dp(20), dp(20))
-            visibility = View.GONE
-            addView(TextView(this@LoginActivity).apply {
-                text = "登录成功"
-                textSize = 26f
-                setTextColor(TingYuColors.Ink.toArgb())
-                gravity = Gravity.CENTER
-            })
-            addView(Button(this@LoginActivity).apply {
-                text = getString(R.string.return_to_app)
-                minHeight = dp(48)
-                setOnClickListener { finish() }
-            })
-        }
-        root.addView(successPanel, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
-        reload = Button(this).apply {
-            text = "重新加载"
-            setOnClickListener {
-                if (!checking && succeededMid == null) {
-                    progress.visibility = View.VISIBLE
-                    webView.loadUrl(LOGIN_URL)
-                }
-            }
-        }
-        root.addView(reload)
-        setContentView(root)
-        // A completed login survives rotation without silently starting another login.
-        val stored = SessionStore(applicationContext).state.value.account
-        if (stored != null && savedInstanceState?.getLong("verified_mid", 0L) == stored.mid) {
-            verification.close()
-            showSuccess(stored)
-            return
-        }
-        SessionStore.clearWebSession {
-            if (!isFinishing && !isDestroyed) {
-                ready = true
-                webView.loadUrl(LOGIN_URL)
+        enableEdgeToEdge()
+        val stored = store.state.value.account
+        if (stored != null && savedInstanceState?.getLong("verified_mid") == stored.mid) state.account = stored
+        if (state.account != null) setResult(RESULT_OK)
+        setContent {
+            TingYuTheme {
+                LoginScreen(state.method, state.qr, state.account, webStatus,
+                    onBack = ::finish, onMethod = ::selectMethod, onRefresh = ::refreshQr,
+                    onRetryVerify = { verify(state.confirmedCookie, manual = true) },
+                    onWebReady = ::attachWeb, onWebReleased = ::releaseWeb,
+                    onWebPage = ::onWebPage, onWebReload = ::reloadWeb,
+                    onWebComplete = { verify(webCandidate(), manual = true) })
             }
         }
     }
 
-    private fun currentCandidate(): String {
+    private fun selectMethod(next: LoginMethod) {
+        if (state.account != null || next == state.method) return
+        cancelWork()
+        gate = LoginVerificationGate()
+        state.resetQr()
+        state.method = next
+        if (next == LoginMethod.Qr) {
+            state.webSessionInitialized = false
+            SessionStore.clearWebSession()
+        } else webStatus = WebStatus()
+        runVisibleFlow()
+    }
+
+    private fun refreshQr() {
+        if (!visible(LoginMethod.Qr)) return
+        cancelWork()
+        gate = LoginVerificationGate()
+        state.resetQr()
+        runVisibleFlow()
+    }
+
+    private fun runVisibleFlow() {
+        if (!resumed || state.account != null || isFinishing) return
+        polling?.cancel()
+        polling = lifecycleScope.launch {
+            if (state.method == LoginMethod.Web) {
+                while (isActive && visible(LoginMethod.Web)) {
+                    if (state.webSessionInitialized && web != null) verify(webCandidate())
+                    delay(1_000)
+                }
+            } else if (state.confirmedCookie.isNotEmpty()) {
+                if (state.qr !is QrPanel.Failed) verify(state.confirmedCookie)
+            } else if (state.qr !is QrPanel.Failed && state.qr != QrPanel.Expired) {
+                pollQr()
+            }
+        }
+    }
+
+    private suspend fun pollQr() {
+        try {
+            val challenge = state.challenge ?: client.generate().also { generated ->
+                val bitmap = withContext(Dispatchers.Default) { makeLoginQr(generated.url) }
+                state.challenge = generated
+                state.expiresAt = SystemClock.elapsedRealtime() + QR_VALIDITY_MS
+                state.qr = QrPanel.Ready(bitmap)
+            }
+            while (visible(LoginMethod.Qr) && state.challenge === challenge) {
+                if (SystemClock.elapsedRealtime() >= state.expiresAt) break
+                when (val result = client.poll(challenge)) {
+                    QrLoginStatus.Expired -> break
+                    QrLoginStatus.Scanned -> (state.qr as? QrPanel.Ready)?.let { state.qr = it.copy(scanned = true) }
+                    QrLoginStatus.Waiting -> Unit
+                    is QrLoginStatus.Confirmed -> {
+                        state.confirmedCookie = result.cookie
+                        state.challenge = null
+                        verify(result.cookie)
+                        return
+                    }
+                }
+                delay(3_000)
+            }
+            state.challenge = null
+            state.qr = QrPanel.Expired
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            state.challenge = null
+            state.qr = QrPanel.Failed(safeMessage(error, "二维码连接失败，请检查网络后重试。"))
+        }
+    }
+
+    private fun visible(method: LoginMethod) = resumed && !isFinishing && !isDestroyed &&
+        state.method == method && state.account == null
+
+    private fun webCandidate(): String {
         val cookies = CookieManager.getInstance()
-        return CookiePolicy.normalize(listOf(
-            cookies.getCookie("https://www.bilibili.com").orEmpty(),
-            cookies.getCookie("https://api.bilibili.com").orEmpty(),
-        ).joinToString("; "))
+        return CookiePolicy.normalize(listOf("https://www.bilibili.com", "https://api.bilibili.com")
+            .joinToString("; ") { cookies.getCookie(it).orEmpty() })
     }
 
-    private fun verifyLogin(manual: Boolean = false) {
-        if (!resumed || !ready || isFinishing || isDestroyed || succeededMid != null || checking) return
-        val candidate = currentCandidate()
+    private fun verify(candidate: String, manual: Boolean = false) {
+        val method = state.method
+        if (!visible(method) || verifying?.isActive == true) return
+        if (method == LoginMethod.Web && (!state.webSessionInitialized || web == null)) return
         if (!CookiePolicy.hasSession(candidate)) {
-            if (manual) showStatus("还没有检测到登录状态，请先在下方页面完成登录。", true)
+            if (manual) webStatus = webStatus.copy(message = "请先在官方网页完成登录。", error = true)
             return
         }
-        val attempt = verification.begin(candidate, manual) ?: return
-        activeAttempt = attempt
-        complete.isEnabled = false
-        reload.isEnabled = false
-        progress.visibility = View.VISIBLE
-        showStatus("正在验证登录状态…")
-        verificationJob = scope.launch {
+        val attempt = gate.begin(candidate, manual) ?: return
+        if (method == LoginMethod.Qr) state.qr = QrPanel.Verifying
+        else webStatus = WebStatus("正在验证登录状态…", verifying = true)
+        verifying = lifecycleScope.launch {
             try {
-                val account = fetchAccount(candidate)
-                if (!resumed || isFinishing || isDestroyed) return@launch
-                // Final guard and this small encrypted commit are serialized on the
-                // Activity thread: a back/pause callback cannot occur between them.
-                val committed = verification.commit(attempt, currentCandidate()) {
-                    SessionStore(applicationContext).saveSession(candidate, account)
-                }
-                if (committed) showSuccess(account)
-                else {
-                    verification.cancelActive()
-                    showStatus("登录状态已变化，正在重新检查。")
+                val account = client.verifyAccount(candidate)
+                if (!visible(method)) return@launch
+                val current = if (method == LoginMethod.Web) webCandidate() else state.confirmedCookie
+                if (gate.commit(attempt, current) { store.saveSession(candidate, account) }) {
+                    state.resetQr()
+                    state.account = account
+                    polling?.cancel()
+                    web?.stopLoading()
+                    SessionStore.clearWebSession()
+                    setResult(RESULT_OK)
+                } else if (method == LoginMethod.Web) {
+                    webStatus = WebStatus("登录状态已变化，正在重新检查。")
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
-            } catch (_: Exception) {
-                // Never show exception text: it may contain request headers or a URL with session data.
-                if (resumed && !isFinishing && !isDestroyed) {
-                    showStatus("登录验证失败。请确认网页已完成登录，检查网络后点击「完成登录」重试。", true)
-                }
+            } catch (error: Exception) {
+                val message = safeMessage(error, "未能完成登录验证，请重试。")
+                if (method == LoginMethod.Qr) state.qr = QrPanel.Failed(message, retryVerification = true)
+                else webStatus = WebStatus(message, error = true)
             } finally {
-                verification.finish(attempt)
-                if (activeAttempt == attempt) {
-                    activeAttempt = null
-                    verificationJob = null
-                    complete.isEnabled = true
-                    reload.isEnabled = true
-                    progress.visibility = View.GONE
-                }
+                gate.finish(attempt)
             }
         }
     }
 
-    private suspend fun fetchAccount(candidate: String): Account = suspendCancellableCoroutine { continuation ->
-        val request = Request.Builder().url("https://api.bilibili.com/x/web-interface/nav")
-            .header("Cookie", candidate)
-            .header("Referer", "https://www.bilibili.com/")
-            .header("User-Agent", USER_AGENT).build()
-        val call = client.newCall(request)
-        continuation.invokeOnCancellation { call.cancel() }
-        call.enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                if (continuation.isActive) continuation.resumeWithException(IllegalStateException("登录验证连接失败"))
+    private fun safeMessage(error: Exception, fallback: String): String =
+        if (error is QrLoginException) error.message ?: fallback else fallback
+
+    private fun attachWeb(view: WebView) {
+        web = view
+        val load = {
+            if (web === view && state.method == LoginMethod.Web && state.account == null && !isFinishing && !isDestroyed) {
+                state.webSessionInitialized = true
+                view.loadUrl(WEB_LOGIN_URL)
             }
-
-            override fun onResponse(call: Call, response: Response) {
-                try {
-                    val verified = response.use {
-                        check(it.isSuccessful)
-                        val body = it.body ?: error("Empty response")
-                        check(body.contentLength() <= MAX_LOGIN_BYTES)
-                        val source = body.source()
-                        check(!source.request(MAX_LOGIN_BYTES + 1))
-                        LoginResponse.parse(source.readUtf8())
-                    }
-                    if (continuation.isActive) continuation.resume(verified)
-                } catch (_: Exception) {
-                    if (continuation.isActive) continuation.resumeWithException(IllegalStateException("登录验证失败"))
-                }
-            }
-        })
+        }
+        if (state.webSessionInitialized) load() else SessionStore.clearWebSession(load)
     }
 
-    private fun showSuccess(account: Account) {
-        succeededMid = account.mid
-        pollingJob?.cancel()
-        pollingJob = null
-        webView.stopLoading()
-        webView.visibility = View.GONE
-        successPanel.visibility = View.VISIBLE
-        reload.visibility = View.GONE
-        progress.visibility = View.GONE
-        complete.text = getString(R.string.return_to_app)
-        complete.isEnabled = true
-        complete.setOnClickListener { finish() }
-        showStatus(getString(R.string.login_success_return, account.name))
-        setResult(RESULT_OK)
-        SessionStore.clearWebSession()
+    private fun releaseWeb(view: WebView) {
+        if (web === view) web = null
+        view.stopLoading()
+        view.clearHistory()
+        view.clearCache(true)
+        view.destroy()
     }
 
-    private fun showStatus(message: String, isError: Boolean = false) {
-        if (succeededMid != null && isError) return // Ignore late WebView load errors after verified success.
-        status.text = message
-        status.setTextColor((if (isError) TingYuColors.Error else TingYuColors.Muted).toArgb())
+    private fun reloadWeb() {
+        if (webStatus.verifying || !state.webSessionInitialized) return
+        webStatus = WebStatus(loading = true)
+        web?.loadUrl(WEB_LOGIN_URL)
     }
 
-    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+    private fun onWebPage(view: WebView, status: WebStatus) {
+        if (web === view && state.method == LoginMethod.Web && state.account == null && !webStatus.verifying) {
+            webStatus = status
+            if (!status.error && !status.loading && state.webSessionInitialized) verify(webCandidate())
+        }
+    }
+
+    private fun cancelWork() {
+        polling?.cancel()
+        polling = null
+        verifying?.cancel()
+        verifying = null
+        gate.cancelActive()
+        if (webStatus.verifying) webStatus = WebStatus()
+    }
 
     override fun onResume() {
         super.onResume()
         resumed = true
-        webView.onResume()
-        pollingJob?.cancel()
-        pollingJob = scope.launch {
-            // Poll local cookies only. Network checks are deduplicated by session,
-            // and happen only while the login page is visible.
-            while (isActive && resumed && succeededMid == null) {
-                verifyLogin()
-                delay(1_000)
-            }
-        }
+        web?.onResume()
+        runVisibleFlow()
     }
 
     override fun onPause() {
         resumed = false
-        pollingJob?.cancel()
-        pollingJob = null
-        verification.cancelActive()
-        verificationJob?.cancel()
-        verificationJob = null
-        activeAttempt = null
-        complete.isEnabled = true
-        reload.isEnabled = true
-        progress.visibility = View.GONE
-        webView.onPause()
+        cancelWork()
+        web?.onPause()
         super.onPause()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
-        succeededMid?.let { outState.putLong("verified_mid", it) }
+        state.account?.let { outState.putLong("verified_mid", it.mid) }
         super.onSaveInstanceState(outState)
     }
 
     override fun onDestroy() {
-        verification.close()
-        scope.cancel()
-        if (::webView.isInitialized) {
-            webView.stopLoading()
-            webView.clearHistory()
-            webView.clearCache(true)
-            (webView.parent as? ViewGroup)?.removeView(webView)
-            webView.destroy()
-        }
-        SessionStore.clearWebSession()
+        gate.close()
+        if (!isChangingConfigurations && state.webSessionInitialized) SessionStore.clearWebSession()
         super.onDestroy()
     }
 
-    companion object {
-        private const val MAX_LOGIN_BYTES = 256_000L
-        private const val LOGIN_URL = "https://passport.bilibili.com/login?gourl=https%3A%2F%2Fwww.bilibili.com%2F"
-        private const val USER_AGENT = "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36"
+    private companion object {
+        const val QR_VALIDITY_MS = 180_000L
+        const val WEB_LOGIN_URL = "https://passport.bilibili.com/login?gourl=https%3A%2F%2Fwww.bilibili.com%2F"
     }
 }
