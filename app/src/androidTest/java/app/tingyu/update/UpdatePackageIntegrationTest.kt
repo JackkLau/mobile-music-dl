@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.os.SystemClock
+import android.util.Log
 import androidx.core.content.FileProvider
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -53,6 +54,7 @@ class UpdatePackageIntegrationTest {
     @Test fun opensTheSystemInstallerWithReadOnlyAccessToTheSelectedApk() {
         val sample = File(app.cacheDir, "update-test-release.apk")
         assumeTrue("Original signed APK fixture was not supplied", sample.isFile)
+        assertTrue("Authorize the update source for the disposable test user", app.packageManager.canRequestPackageInstalls())
         val dir = File(app.cacheDir, "app-updates").apply { mkdirs() }
         val file = File.createTempFile("device-fixture-", ".apk", dir)
         try {
@@ -63,13 +65,16 @@ class UpdatePackageIntegrationTest {
             assertEquals(Intent.FLAG_GRANT_READ_URI_PERMISSION, intent.flags)
             val uri = requireNotNull(intent.data)
             assertThrows(SecurityException::class.java) { app.contentResolver.openFileDescriptor(uri, "rw")?.close() }
+            Log.i("WeileInstallerTest", "Verified read-only URI and resolved " + target.packageName)
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
                 scenario.onActivity { it.startActivity(intent) }
+                Log.i("WeileInstallerTest", "Requested the system installer")
                 val automation = instrumentation.uiAutomation
                 val deadline = SystemClock.elapsedRealtime() + 15_000
                 while (automation.rootInActiveWindow?.packageName?.toString() != target.packageName &&
                     SystemClock.elapsedRealtime() < deadline) SystemClock.sleep(150)
                 assertEquals(target.packageName, automation.rootInActiveWindow?.packageName?.toString())
+                Log.i("WeileInstallerTest", "Observed the system installer in the foreground")
                 android.os.ParcelFileDescriptor.AutoCloseInputStream(
                     automation.executeShellCommand("input keyevent KEYCODE_BACK")
                 ).use { it.readBytes() }
