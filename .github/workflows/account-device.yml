@@ -82,4 +82,8 @@ jobs:
           echo "04c39178da5b6b6c80ff70739b719d6012759d1e77dfeca0f70eab7aedd40979  $RUNNER_TEMP/official.apk" | sha256sum -c -
           adb install --user "$TINGYU_TEST_USER" -r app/build/outputs/apk/debug/app-debug.apk
           adb shell -T "run-as app.tingyu --user $TINGYU_TEST_USER sh -c 'mkdir -p cache && cat > cache/update-test-release.apk'" < "$RUNNER_TEMP/official.apk"
-          bash scripts/check-device.sh
+          if ! bash scripts/check-device.sh; then
+            adb -s "$TINGYU_TEST_DEVICE" logcat -d -b crash -t 100
+            adb -s "$TINGYU_TEST_DEVICE" logcat -d -s TestRunner:I | tail -45
+            exit 1
+          fi
