@@ -17,6 +17,13 @@ fun signingValue(name: String): String = releaseSigning.getProperty(name)
     ?.takeIf { it.isNotBlank() }
     ?: error("Missing $name in signing.properties; see signing.properties.example")
 
+val giteeRepository = providers.gradleProperty("giteeRepository")
+    .orElse(providers.environmentVariable("GITEE_REPOSITORY")).orElse("").get()
+val repositoryPart = "[A-Za-z0-9][A-Za-z0-9._-]*"
+require(giteeRepository.isEmpty() || giteeRepository.matches(Regex("$repositoryPart/$repositoryPart"))) {
+    "GITEE_REPOSITORY must be owner/repo, for example music-team/mobile-music-dl"
+}
+
 android {
     namespace = "app.tingyu"
     compileSdk = 35
@@ -24,8 +31,9 @@ android {
         applicationId = "app.tingyu"
         minSdk = 29
         targetSdk = 35
-        versionCode = 15
-        versionName = "0.1.14"
+        versionCode = 16
+        versionName = "0.1.15"
+        buildConfigField("String", "GITEE_REPOSITORY", "\"" + giteeRepository + "\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     signingConfigs {

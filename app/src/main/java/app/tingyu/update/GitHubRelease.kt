@@ -14,6 +14,7 @@ import java.io.OutputStream
 import java.security.MessageDigest
 
 internal const val RELEASE_API = "https://api.github.com/repos/JackkLau/mobile-music-dl/releases/latest"
+internal const val RELEASE_SIGNER = "ba4e5c4ba00be09d10421edac7f276f44393f52950623e64096f93c864b81911"
 private const val DOWNLOAD_ROOT = "https://github.com/JackkLau/mobile-music-dl/releases/download"
 private val stableVersion = Regex("""(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})""")
 private val digestFormat = Regex("[a-f0-9]{64}")
@@ -30,6 +31,7 @@ internal data class GitHubRelease(val version: String, val size: Long, val sha25
 
     val fileName get() = apkName(version, legacy = false)
     val url get() = "$DOWNLOAD_ROOT/v$version/${apkName(version, legacy)}"
+    fun giteeUrl(repository: String) = "https://gitee.com/$repository/releases/download/v$version/$fileName"
 
     fun compareToInstalled(installed: String): Int {
         val local = installed.split('.').map(String::toInt)
@@ -41,6 +43,29 @@ internal data class GitHubRelease(val version: String, val size: Long, val sha25
     }
 
     companion object {
+        fun parseGitee(response: String, repository: String): GitHubRelease {
+            try {
+                val release = Json.parseToJsonElement(response).jsonObject
+                require(!release.getValue("prerelease").jsonPrimitive.boolean)
+                val manifest = Json.parseToJsonElement(release.getValue("body").jsonPrimitive.content).jsonObject
+                val version = manifest.getValue("versionName").jsonPrimitive.content
+                require(release.getValue("tag_name").jsonPrimitive.content == "v$version")
+                require(manifest.getValue("package").jsonPrimitive.content == "app.tingyu")
+                require(manifest.getValue("certificateSha256").jsonPrimitive.content == RELEASE_SIGNER)
+                val asset = manifest.getValue("assets").jsonArray.map { it.jsonObject }.single {
+                    it["file"]?.jsonPrimitive?.content == apkName(version, legacy = false)
+                }
+                val apk = GitHubRelease(version, asset.getValue("bytes").jsonPrimitive.long, asset.getValue("sha256").jsonPrimitive.content)
+                val attachment = release.getValue("assets").jsonArray.map { it.jsonObject }.single {
+                    it["name"]?.jsonPrimitive?.content == apk.fileName
+                }
+                require(attachment.getValue("browser_download_url").jsonPrimitive.content == apk.giteeUrl(repository))
+                return apk
+            } catch (_: RuntimeException) {
+                throw UpdateError("Gitee 版本信息无法校验")
+            }
+        }
+
         fun parse(response: String): GitHubRelease {
             try {
                 val release = Json.parseToJsonElement(response).jsonObject

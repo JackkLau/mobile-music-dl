@@ -58,6 +58,8 @@ jobs:
           TINGYU_KEY_PASSWORD: ${{ secrets.TINGYU_KEY_PASSWORD }}
         run: python3 scripts/prepare-release-signing.py
       - name: Test, lint, and build signed APK and AAB
+        env:
+          GITEE_REPOSITORY: ${{ vars.GITEE_REPOSITORY }}
         run: >-
           gradle --no-daemon --no-configuration-cache
           :app:testReleaseUnitTest :app:lintRelease :app:assembleRelease :app:bundleRelease
@@ -130,3 +132,12 @@ jobs:
             "tingyu-$RELEASE_VERSION-release.apk#$RELEASE_BRAND APK（供 0.1.7 自动更新）" \
             "weile-$RELEASE_VERSION-release.aab" SHA256SUMS release.json apk-scan.txt \
             --verify-tag --title "$RELEASE_BRAND $RELEASE_VERSION" --generate-notes
+
+  mirror:
+    needs: publish
+    if: vars.GITEE_REPOSITORY != ''
+    uses: ./.github/workflows/mirror-gitee.yml
+    with:
+      tag: ${{ github.ref_name }}
+    secrets:
+      GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}

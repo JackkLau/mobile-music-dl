@@ -4,6 +4,17 @@
 
 0.1.8 起，正式文件名为 `weile-版本-release.apk` 和 `weile-版本-release.aab`。另附同一 APK 的 `tingyu-版本-release.apk` 兼容副本，供 0.1.7 内置更新器识别。两份 APK 的 SHA-256 相同。
 
+## Gitee 下载镜像
+
+1. 准备一个自己管理、允许匿名访问且已有默认分支的 Gitee 仓库。
+2. 在 GitHub 的 Actions 仓库变量中设置 `GITEE_REPOSITORY`，值为 Gitee 的 `所有者/仓库名`。本地构建可设置同名环境变量，或向 Gradle 传入 `-PgiteeRepository=所有者/仓库名`。仓库地址在构建时写入应用，留空会使用 GitHub。[配置仓库变量](https://github.com/JackkLau/mobile-music-dl/settings/variables/actions)
+3. 在 Actions 仓库 Secrets 中添加 `GITEE_TOKEN`，使用有目标仓库发行版权限的 Gitee 账号。此令牌仅供发布任务使用，手机匿名下载。签名仍由原有发布流程完成。[配置发布凭据](https://github.com/JackkLau/mobile-music-dl/settings/secrets/actions)
+4. 发布新的正式标签。GitHub 发布完成后，镜像任务将同一份品牌 APK 上传到对应版本的 Gitee 发行版，发行说明使用 GitHub 的 `release.json`。镜像任务会匿名回读安装包并核对大小和 SHA-256。补发时在 `master` 上运行镜像工作流并填入已公开的 GitHub 标签，例如 `v0.1.14`。已有更新镜像版本时，任务会拒绝回退。[运行镜像工作流](https://github.com/JackkLau/mobile-music-dl/actions/workflows/mirror-gitee.yml)
+
+0.1.14 及以前的更新器只访问 GitHub。首次迁移时，可以从已同步的 Gitee 发行版手动下载带镜像配置的新版 APK 并覆盖安装。以后在「我的 → 应用更新」操作即可。
+
+Gitee 对发行版附件有单文件和仓库总容量限制。镜像只同步 Android 用户可直接安装的品牌 APK，AAB 和历史兼容副本仍可在 GitHub 获取。[Gitee 发行版说明](https://help.gitee.com/repository/release/create)
+
 ## 无需上传私钥的发布路径
 
 `Android release build`（`.github/workflows/release-build.yml`）提供本机签名入口：在 GitHub Actions 手动选择 `master`，执行 release 单元测试、lint、APK/AAB 编译及 PC 共用代码检查，不读取任何签名 Secrets。输出 `weile-版本-cloud-unsigned` artifact，其中 `cloud-build.json` 记录提交、工作流地址和每个原始文件的 SHA-256；这些文件尚未签名，不能直接作为正式安装包发布。

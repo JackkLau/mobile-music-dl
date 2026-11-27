@@ -1,0 +1,55 @@
+name: Mirror signed APK to Gitee
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        required: true
+    secrets:
+      GITEE_TOKEN:
+        required: true
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published GitHub release tag (for example v0.1.14)
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gitee-release-mirror
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    if: >-
+      github.repository == 'JackkLau/mobile-music-dl' &&
+      ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') ||
+       (github.event_name == 'push' && github.ref_type == 'tag' && github.ref_name == inputs.tag))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      RELEASE_TAG: ${{ inputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Download the exact published GitHub release
+        env:
+          GH_REPO: JackkLau/mobile-music-dl
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          mkdir mirror-input
+          gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG" > mirror-input/github.json
+          gh release download "$RELEASE_TAG" --dir mirror-input \
+            --pattern release.json --pattern "weile-${RELEASE_TAG#v}-release.apk"
+      - name: Mirror and anonymously verify the APK
+        env:
+          GITEE_REPOSITORY: ${{ vars.GITEE_REPOSITORY }}
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+        run: python3 scripts/mirror-gitee.py "$RELEASE_TAG" mirror-input
