@@ -93,14 +93,24 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-  publish:
+  scan:
     needs: build
+    uses: ./.github/workflows/apk-scan.yml
+    with:
+      version: ${{ needs.build.outputs.version }}
+
+  publish:
+    needs: [build, scan]
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: write
     steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: apk-scan-report
+          path: release-assets
       - uses: actions/download-artifact@v4
         with:
           name: weile-${{ needs.build.outputs.version }}-release
@@ -118,5 +128,5 @@ jobs:
           gh release create "$RELEASE_TAG" \
             "weile-$RELEASE_VERSION-release.apk" \
             "tingyu-$RELEASE_VERSION-release.apk#$RELEASE_BRAND APK（供 0.1.7 自动更新）" \
-            "weile-$RELEASE_VERSION-release.aab" SHA256SUMS release.json \
+            "weile-$RELEASE_VERSION-release.aab" SHA256SUMS release.json apk-scan.txt \
             --verify-tag --title "$RELEASE_BRAND $RELEASE_VERSION" --generate-notes

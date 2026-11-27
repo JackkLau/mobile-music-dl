@@ -1,0 +1,75 @@
+name: Signed APK malware scan
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths: ['.github/workflows/apk-scan.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Retrieve signed build
+        if: inputs.version != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: weile-${{ inputs.version }}-release
+          path: release-assets
+      - name: Select the exact file to publish
+        if: inputs.version != ''
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          (cd release-assets && sha256sum -c SHA256SUMS)
+          mkdir samples
+          cp "release-assets/weile-$VERSION-release.apk" samples/
+      - name: Retrieve reported release and comparison sample
+        if: inputs.version == ''
+        run: |
+          set -euo pipefail
+          mkdir samples
+          cd samples
+          for version in 0.1.8 0.1.11; do
+            file="weile-$version-release.apk"
+            curl --fail --silent --show-error --location --retry 3 --proto '=https' --proto-redir '=https' \
+              "https://github.com/JackkLau/mobile-music-dl/releases/download/v$version/$file" -o "$file"
+          done
+          sha256sum -c <<'SUMS'
+          c002eb82f8f58c6f4c237d94851b6a259270293788dfcaeba60b5ff06e5b216b  weile-0.1.8-release.apk
+          565959c3eb95ea970f32fdecb0907405206814b2c06fc6116776008b1c98111f  weile-0.1.11-release.apk
+          SUMS
+      - name: Scan signed APKs and record engine, database and hashes
+        run: |
+          set -euo pipefail
+          image=clamav/clamav:stable
+          docker pull "$image"
+          image_id=$(docker image inspect --format '{{index .RepoDigests 0}}' "$image")
+          sample_dir=$(realpath samples)
+          scan=(docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges
+                --read-only --tmpfs /tmp:rw,noexec,nosuid,size=2g --mount "type=bind,src=$sample_dir,dst=/samples,readonly"
+                --entrypoint clamscan "$image_id")
+          {
+            date -u
+            echo "$image_id"
+            "${scan[@]}" --version
+            (cd samples && sha256sum *.apk)
+            "${scan[@]}" --official-db-only=yes --fail-if-cvd-older-than=7 --scan-archive=yes \
+              --alert-exceeds-max=yes --max-filesize=300M --max-scansize=1024M --max-files=100000 --recursive /samples
+          } | tee apk-scan.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: apk-scan-report
+          path: apk-scan.txt
+          if-no-files-found: warn
+          retention-days: 30
