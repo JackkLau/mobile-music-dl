@@ -15,17 +15,25 @@ class PlaybackNavigationTest {
     @Test fun incomingShareOpensParserFromPlaybackHome() {
         app.onNodeWithText("播放").assertIsSelected()
         val shared = "【黑胶试听合輯】周杰伦_葉惠美 https://bili2233.cn/SrmWssU"
-        app.runOnUiThread {
-            app.activity.startActivity(Intent(app.activity, MainActivity::class.java).apply {
-                action = Intent.ACTION_SEND
-                type = "text/plain"
-                putExtra(Intent.EXTRA_TEXT, shared)
-                addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            })
+        val receiver = app.activity
+        val launchIntent = receiver.intent
+        try {
+            app.runOnUiThread {
+                receiver.startActivity(Intent(receiver, MainActivity::class.java).apply {
+                    action = Intent.ACTION_SEND
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, shared)
+                    addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                })
+            }
+            app.waitUntil(5000) { app.onAllNodes(androidx.compose.ui.test.hasText(shared)).fetchSemanticsNodes().isNotEmpty() }
+            app.onNodeWithText("解析").assertIsSelected()
+            app.onNodeWithText(shared).assertExists()
+            app.onNodeWithText("解析链接").assertIsEnabled()
+        } finally {
+            // ActivityScenario matches lifecycle events against its original MAIN intent.
+            // Restore it after exercising the actual singleTop SEND delivery.
+            app.runOnUiThread { receiver.intent = launchIntent }
         }
-        app.waitUntil(5000) { app.onAllNodes(androidx.compose.ui.test.hasText(shared)).fetchSemanticsNodes().isNotEmpty() }
-        app.onNodeWithText("解析").assertIsSelected()
-        app.onNodeWithText(shared).assertExists()
-        app.onNodeWithText("解析链接").assertIsEnabled()
     }
 }

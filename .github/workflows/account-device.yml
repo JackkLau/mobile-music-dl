@@ -19,6 +19,8 @@ on:
       - 'app/src/main/java/app/tingyu/sharing/**'
       - 'app/src/androidTest/java/app/tingyu/sharing/**'
       - 'app/src/androidTest/java/app/tingyu/download/**'
+      - 'app/src/androidTest/java/app/tingyu/ui/PlaybackNavigationTest.kt'
+      - 'app/src/androidTest/java/app/tingyu/ui/TingYuUiTest.kt'
       - 'app/src/androidTest/java/app/tingyu/ui/BrandResourcesTest.kt'
       - 'app/src/androidTest/java/app/tingyu/ui/LoginScreenTest.kt'
       - 'app/src/androidTest/java/app/tingyu/update/**'
