@@ -58,9 +58,9 @@ class DownloadFolderDeviceTest {
             // Select Music itself, distinct from the default MediaStore Music/微乐/ subdirectory.
             clickPicker { it.viewIdResourceName?.endsWith(":id/action_menu_select") == true ||
                 it.text?.toString()?.lowercase() in setOf("use this folder", "使用此文件夹") }
-            clickPicker { it.viewIdResourceName?.endsWith(":id/button1") == true ||
-                it.text?.toString()?.lowercase() in setOf("allow", "允许") }
-            compose.waitUntil(12_000) { folders.current.value.tree != null }
+            clickPicker(confirmed = { folders.current.value.tree != null }) {
+                it.text?.toString()?.lowercase() in setOf("allow", "允许")
+            }
             tree = Uri.parse(requireNotNull(folders.current.value.tree))
             assertEquals("primary:Music", DocumentsContract.getTreeDocumentId(tree))
             assertEquals("Music", folders.current.value.label)
@@ -119,11 +119,12 @@ class DownloadFolderDeviceTest {
         }
     }
 
-    private fun clickPicker(match: (AccessibilityNodeInfo) -> Boolean) {
+    private fun clickPicker(confirmed: (() -> Boolean)? = null, match: (AccessibilityNodeInfo) -> Boolean) {
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
         val deadline = SystemClock.elapsedRealtime() + 15_000
         var visible = emptyList<String>()
         while (SystemClock.elapsedRealtime() < deadline) {
+            if (confirmed?.invoke() == true) return
             val root = automation.rootInActiveWindow
             if (root != null && root.packageName?.toString()?.contains("documentsui") == true) {
                 val nodes = mutableListOf(root)
@@ -134,7 +135,11 @@ class DownloadFolderDeviceTest {
                 }
                 visible = nodes.mapNotNull { it.text?.toString() }
                 val target = nodes.firstOrNull { it.isEnabled && it.isClickable && match(it) }
-                if (target?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true) return
+                if (target?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true) {
+                    if (confirmed == null) return
+                    // DocumentsUI may still be transitioning when accessibility first exposes this button.
+                    SystemClock.sleep(500)
+                }
             }
             SystemClock.sleep(180)
         }
