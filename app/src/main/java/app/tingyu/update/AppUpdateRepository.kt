@@ -3,7 +3,6 @@ package app.tingyu.update
 import android.content.Context
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
-import androidx.core.content.FileProvider
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -56,11 +55,6 @@ internal class AppUpdateRepository(private val context: Context) {
 
     fun file(release: GitHubRelease) = File(directory, release.sha256 + ".apk")
 
-    fun uri(release: GitHubRelease) = FileProvider.getUriForFile(
-        context, context.packageName + ".updates", file(release), release.fileName,
-    )
-
-    // The installer receives only an already verified file from the private cache.
     fun canInstall(release: GitHubRelease, apk: File = file(release)): Boolean {
         val pm = context.packageManager
         @Suppress("DEPRECATION")
@@ -84,6 +78,14 @@ internal class AppUpdateRepository(private val context: Context) {
         } catch (_: IOException) {
             target.delete()
             null
+        }
+    }
+
+    fun exportVerified(release: GitHubRelease, openDestination: () -> OutputStream) {
+        // A cache check at download time can precede the user's export by several days.
+        if (verifiedCache(release) == null) throw UpdateError("安装包已变更或缓存已清理，请重新下载")
+        file(release).inputStream().use { source ->
+            openDestination().use { output -> copyVerifiedApk(source, output, release) {} }
         }
     }
 

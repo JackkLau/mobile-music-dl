@@ -40,15 +40,23 @@ def xml_node(name, attributes=b"", children=()):
     return message(1, message(3, name) + attributes + b"".join(message(5, child) for child in children))
 
 
-def manifest(debuggable="false", activity="app.tingyu.MainActivity", version="0.1.2", code="3"):
+def manifest(debuggable="false", activity="app.tingyu.MainActivity", version="0.1.2", code="3", permission=None):
     app = xml_node("application", attribute("debuggable", debuggable, common.ANDROID_NS),
         [xml_node("activity", attribute("name", activity, common.ANDROID_NS))])
     return xml_node("manifest", attribute("package", "app.tingyu") +
         attribute("versionName", version, common.ANDROID_NS) +
-        attribute("versionCode", code, common.ANDROID_NS), [app])
+        attribute("versionCode", code, common.ANDROID_NS), [app] + (
+            [xml_node("uses-permission", attribute("name", permission, common.ANDROID_NS))] if permission else []))
 
 
 class ReleaseBoundaryTest(unittest.TestCase):
+    def test_download_only_releases_cannot_request_installer_permission(self):
+        permission = "android.permission.REQUEST_INSTALL_PACKAGES"
+        common.bundle_manifest(manifest(code="12", permission=permission))
+        common.bundle_manifest(manifest(code="13", permission="android.permission.INTERNET"))
+        with self.assertRaisesRegex(ValueError, "install packages"):
+            common.bundle_manifest(manifest(code="13", permission=permission))
+
     def test_version_source_requires_one_literal_identity(self):
         with tempfile.TemporaryDirectory() as directory:
             target = Path(directory) / "app/build.gradle.kts"

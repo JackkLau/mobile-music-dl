@@ -12,7 +12,7 @@ import sys
 import zipfile
 
 from release_common import (PACKAGE, CERTIFICATE_SHA256, bundle_manifest,
-                            parse_apk_badging, parse_apk_certificate, version_info)
+                            parse_apk_badging, parse_apk_certificate, validate_update_permissions, version_info)
 
 
 def run(command):
@@ -36,6 +36,8 @@ def verify(project, apk, aab, version, code, output):
     parse_apk_certificate(signature)
     if parse_apk_badging(run([build_tools / "aapt", "dump", "badging", apk])) != identity:
         raise ValueError("APK package/version differs from release metadata")
+    permissions = run([build_tools / "aapt", "dump", "permissions", apk])
+    validate_update_permissions(code, re.findall(r"^uses-permission[^:]*: name='([^']+)'", permissions, re.M))
     xml = run([build_tools / "aapt", "dump", "xmltree", apk, "AndroidManifest.xml"])
     if "ProbeActivity" in xml or re.search(r"android:(?:debuggable|testOnly).*0xffffffff", xml):
         raise ValueError("APK contains debug-only settings or diagnostic entry")

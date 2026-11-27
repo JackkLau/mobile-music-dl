@@ -23,7 +23,7 @@
 
 工作流仅在 `JackkLau/mobile-music-dl` 仓库执行，PR 和其他分支不能触发带签名的构建。构建任务只有仓库读取权限；单独的发布任务在成功后获得 `contents: write`。同一 ref 的发布串行执行，不会中断正在签名的任务。
 
-发布附件包括正式 APK、AAB、旧版更新器所需的 APK 副本、`SHA256SUMS` 和 `release.json`。Actions artifact 保存 30 天，测试和 lint 报告保存 14 天。APK 可以安装，AAB 用于商店提交；本流程不上传任何应用商店。
+发布附件包括正式 APK、AAB、旧版更新器所需的 APK 副本、`SHA256SUMS` 和 `release.json`。从 0.1.12 起还包含 `apk-scan.txt`，供用户和检测厂商按文件摘要复核。Actions artifact 保存 30 天，测试和 lint 报告保存 14 天。APK 可直接安装，AAB 用于商店提交。[安装包核验与厂商复核指南](APK-SECURITY.md)
 
 已有同名 Release 时，`gh release create` 会失败，不自动覆盖已发布的文件。修复发布问题后，应先检查已有 Release 的实际状态，再决定后续操作。
 

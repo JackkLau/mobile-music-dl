@@ -1,9 +1,7 @@
 package app.tingyu.ui
 
 import android.content.ActivityNotFoundException
-import android.content.Intent
 import android.net.Uri
-import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -16,7 +14,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -28,49 +25,23 @@ private const val APK_MIME = "application/vnd.android.package-archive"
 
 @Composable
 internal fun AppUpdateCard(model: AppUpdateViewModel = viewModel()) {
-    val context = LocalContext.current
     val state by model.state.collectAsStateWithLifecycle()
     val release = state.release
-    val install = {
-        model.installUri()?.let { uri ->
-            val intent = Intent(Intent.ACTION_VIEW).setDataAndType(uri, APK_MIME)
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            try {
-                context.startActivity(intent)
-            } catch (_: ActivityNotFoundException) {
-                model.feedback("此设备没有可用的安装程序，可将安装包另存到文件")
-            } catch (_: SecurityException) {
-                model.feedback("系统限制了安装，请检查设备设置")
-            }
-        }
-    }
     var requestedDigest by rememberSaveable { mutableStateOf<String?>(null) }
-    var installPermission by rememberSaveable { mutableStateOf<Boolean?>(null) }
     var exportUri by rememberSaveable { mutableStateOf<Uri?>(null) }
-    val settings = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        installPermission = context.packageManager.canRequestPackageInstalls()
-    }
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(APK_MIME)) {
         exportUri = it
         if (it == null) requestedDigest = null
     }
-    // Settings or the picker may recreate this activity. Consume the OS result only
-    // once the private APK has been restored and still matches the user's selection.
-    LaunchedEffect(state.phase, installPermission, exportUri) {
-        val permission = installPermission
-        val destination = exportUri
-        if (state.phase != UpdatePhase.CHECKING && (permission != null || destination != null)) {
-            val matches = state.phase == UpdatePhase.READY && release?.sha256 == requestedDigest
-            installPermission = null
-            exportUri = null
-            requestedDigest = null
-            when {
-                !matches -> model.feedback("安装包已变更或缓存已清理，请重新下载")
-                permission == false -> model.feedback("未获得安装权限，可重新授权或将安装包另存到文件")
-                permission == true -> install()
-                destination != null -> model.saveCopy(destination)
-            }
-        }
+    // Wait for a restored private cache before consuming a result from the system picker.
+    LaunchedEffect(state.phase, exportUri) {
+        val destination = exportUri ?: return@LaunchedEffect
+        if (state.phase == UpdatePhase.CHECKING) return@LaunchedEffect
+        val matches = state.phase == UpdatePhase.READY && release?.sha256 == requestedDigest
+        exportUri = null
+        requestedDigest = null
+        if (matches) model.saveCopy(destination)
+        else model.feedback("安装包已变更或缓存已清理，请重新下载")
     }
 
     Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.surface) {
@@ -104,27 +75,14 @@ internal fun AppUpdateCard(model: AppUpdateViewModel = viewModel()) {
                     FilledTonalButton(onClick = model::download) { Text("下载安装包 · ${formatBytes(release!!.size)}") }
                 }
                 UpdatePhase.READY -> {
-                    if (state.canInstall) {
-                        FilledTonalButton(onClick = {
-                            if (context.packageManager.canRequestPackageInstalls()) install()
-                            else try {
-                                requestedDigest = release!!.sha256
-                                settings.launch(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}")))
-                            } catch (_: ActivityNotFoundException) {
-                                model.feedback("无法打开安装权限设置，可将安装包另存到文件")
-                            } catch (_: SecurityException) {
-                                model.feedback("设备限制了安装权限，可将安装包另存到文件")
-                            }
-                        }) { Text("安装 ${release!!.version}") }
-                    }
-                    OutlinedButton(onClick = {
+                    FilledTonalButton(onClick = {
                         try {
                             requestedDigest = release!!.sha256
                             export.launch(release.fileName)
                         } catch (_: ActivityNotFoundException) {
                             model.feedback("设备没有可用的文件选择器")
                         }
-                    }) { Text("安装包另存为…") }
+                    }) { Text("保存安装包…") }
                 }
                 UpdatePhase.IDLE -> Unit
             }

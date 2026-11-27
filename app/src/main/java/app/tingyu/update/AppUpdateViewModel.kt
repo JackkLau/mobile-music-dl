@@ -40,7 +40,7 @@ internal class AppUpdateViewModel(app: Application, private val saved: SavedStat
         if (version != null && size != null && sha256 != null) {
             val release = GitHubRelease(version, size, sha256, legacy = saved.get<Boolean>("legacyAsset") ?: true)
             mutable.value = UpdateState(UpdatePhase.AVAILABLE, release)
-            // Recover a verified file after process death, including a return from installer settings.
+            // A system file picker may outlive this process.
             if (repo.file(release).isFile) {
                 mutable.value = UpdateState(UpdatePhase.CHECKING, release)
                 operation = viewModelScope.launch {
@@ -107,17 +107,6 @@ internal class AppUpdateViewModel(app: Application, private val saved: SavedStat
         mutable.value = UpdateState(UpdatePhase.AVAILABLE, value.release)
     }
 
-    fun installUri(): Uri? {
-        val ready = mutable.value
-        val release = ready.release ?: return null
-        if (ready.phase != UpdatePhase.READY || !ready.canInstall) return null
-        if (!repo.file(release).isFile) {
-            mutable.value = UpdateState(UpdatePhase.AVAILABLE, release, error = "安装包缓存已清理，请重新下载")
-            return null
-        }
-        return repo.uri(release)
-    }
-
     fun saveCopy(uri: Uri) {
         val ready = mutable.value
         val release = ready.release ?: return
@@ -127,7 +116,7 @@ internal class AppUpdateViewModel(app: Application, private val saved: SavedStat
             return
         }
         val app = getApplication<Application>()
-        if (uri.scheme != "content" || uri.authority == app.packageName + ".updates") {
+        if (uri.scheme != "content" || uri.authority.isNullOrBlank()) {
             feedback("请选择有效的保存位置")
             return
         }
@@ -135,12 +124,16 @@ internal class AppUpdateViewModel(app: Application, private val saved: SavedStat
         operation = viewModelScope.launch {
             try {
                 withContext(Dispatchers.IO) {
-                    val output = app.contentResolver.openOutputStream(uri, "wt") ?: throw UpdateError("无法写入所选位置")
-                    output.use { dest -> repo.file(release).inputStream().use { it.copyTo(dest) } }
+                    repo.exportVerified(release) {
+                        app.contentResolver.openOutputStream(uri, "wt") ?: throw UpdateError("无法写入所选位置")
+                    }
                 }
-                mutable.value = ready.copy(message = "安装包已保存到所选位置", error = null)
+                mutable.value = ready.copy(message = "安装包已保存。如需更新，请在系统文件管理器中打开。", error = null)
             } catch (e: CancellationException) {
                 throw e
+            } catch (e: UpdateError) {
+                mutable.value = if (repo.file(release).isFile) ready.copy(error = e.message, message = null)
+                    else UpdateState(UpdatePhase.AVAILABLE, release, error = e.message)
             } catch (_: Exception) {
                 mutable.value = ready.copy(error = "未能完整保存，请检查可用空间并重试", message = null)
             }

@@ -8,6 +8,11 @@ CERTIFICATE_SHA256 = "ba4e5c4ba00be09d10421edac7f276f44393f52950623e64096f93c864
 ANDROID_NS = "http://schemas.android.com/apk/res/android"
 
 
+def validate_update_permissions(code, requested):
+    if code >= 13 and "android.permission.REQUEST_INSTALL_PACKAGES" in requested:
+        raise ValueError("Download-only updates must not request permission to install packages")
+
+
 def version_info(project):
     source = (Path(project) / "app/build.gradle.kts").read_text()
     names = re.findall(r'^\s*versionName\s*=\s*"([0-9]+\.[0-9]+\.[0-9]+)"\s*$', source, re.M)
@@ -127,6 +132,9 @@ def bundle_manifest(data):
     if not root or root[0] != "manifest":
         raise ValueError("Missing bundle manifest root")
     name, attrs, children = root
+    code = int(attrs.get((ANDROID_NS, "versionCode"), "0"))
+    validate_update_permissions(code, (node[1].get((ANDROID_NS, "name")) for node in children
+                                      if node[0].startswith("uses-permission")))
     apps = [child for child in children if child[0] == "application"]
     if len(apps) != 1 or apps[0][1].get((ANDROID_NS, "debuggable"), "false") != "false":
         raise ValueError("Bundle application is missing or debuggable")
@@ -138,4 +146,4 @@ def bundle_manifest(data):
             inspect(child)
     inspect(root)
     return (attrs.get(("", "package")), attrs.get((ANDROID_NS, "versionName")),
-            int(attrs.get((ANDROID_NS, "versionCode"), "0")))
+            code)
