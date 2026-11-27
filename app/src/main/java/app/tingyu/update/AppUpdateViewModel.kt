@@ -16,7 +16,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-internal enum class UpdatePhase { IDLE, CHECKING, AVAILABLE, DOWNLOADING, READY, SAVING }
+internal enum class UpdatePhase { IDLE, CHECKING, AVAILABLE, DOWNLOADING, READY, VERIFYING, SAVING }
 
 internal data class UpdateState(
     val phase: UpdatePhase = UpdatePhase.IDLE,
@@ -107,6 +107,25 @@ internal class AppUpdateViewModel(app: Application, private val saved: SavedStat
         mutable.value = UpdateState(UpdatePhase.AVAILABLE, value.release)
     }
 
+    suspend fun installIntent(expectedDigest: String): android.content.Intent? {
+        val ready = mutable.value
+        val release = ready.release ?: return null
+        if (ready.phase != UpdatePhase.READY || !ready.canInstall || release.sha256 != expectedDigest) return null
+        mutable.value = ready.copy(phase = UpdatePhase.VERIFYING, error = null, message = null)
+        try {
+            val intent = withContext(Dispatchers.IO) { repo.verifiedInstallIntent(release) }
+            mutable.value = ready.copy(error = null, message = null)
+            return intent
+        } catch (e: CancellationException) {
+            mutable.value = ready
+            throw e
+        } catch (e: Exception) {
+            mutable.value = if (repo.file(release).isFile) ready.copy(error = errorText(e), message = null)
+                else UpdateState(UpdatePhase.AVAILABLE, release, error = errorText(e))
+            return null
+        }
+    }
+
     fun saveCopy(uri: Uri) {
         val ready = mutable.value
         val release = ready.release ?: return
@@ -116,7 +135,7 @@ internal class AppUpdateViewModel(app: Application, private val saved: SavedStat
             return
         }
         val app = getApplication<Application>()
-        if (uri.scheme != "content" || uri.authority.isNullOrBlank()) {
+        if (uri.scheme != "content" || uri.authority.isNullOrBlank() || uri.authority == app.packageName + ".updates") {
             feedback("请选择有效的保存位置")
             return
         }

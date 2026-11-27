@@ -81,6 +81,14 @@ internal class AppUpdateRepository(private val context: Context) {
         }
     }
 
+    fun verifiedInstallIntent(release: GitHubRelease): android.content.Intent {
+        when (verifiedCache(release)) {
+            true -> return systemInstaller(context, file(release), release.fileName)
+            false -> throw UpdateError("正式包与当前签名或版本不兼容，无法覆盖安装")
+            null -> throw UpdateError("安装包已变更或缓存已清理，请重新下载")
+        }
+    }
+
     fun exportVerified(release: GitHubRelease, openDestination: () -> OutputStream) {
         // A cache check at download time can precede the user's export by several days.
         if (verifiedCache(release) == null) throw UpdateError("安装包已变更或缓存已清理，请重新下载")

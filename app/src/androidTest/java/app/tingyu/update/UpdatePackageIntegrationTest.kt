@@ -1,10 +1,16 @@
 package app.tingyu.update
 
 import android.content.Context
+import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import android.os.SystemClock
+import androidx.core.content.FileProvider
+import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import app.tingyu.BuildConfig
+import app.tingyu.MainActivity
 import java.io.File
 import java.security.MessageDigest
 import org.junit.Assert.*
@@ -29,13 +35,46 @@ class UpdatePackageIntegrationTest {
         assertThrows(UpdateError::class.java) { repo.canInstall(release, otherApk) }
     }
 
-    @Test fun applicationDoesNotRequestAnInstallerPermissionOrExposeCachedApks() {
+    @Test fun installationUsesAScopedReadOnlyProviderAndSystemConfirmation() {
         @Suppress("DEPRECATION")
         val info = app.packageManager.getPackageInfo(app.packageName, PackageManager.GET_PERMISSIONS)
-        assertFalse(info.requestedPermissions.orEmpty().contains(android.Manifest.permission.REQUEST_INSTALL_PACKAGES))
+        assertTrue(info.requestedPermissions.orEmpty().contains(android.Manifest.permission.REQUEST_INSTALL_PACKAGES))
+        assertFalse(info.requestedPermissions.orEmpty().contains(android.Manifest.permission.INSTALL_PACKAGES))
         @Suppress("DEPRECATION")
         val provider = app.packageManager.resolveContentProvider(app.packageName + ".updates", 0)
-        assertNull(provider)
+        assertNotNull(provider)
+        assertFalse(provider!!.exported)
+        assertTrue(provider.grantUriPermissions)
+        assertThrows(IllegalArgumentException::class.java) {
+            FileProvider.getUriForFile(app, provider.authority, File(app.filesDir, "other"))
+        }
+    }
+
+    @Test fun opensTheSystemInstallerWithReadOnlyAccessToTheSelectedApk() {
+        val sample = File(app.cacheDir, "update-test-release.apk")
+        assumeTrue("Original signed APK fixture was not supplied", sample.isFile)
+        val dir = File(app.cacheDir, "app-updates").apply { mkdirs() }
+        val file = File.createTempFile("device-fixture-", ".apk", dir)
+        try {
+            sample.copyTo(file, overwrite = true)
+            val intent = systemInstaller(app, file, "微乐.apk")
+            val target = app.packageManager.getActivityInfo(requireNotNull(intent.component), 0)
+            assertTrue(target.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM != 0)
+            assertEquals(Intent.FLAG_GRANT_READ_URI_PERMISSION, intent.flags)
+            val uri = requireNotNull(intent.data)
+            assertThrows(SecurityException::class.java) { app.contentResolver.openFileDescriptor(uri, "rw")?.close() }
+            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                scenario.onActivity { it.startActivity(intent) }
+                val automation = instrumentation.uiAutomation
+                val deadline = SystemClock.elapsedRealtime() + 15_000
+                while (automation.rootInActiveWindow?.packageName?.toString() != target.packageName &&
+                    SystemClock.elapsedRealtime() < deadline) SystemClock.sleep(150)
+                assertEquals(target.packageName, automation.rootInActiveWindow?.packageName?.toString())
+                android.os.ParcelFileDescriptor.AutoCloseInputStream(
+                    automation.executeShellCommand("input keyevent KEYCODE_BACK")
+                ).use { it.readBytes() }
+            }
+        } finally { file.delete() }
     }
 
     @Test fun verifiedReleasePackageCanBeDownloadedButNotInstalledOverDebug() {
@@ -74,8 +113,13 @@ class UpdatePackageIntegrationTest {
         val exported = File.createTempFile("verified-copy-", ".apk", app.cacheDir)
         try {
             fixture.copyTo(cache, overwrite = true)
+            assertThrows(UpdateError::class.java) { repo.verifiedInstallIntent(release) }
             repo.exportVerified(release) { exported.outputStream() }
             assertEquals(release.sha256, digest(exported))
+            java.io.RandomAccessFile(cache, "rw").use { it.write(0) }
+            assertThrows(UpdateError::class.java) { repo.verifiedInstallIntent(release) }
+            assertFalse(cache.exists())
+            fixture.copyTo(cache, overwrite = true)
             java.io.RandomAccessFile(cache, "rw").use { it.write(0) }
             assertThrows(UpdateError::class.java) {
                 repo.exportVerified(release) { throw AssertionError("An invalid cache must not open or truncate the destination") }

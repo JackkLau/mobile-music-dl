@@ -56,6 +56,11 @@ class ReleaseBoundaryTest(unittest.TestCase):
         common.bundle_manifest(manifest(code="13", permission="android.permission.INTERNET"))
         with self.assertRaisesRegex(ValueError, "install packages"):
             common.bundle_manifest(manifest(code="13", permission=permission))
+        common.bundle_manifest(manifest(code="14", permission=permission))
+        with self.assertRaisesRegex(ValueError, "user-confirmed"):
+            common.bundle_manifest(manifest(code="14"))
+        with self.assertRaisesRegex(ValueError, "Privileged"):
+            common.validate_update_permissions(14, [permission, "android.permission.INSTALL_PACKAGES"])
 
     def test_version_source_requires_one_literal_identity(self):
         with tempfile.TemporaryDirectory() as directory:

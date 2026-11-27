@@ -9,8 +9,14 @@ ANDROID_NS = "http://schemas.android.com/apk/res/android"
 
 
 def validate_update_permissions(code, requested):
-    if code >= 13 and "android.permission.REQUEST_INSTALL_PACKAGES" in requested:
+    requested = set(requested)
+    if code == 13 and "android.permission.REQUEST_INSTALL_PACKAGES" in requested:
         raise ValueError("Download-only updates must not request permission to install packages")
+    if code >= 14:
+        if "android.permission.REQUEST_INSTALL_PACKAGES" not in requested:
+            raise ValueError("In-app updates require user-confirmed package installation")
+        if "android.permission.INSTALL_PACKAGES" in requested:
+            raise ValueError("Privileged package installation is not supported")
 
 
 def version_info(project):

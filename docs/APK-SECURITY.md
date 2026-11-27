@@ -28,10 +28,13 @@ apksigner verify --print-certs weile-0.1.8-release.apk
 |---|---|
 | 应用、包名、版本 | 微乐，`app.tingyu`，0.1.7 升级至 0.1.8 |
 | 安装器显示的来源与检出名 | Via，`a.gray.BulimiaTGen.f` |
-| 需补充 | 手机型号、系统与病毒库版本、检测时间、原始下载地址、手机样本的 SHA-256，以及风险截图 |
+| 报告设备 | Xiaomi 15 Pro，用户提供的系统版本为澎湃 OS 3.0.5 |
+| 需补充 | 触发告警的原始 APK 或其 SHA-256、原下载地址、检测引擎和病毒库版本；提交时附上风险详情截图 |
 | 复核请求 | 请按所附 SHA-256 复核原始 APK，说明命中的文件、依赖或行为。如确认误报，请修正判定并说明可复测的病毒库版本；如确认有风险，请提供整改依据。 |
 
 如厂商需要样本，使用其官方提交入口提供 APK 即可。签名私钥、密码和音乐平台登录数据应由持有人保管。小米提供应用审核与安全厂商复核说明，腾讯也提供手机管家报毒申诉指引，可按设备确认的引擎选择渠道。[小米应用审核常见问题](https://dev.mi.com/xiaomihyperos/documentation/detail?pId=1252) · [腾讯移动应用安全常见问题](https://main.qcloudimg.com/raw/document/product/pdf/283_10719_cn.pdf)
+
+针对本次小米设备，可从小米开放平台的「问题工单反馈平台（非游戏）」提交上表，或发给应用问题反馈邮箱 `developer@xiaomi.com`，请小米确认具体检测引擎与样本判定。[小米开发者联系方式](https://dev.mi.com/landing/bussiness-contact/index.html)
 
 ## 开发者身份提示
 
@@ -39,6 +42,6 @@ apksigner verify --print-certs weile-0.1.8-release.apk
 
 ## 发布包扫描
 
-0.1.8 和 0.1.11 为应用内更新声明了 `REQUEST_INSTALL_PACKAGES`。0.1.12 起，微乐只下载和保存用户选择的正式 APK，保存前再次核对签名和摘要。正式包校验会拒绝重新引入安装权限的 APK 或 AAB。关于 0.1.8 的具体检出原因，仍需检测厂商定位。
+0.1.12 支持下载和另存。0.1.13 恢复应用内安装。用户点击“安装”并完成系统要求的来源授权后，微乐重新核对 APK 摘要、正式证书、包名和版本，再向系统安装器临时授予这一份 APK 的读取权限。安装仍需由用户在系统界面确认。0.1.8 与 0.1.11 也声明了 `REQUEST_INSTALL_PACKAGES`，目前没有证据表明这项权限导致了 0.1.8 的告警。
 
 从 0.1.12 起，GitHub 在独立的只读任务里用 ClamAV 扫描已签名 APK，再执行发布。发布附件中的 `apk-scan.txt` 包含 APK 的 SHA-256、引擎和病毒库版本、扫描时间及结论。检出、扫描失败或病毒库超过七天都会中止发布。该报告只说明这一份文件在当次 ClamAV 检测中的结果。手机厂商的原始告警需要用对应引擎和同一份 APK 复测。[GitHub 扫描工作流](https://github.com/JackkLau/mobile-music-dl/actions/workflows/apk-scan.yml)
