@@ -3,10 +3,11 @@ import importlib.util
 import io
 import json
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
-from unittest.mock import Mock, call
+from unittest.mock import Mock, call, patch
 from urllib.error import HTTPError
 
 SCRIPTS = Path(__file__).resolve().parents[1]
@@ -131,6 +132,45 @@ class MirrorTest(unittest.TestCase):
         self.assertEqual(self.body, creation.kwargs["payload"]["body"])
         self.assertEqual("main", creation.kwargs["payload"]["target_commitish"])
         self.client.upload.assert_called_once_with(21, self.apk)
+        self.client.verify_download.assert_called_once_with(self.tag, self.artifact)
+
+    @patch.object(mirror.subprocess, "run")
+    def test_slow_upload_disables_expect_and_reports_only_transfer_metrics(self, run):
+        self.client.upload(21, self.apk)
+        args = run.call_args.args[0]
+        self.assertEqual("2700", args[args.index("--max-time") + 1])
+        self.assertIn("Expect:", args)
+        self.assertEqual("Gitee multipart upload: %{size_upload} bytes in %{time_total} seconds\n",
+                         args[args.index("--write-out") + 1])
+        self.assertNotIn("testing", " ".join(args))
+        self.assertNotIn("--retry", args)
+        self.assertEqual(b"Authorization: Bearer testing\n", run.call_args.kwargs["input"])
+
+    @patch.object(mirror.time, "sleep")
+    def test_lost_upload_response_recovers_after_publication_delay(self, sleep):
+        self.prepare_api(self.repo, self.release, self.release, self.release, self.attached)
+        self.client.upload.side_effect = subprocess.CalledProcessError(28, ["curl"])
+        self.publish()
+        self.client.upload.assert_called_once()
+        sleep.assert_called_once_with(10)
+        self.client.verify_download.assert_called_once_with(self.tag, self.artifact)
+
+    @patch.object(mirror.time, "sleep")
+    def test_timed_out_upload_never_reposts_when_still_missing(self, sleep):
+        self.prepare_api(self.repo, self.release, self.release, *[self.release] * 4)
+        self.client.upload.side_effect = subprocess.CalledProcessError(28, ["curl"])
+        with self.assertRaisesRegex(ValueError, "curl 28.*still missing"):
+            self.publish()
+        self.client.upload.assert_called_once()
+        self.assertEqual([call(10), call(30), call(60)], sleep.call_args_list)
+        self.client.verify_download.assert_not_called()
+
+    @patch.object(mirror.time, "sleep")
+    def test_successful_upload_can_precede_public_attachment_listing(self, sleep):
+        self.prepare_api(self.repo, self.release, self.release, self.release, self.attached)
+        self.publish()
+        sleep.assert_called_once_with(10)
+        self.client.upload.assert_called_once()
         self.client.verify_download.assert_called_once_with(self.tag, self.artifact)
 
     def test_retry_partial_and_already_published(self):

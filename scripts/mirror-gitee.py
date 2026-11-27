@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import time
 from urllib.error import HTTPError
 from urllib.parse import urljoin, urlsplit
 from urllib.request import build_opener, HTTPRedirectHandler, Request
@@ -151,8 +152,10 @@ class Gitee:
         if type(release_id) is not int or release_id <= 0:
             raise ValueError("Invalid Gitee release id")
         # curl streams multipart from disk. The credential goes over stdin, never in argv or a URL.
-        subprocess.run(["curl", "--silent", "--show-error", "--fail", "--proto", "=https",
-                        "--max-time", "450", "--header", "@-", "--output", os.devnull,
+        subprocess.run(["curl", "--disable", "--silent", "--fail", "--proto", "=https",
+                        "--connect-timeout", "30", "--max-time", "2700",
+                        "--header", "@-", "--header", "Expect:", "--output", os.devnull,
+                        "--write-out", "Gitee multipart upload: %{size_upload} bytes in %{time_total} seconds\n",
                         "--form", f"file=@{apk};type=application/vnd.android.package-archive",
                         f"{GITEE_API}{self.project_path}/releases/{release_id}/attach_files"],
                        input=f"Authorization: Bearer {self.token}\n".encode(), check=True)
@@ -207,13 +210,29 @@ def publish(gitee, tag, apk, body, artifact):
     if (release["tag_name"] != tag or release["prerelease"] is not False
             or json.loads(release["body"]) != json.loads(body)):
         raise ValueError("The Gitee release conflicts with the verified manifest")
+    upload_error = None
     if not any(item.get("name") == apk.name for item in release["assets"]):
-        gitee.upload(release["id"], apk)
+        try:
+            gitee.upload(release["id"], apk)
+        except subprocess.CalledProcessError as error:
+            upload_error = error.returncode
+            print(f"Gitee upload returned curl {upload_error}; checking whether the public release received the APK.", flush=True)
     # Read the identical endpoints used by Android, without the publisher credential.
-    current = gitee.request(releases + "/latest")
-    if (current["tag_name"] != tag or current["prerelease"] is not False
-            or json.loads(current["body"]) != json.loads(body)):
-        raise ValueError("Public Gitee latest does not match the intended release")
+    # Gitee can list the APK a few seconds after accepting the upload.
+    for delay in (0, 10, 30, 60):
+        if delay:
+            time.sleep(delay)
+        current = gitee.request(releases + "/latest")
+        if (current["tag_name"] != tag or current["prerelease"] is not False
+                or json.loads(current["body"]) != json.loads(body)):
+            raise ValueError("Public Gitee latest does not match the intended release")
+        if any(item.get("name") == apk.name for item in current["assets"]):
+            break
+    else:
+        if upload_error is not None:
+            raise ValueError(f"Upload returned curl {upload_error} and the APK is still missing from Gitee. "
+                             "Rerun the mirror to check again before retrying the upload.")
+        raise ValueError("Gitee did not expose the uploaded APK")
     attachment = named_asset(current["assets"], "name", apk.name)
     if attachment["browser_download_url"] != gitee.public_url(tag, apk.name):
         raise ValueError("Unexpected Gitee attachment URL")

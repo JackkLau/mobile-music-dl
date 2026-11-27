@@ -14,6 +14,8 @@
 
 0.1.14 及以前的更新器只访问 GitHub。首次迁移时，可以从已同步的 Gitee 发行版手动下载带镜像配置的新版 APK 并覆盖安装。以后在「我的 → 应用更新」操作即可。
 
+若自动上传超时，先查看该标签的 Gitee 附件列表。附件缺失时，可从同一标签的 GitHub Release 下载 `weile-版本-release.apk` 并按 `SHA256SUMS` 核对，在 Gitee 对应发行版的编辑页添加原文件，保留发行说明中的 `release.json`。再重跑镜像任务，由 Actions 匿名下载并核对附件。0.1.15 的首次同步通过此方式完成。
+
 Gitee 对发行版附件有单文件和仓库总容量限制。镜像只同步 Android 用户可直接安装的品牌 APK，AAB 和历史兼容副本仍可在 GitHub 获取。[Gitee 发行版说明](https://help.gitee.com/repository/release/create)
 
 ## 无需上传私钥的发布路径

@@ -8,15 +8,15 @@
 [![Build](https://github.com/JackkLau/mobile-music-dl/actions/workflows/android.yml/badge.svg?branch=master&event=push)](https://github.com/JackkLau/mobile-music-dl/actions/workflows/android.yml)
 [![Android 10+](https://img.shields.io/badge/Android-10%2B-3DDC84?logo=android&logoColor=white)](docs/DEVELOPMENT.md)
 
-[下载](https://github.com/JackkLau/mobile-music-dl/releases/latest) · [功能介绍](docs/FEATURES.md) · [文档](docs/README.md) · [问题反馈](https://github.com/JackkLau/mobile-music-dl/issues)
+[Gitee 下载](https://gitee.com/iamjacky/mobile-music-dl/releases) · [GitHub 下载](https://github.com/JackkLau/mobile-music-dl/releases/latest) · [功能介绍](docs/FEATURES.md) · [文档](docs/README.md) · [问题反馈](https://github.com/JackkLau/mobile-music-dl/issues)
 
 ## 下载与安装
 
-从 [GitHub Releases](https://github.com/JackkLau/mobile-music-dl/releases/latest) 下载最新版本的 `weile-版本-release.apk` 文件，支持 **Android 10 及以上**。版本页面同时提供更新说明和 SHA-256 校验文件；`.aab` 用于商店提交，不能直接安装。
+在 [Gitee 发行版](https://gitee.com/iamjacky/mobile-music-dl/releases) 或 [GitHub Releases](https://github.com/JackkLau/mobile-music-dl/releases/latest) 下载最新的 `weile-版本-release.apk`，支持 **Android 10 及以上**。两个站点提供同一份正式签名 APK。GitHub 同时提供更新说明、SHA-256 校验文件及用于商店提交的 AAB。
 
 升级已有正式版时请覆盖安装，不要卸载。正式版与调试版使用不同签名，不能直接互相覆盖。签名与校验方式见 [发布文档](docs/GITHUB-RELEASE.md)。
 
-已安装微乐的用户可以在「我的 → 应用更新」检查更新。内置 Gitee 镜像的版本优先从 Gitee 下载，失败时自动切换到 GitHub。
+从 0.1.15 起，在「我的 → 应用更新」检查更新和下载 APK 会优先使用 Gitee，失败时自动尝试 GitHub。较早版本可先从 Gitee 下载新版覆盖安装。
 
 如果系统提示安装包包含病毒，请先取消安装，按[安装包核验与厂商复核指南](docs/APK-SECURITY.md)核对手机上的文件。
 

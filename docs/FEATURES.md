@@ -2,7 +2,7 @@
 
 [返回项目首页](../README.md) · [文档导航](README.md)
 
-本文说明微乐的使用方式、支持范围与数据处理。安装包见 [GitHub Releases](https://github.com/JackkLau/mobile-music-dl/releases/latest)。
+本文说明微乐的使用方式、支持范围与数据处理。正式安装包可从 [Gitee 发行版](https://gitee.com/iamjacky/mobile-music-dl/releases) 或 [GitHub Releases](https://github.com/JackkLau/mobile-music-dl/releases/latest) 下载。
 
 ## 使用与登录
 
