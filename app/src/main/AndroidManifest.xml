@@ -11,6 +11,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <queries>
+        <package android:name="com.tencent.mm" />
         <intent>
             <action android:name="android.intent.action.INSTALL_PACKAGE" />
             <data android:mimeType="application/vnd.android.package-archive" />

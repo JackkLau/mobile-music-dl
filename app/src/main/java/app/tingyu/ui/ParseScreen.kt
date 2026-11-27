@@ -14,9 +14,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
-import app.tingyu.R
 import app.tingyu.model.AppActions
 import app.tingyu.model.AppUiState
 import app.tingyu.model.MusicSource
@@ -28,58 +27,50 @@ internal fun ParseScreen(state: AppUiState, actions: AppActions) {
     val clipboard = LocalClipboardManager.current
     val keyboard = LocalSoftwareKeyboardController.current
     val result = state.result
-    var selected by rememberSaveable(result?.favoriteId, result?.title) { mutableStateOf(emptyList<String>()) }
+    var selected by rememberSaveable(result?.favoriteId, result?.collectionUrl, result?.title) { mutableStateOf(emptyList<String>()) }
     var downloadConfirmation by remember { mutableStateOf<List<Track>?>(null) }
+    var clipboardEmpty by remember(state.input, state.linkSource) { mutableStateOf(false) }
+    var copiedCollection by remember(result?.collectionUrl) { mutableStateOf(false) }
     val savedIds = remember(state.library) { state.library.map { it.track.id }.toSet() }
     LazyColumn(Modifier.fillMaxSize().imePadding().testTag("parse_list"), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        item {
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    BrandIcon()
-                    Box(Modifier.weight(1f)) {
-                        PageTitle(stringResource(R.string.app_name), "把喜欢的声音，留在身边。")
-                    }
-                }
-                AssistChip(onClick = { actions.tab(3) }, label = { Text(if (state.session.isLoggedIn) "已登录" else "匿名模式") },
-                    leadingIcon = { Icon(if (state.session.isLoggedIn) Icons.Rounded.VerifiedUser else Icons.Rounded.PersonOutline,
-                        contentDescription = null, modifier = Modifier.size(16.dp)) })
-            }
-        }
+        item { PageTitle("添加音乐") }
         item {
             Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.surface) {
                 Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("从一个链接开始", style = MaterialTheme.typography.titleLarge)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         MusicSource.entries.forEach { source ->
                             FilterChip(selected = state.linkSource == source, onClick = { actions.chooseLinkSource(source) },
                                 label = { Text(source.label) })
                         }
                     }
-                    val bili = state.linkSource == MusicSource.BILIBILI
-                    Text(if (bili) "粘贴视频或收藏夹链接，也可以从哔哩哔哩分享过来。" else "粘贴${state.linkSource.label}的单曲链接或分享文本。",
-                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     OutlinedTextField(value = state.input, onValueChange = actions::input, modifier = Modifier.fillMaxWidth(),
-                        label = { Text("${state.linkSource.label}链接") }, placeholder = { Text(when (state.linkSource) {
-                            MusicSource.BILIBILI -> "https://www.bilibili.com/video/…"
-                            MusicSource.NETEASE -> "https://music.163.com/song?id=…"
-                            MusicSource.QQ -> "https://y.qq.com/n/ryqq/songDetail/…"
-                        }) },
+                        label = { Text("${state.linkSource.label}链接") },
+                        placeholder = { Text(if (state.linkSource == MusicSource.BILIBILI) "视频、合集或收藏夹分享文本" else "歌曲链接或分享文本") },
+                        isError = clipboardEmpty,
+                        supportingText = if (clipboardEmpty) ({ Text("剪贴板没有文字，请先从音乐平台复制链接。") }) else null,
                         minLines = 2, maxLines = 4, enabled = !state.parsing,
                         trailingIcon = if (state.input.isNotBlank()) ({
                             ActionIcon(Icons.Rounded.Close, "清空链接", enabled = !state.parsing) { actions.clearParse() }
                         }) else null,
                         shape = RoundedCornerShape(16.dp))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        OutlinedButton(onClick = { clipboard.getText()?.text?.let(actions::input) }, enabled = !state.parsing) {
-                            Icon(Icons.Rounded.ContentPaste, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(6.dp)); Text("粘贴")
+                    val needsPaste = state.input.isBlank()
+                    Button(onClick = {
+                        if (needsPaste) {
+                            val pasted = try { clipboard.getText()?.text } catch (_: SecurityException) { null }
+                            if (pasted.isNullOrBlank()) {
+                                clipboardEmpty = true
+                                return@Button
+                            }
+                            actions.input(pasted)
                         }
-                        Button(onClick = { keyboard?.hide(); actions.parse() }, enabled = state.input.isNotBlank() && !state.parsing,
-                            modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
-                            if (state.parsing) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                            else { Icon(Icons.Rounded.Search, contentDescription = null, modifier = Modifier.size(20.dp)); Spacer(Modifier.width(6.dp)) }
-                            Text(if (state.parsing) "解析中" else "解析链接")
-                        }
+                        keyboard?.hide()
+                        actions.parse()
+                    }, enabled = !state.parsing, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                        if (state.parsing) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                        else Icon(if (needsPaste) Icons.Rounded.ContentPaste else Icons.Rounded.Search,
+                            contentDescription = null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (state.parsing) "解析中" else if (needsPaste) "粘贴并解析" else "解析链接")
                     }
                 }
             }
@@ -88,13 +79,6 @@ internal fun ParseScreen(state: AppUiState, actions: AppActions) {
             item { StatePanel(Icons.Rounded.ErrorOutline, "暂时无法完成", state.error,
                 if (result != null && result.nextPage != null) "重试加载" else "重新解析",
                 if (result != null && result.nextPage != null) actions::loadMore else actions::parse, error = true) }
-        }
-        if (result == null && !state.parsing && state.error == null) {
-            item {
-                if (state.linkSource == MusicSource.BILIBILI)
-                    StatePanel(Icons.Rounded.Headphones, "先听，再决定留下", "解析后可以直接播放。喜欢的音频可以下载，离线也能听。")
-                else StatePanel(Icons.Rounded.Headphones, "分享一首歌", "解析后可查看歌名与歌手，下载的歌曲会出现在音乐库。")
-            }
         }
         if (result != null) {
             item {
@@ -115,6 +99,11 @@ internal fun ParseScreen(state: AppUiState, actions: AppActions) {
                         if (song.id in savedIds) Button(onClick = { actions.play(song, listOf(song)) }) { Text("播放已下载歌曲") }
                         else Button(onClick = { actions.download(listOf(song)) }) { Text("下载到手机") }
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            TextButton(onClick = { actions.shareMusic(song) }) {
+                                Icon(Icons.Rounded.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("分享歌曲")
+                            }
                             TextButton(onClick = { actions.openMusicPage(song) }) { Text("去官方歌曲页") }
                             MusicAccountButton(song.source)
                         }
@@ -125,8 +114,26 @@ internal fun ParseScreen(state: AppUiState, actions: AppActions) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(result.title, style = MaterialTheme.typography.titleLarge)
-                    Text("${result.tracks.size} 个条目${if (result.nextPage != null) " · 还有更多" else ""}",
-                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.Center) {
+                        Text("${result.tracks.size} 首${if (result.nextPage != null) " · 还有更多" else ""}",
+                            modifier = Modifier.align(Alignment.CenterVertically), style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        result.collectionUrl?.let { url ->
+                            if (result.hasMoreInCollection) TextButton(onClick = {
+                                actions.input(url)
+                                actions.parse()
+                            }) { Text("查看完整合集") }
+                            TextButton(onClick = {
+                                clipboard.setText(AnnotatedString(url))
+                                copiedCollection = true
+                            }) {
+                                Icon(Icons.Rounded.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(if (copiedCollection) "已复制合集链接" else "复制合集链接")
+                            }
+                        }
+                    }
                     if (result.tracks.isNotEmpty()) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             FilledTonalButton(onClick = { actions.play(result.tracks.first(), result.tracks) }, modifier = Modifier.weight(1f)) {
@@ -147,7 +154,7 @@ internal fun ParseScreen(state: AppUiState, actions: AppActions) {
                 }
             }
             if (result.tracks.isEmpty()) {
-                item { StatePanel(Icons.Rounded.PlaylistRemove, "这里还没有可播放的条目", "收藏夹可能为空，或其中的视频已失效。可以换一个链接试试。") }
+                item { StatePanel(Icons.Rounded.PlaylistRemove, "没有可播放的曲目", "请试试其他链接。") }
             }
             items(result.tracks, key = { it.id }) { track ->
                 TrackRow(track, track.id in savedIds, state.playback.track?.id == track.id,
@@ -172,7 +179,7 @@ internal fun ParseScreen(state: AppUiState, actions: AppActions) {
     }
     downloadConfirmation?.let { tracks ->
         AlertDialog(onDismissRequest = { downloadConfirmation = null }, title = { Text("下载 ${tracks.size} 个条目？") },
-            text = { Text("将依次保存到手机音乐目录。任务开始后可以在“下载”中查看进度或取消。") },
+            text = { Text("保存到 ${state.downloadFolder.label}") },
             confirmButton = { TextButton(onClick = { actions.download(tracks); downloadConfirmation = null; selected = emptyList() }) { Text("开始下载") } },
             dismissButton = { TextButton(onClick = { downloadConfirmation = null }) { Text("取消") } })
     }

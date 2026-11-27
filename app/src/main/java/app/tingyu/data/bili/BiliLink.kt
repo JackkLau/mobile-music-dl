@@ -7,12 +7,15 @@ import java.io.IOException
 sealed interface BiliLink {
     data class Video(val bvid: String? = null, val aid: Long? = null, val page: Int? = null) : BiliLink
     data class Favorite(val id: Long) : BiliLink
+    data class Season(val mid: Long, val id: Long) : BiliLink {
+        val url get() = "https://space.bilibili.com/$mid/lists/$id?type=season"
+    }
     data class Short(val url: HttpUrl) : BiliLink
 }
 
 /** Deliberately accepts only known public Bilibili link shapes, never arbitrary URLs. */
 object BiliLinkParser {
-    private val bv = Regex("BV[0-9A-Za-z]{10}")
+    internal val bv = Regex("BV[0-9A-Za-z]{10}")
     private val av = Regex("av([1-9][0-9]*)", RegexOption.IGNORE_CASE)
     private val urlStart = Regex("""https?\\?://""", RegexOption.IGNORE_CASE)
     // Copy/share controls sometimes insert these without a visible separator. Encoded
@@ -47,6 +50,14 @@ object BiliLinkParser {
             }
             if (bv.matches(id)) return BiliLink.Video(bvid = id, page = page)
             av.matchEntire(id)?.let { return BiliLink.Video(aid = positive(it.groupValues[1]), page = page) }
+        }
+        if (url.host == "space.bilibili.com" && parts.size == 3) {
+            if (parts[1] == "lists" && url.queryParameter("type") == "season") {
+                return BiliLink.Season(positive(parts[0]), positive(parts[2]))
+            }
+            if (parts.drop(1) == listOf("channel", "collectiondetail")) {
+                return BiliLink.Season(positive(parts[0]), positive(url.queryParameter("sid").orEmpty()))
+            }
         }
         if (url.host == "space.bilibili.com" && parts.any { it == "favlist" || it == "favlistdetail" }) {
             return BiliLink.Favorite(positive(url.queryParameter("fid") ?: throw BiliException("收藏夹链接缺少 fid，请复制具体收藏夹的链接")))

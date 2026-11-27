@@ -47,6 +47,8 @@ class AppViewModel(application: Application, private val savedStateHandle: Saved
     private val container = (application as MusicApp).container
     private val restoredLogin = savedStateHandle.get<String>("music_parse_login")?.let { Json.decodeFromString<MusicLoginChallenge>(it) }
     private val mutable = MutableStateFlow(AppUiState(
+        tab = savedStateHandle.get<String>("destination")?.let { name -> AppTab.entries.find { it.name == name } }
+            ?: if (restoredLogin == null) AppTab.PLAYER else AppTab.PARSE,
         parseLogin = restoredLogin, input = restoredLogin?.parseUrl.orEmpty(), linkSource = restoredLogin?.source ?: MusicSource.BILIBILI,
         debugAvailable = container.debugSettings.available,
         debugSettings = container.debugSettings.state.value,
@@ -151,7 +153,20 @@ class AppViewModel(application: Application, private val savedStateHandle: Saved
         clearParse()
         mutable.update { it.copy(linkSource = source) }
     }
-    fun receiveShare(value: String) { input(value); tab(0) }
+    private var sharedLinkWaitingForEditor = false
+
+    fun receiveShare(value: String) {
+        input(value)
+        sharedLinkWaitingForEditor = true
+        showSharedLinkWhenReady()
+    }
+
+    private fun showSharedLinkWhenReady() {
+        if (!sharedLinkWaitingForEditor || mutable.value.musicEditorVisible) return
+        sharedLinkWaitingForEditor = false
+        tab(AppTab.PARSE)
+        mutable.update { it.copy(playerVisible = false, queueVisible = false) }
+    }
     override fun parse() = parseLink(afterLogin = false)
 
     private fun parseLink(afterLogin: Boolean, resumeUrl: String? = null) {
@@ -175,7 +190,8 @@ class AppViewModel(application: Application, private val savedStateHandle: Saved
                     mutable.update { it.copy(result = result.copy(tracks = tracks)) }
                     if (afterLogin) {
                         container.downloads.enqueue(tracks, MusicLoginRetry.ALREADY_PARSED)
-                        mutable.update { it.copy(tab = 2, message = "已重新解析，继续下载") }
+                        tab(AppTab.DOWNLOADS)
+                        mutable.update { it.copy(message = "已重新解析，继续下载") }
                     }
                 }
             } catch (e: CancellationException) { throw e }
@@ -222,10 +238,11 @@ class AppViewModel(application: Application, private val savedStateHandle: Saved
             finally { if (version == requestVersion) mutable.update { it.copy(loadingMore = false) } }
         }
     }
-    override fun tab(index: Int) {
+    override fun tab(destination: AppTab) {
         if (mutable.value.developerVisible) showDeveloperTools(false)
         debugGate.reset()
-        mutable.update { it.copy(tab = index.coerceIn(0, 3)) }
+        savedStateHandle["destination"] = destination.name
+        mutable.update { it.copy(tab = destination) }
     }
     override fun play(track: Track, queue: List<Track>) {
         val items = (queue.ifEmpty { listOf(track) }).distinctBy(Track::id).map(container.songDetails::apply)
@@ -235,7 +252,7 @@ class AppViewModel(application: Application, private val savedStateHandle: Saved
         player.setMediaItems(fullQueue.map(TrackMedia::item), fullQueue.indexOfFirst { it.id == track.id }.coerceAtLeast(0), 0)
         player.prepare()
         player.play()
-        mutable.update { it.copy(playerVisible = true) }
+        mutable.update { it.copy(playerVisible = it.tab != AppTab.PLAYER) }
         syncPlayback()
     }
     override fun download(tracks: List<Track>) {
@@ -283,6 +300,7 @@ class AppViewModel(application: Application, private val savedStateHandle: Saved
         if (!mutable.value.musicSaving) mutable.update { it.copy(musicEditorVisible = show,
             musicEditorTrack = if (show) it.playback.track else null, musicError = null,
             coverSource = if (show) it.playback.track?.let { track -> container.songDetails.details(track.id)?.coverSource }.orEmpty() else "") }
+        if (!show) showSharedLinkWhenReady()
     }
 
     override fun saveMusicInfo(track: Track, title: String, artist: String) {
@@ -296,6 +314,7 @@ class AppViewModel(application: Application, private val savedStateHandle: Saved
                 container.songDetails.edit(track, title, artist)
                 if (oldCover != container.songDetails.details(track.id)?.coverUri) withContext(Dispatchers.IO) { container.songFiles.deleteOwnedCover(oldCover) }
                 mutable.update { it.copy(musicEditorVisible = false, musicEditorTrack = null, message = "歌曲信息已保存") }
+                showSharedLinkWhenReady()
             } catch (error: CancellationException) { throw error }
             catch (error: Exception) { mutable.update { it.songFailure(track, if (error is IllegalArgumentException) error.message ?: "请检查歌名和歌手" else "歌曲信息未能保存，请检查存储空间后重试") } }
             finally { mutable.update { it.copy(musicSaving = false) } }

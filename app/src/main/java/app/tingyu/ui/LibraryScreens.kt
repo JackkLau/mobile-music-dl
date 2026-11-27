@@ -1,6 +1,5 @@
 package app.tingyu.ui
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -38,7 +37,7 @@ internal fun LibraryScreen(state: AppUiState, actions: AppActions) {
         state.library.filter { query.isBlank() || it.track.title.contains(query.trim(), true) || it.track.artist.contains(query.trim(), true) }
     }
     LazyColumn(Modifier.fillMaxSize().testTag("library_list"), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { PageTitle("音乐库", "${state.library.size} 首本地音频 · 离线也能听") }
+        item { PageTitle("音乐库", if (state.library.isEmpty()) null else "${state.library.size} 首本地音乐") }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = actions::scanLocalMusic, enabled = !state.libraryWorking && state.deletingLocalId == null,
@@ -51,8 +50,6 @@ internal fun LibraryScreen(state: AppUiState, actions: AppActions) {
                     Icon(Icons.Rounded.FolderOpen, contentDescription = null)
                     Spacer(Modifier.width(6.dp)); Text("导入本地音频")
                 }
-                Text("扫描下载目录中的音频，也可单独选择文件导入。", style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (state.libraryWorking) LinearProgressIndicator(Modifier.fillMaxWidth().testTag("library_progress"))
                 state.libraryStatus?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                 if (state.libraryNeedsPermission) Text("找回旧安装留下的文件需要音频访问权限，也可只选择要导入的文件。",
@@ -60,14 +57,14 @@ internal fun LibraryScreen(state: AppUiState, actions: AppActions) {
                 state.libraryError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
             }
         }
-        item {
+        if (state.library.isNotEmpty() || query.isNotEmpty()) item {
             OutlinedTextField(value = query, onValueChange = { query = it }, singleLine = true,
                 modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), label = { Text("搜索歌名或歌手") },
                 leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
                 trailingIcon = if (query.isNotEmpty()) ({ ActionIcon(Icons.Rounded.Close, "清空搜索") { query = "" } }) else null)
         }
         if (state.library.isEmpty()) {
-            item { StatePanel(Icons.Rounded.LibraryMusic, "收藏一段喜欢的声音", "下载完成的音频会出现在这里。已有音乐可先扫描或导入，也可以解析新链接。", "去解析链接", { actions.tab(0) }) }
+            item { StatePanel(Icons.Rounded.LibraryMusic, "还没有本地音乐", actionLabel = "去解析链接", onAction = { actions.tab(AppTab.PARSE) }) }
         } else if (visible.isEmpty()) {
             item { StatePanel(Icons.Rounded.SearchOff, "没有找到匹配的音频", "换一个歌名或歌手关键词试试。", "清空搜索", { query = "" }) }
         } else {
@@ -80,6 +77,7 @@ internal fun LibraryScreen(state: AppUiState, actions: AppActions) {
             items(visible, key = { it.track.id }) { local ->
                 TrackRow(local.track, saved = true, playing = state.playback.track?.id == local.track.id,
                     onPlay = { actions.play(local.track, visible.map { it.track }) }) {
+                    ActionIcon(Icons.Rounded.Share, "分享 ${local.track.title}") { actions.shareMusic(local.track) }
                     ActionIcon(Icons.Rounded.DeleteOutline, "删除 ${local.track.title}", enabled = !state.libraryWorking && state.deletingLocalId == null) {
                         actions.dismissLocalDeleteError(); deleteTarget = local
                     }
@@ -106,10 +104,10 @@ internal fun LibraryScreen(state: AppUiState, actions: AppActions) {
 internal fun DownloadsScreen(state: AppUiState, actions: AppActions) {
     val active = state.downloads.count { it.status in listOf(DownloadStatus.QUEUED, DownloadStatus.DOWNLOADING, DownloadStatus.SAVING) }
     LazyColumn(Modifier.fillMaxSize().testTag("downloads_list"), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        item { PageTitle("下载", if (active > 0) "$active 个任务进行中" else "保存到手机，随时播放") }
+        item { PageTitle("下载", if (active > 0) "$active 个任务进行中" else null) }
         item { DownloadFolderCard(state, actions) }
         if (state.downloads.isEmpty()) {
-            item { StatePanel(Icons.Rounded.Download, "还没有下载任务", "解析链接后，选择想保存的音频。", "去解析链接", { actions.tab(0) }) }
+            item { StatePanel(Icons.Rounded.Download, "还没有下载任务", actionLabel = "去解析链接", onAction = { actions.tab(AppTab.PARSE) }) }
         }
         items(state.downloads.reversed(), key = { it.track.id }) { task ->
             DownloadCard(task, actions)
@@ -197,9 +195,18 @@ private fun DownloadCard(task: DownloadTask, actions: AppActions) {
 @Composable
 internal fun AccountScreen(state: AppUiState, actions: AppActions) {
     var confirmLogout by remember { mutableStateOf(false) }
+    var guideVisible by rememberSaveable { mutableStateOf(false) }
     val account = state.session.account
     LazyColumn(Modifier.fillMaxSize().testTag("account_list"), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        item { PageTitle("我的", "账号与应用设置") }
+        item {
+            PageTitle("我的", trailing = {
+                TextButton(onClick = { guideVisible = true }) {
+                    Icon(Icons.Rounded.HelpOutline, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("使用说明")
+                }
+            })
+        }
         item {
             Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.surface) {
                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -212,7 +219,7 @@ internal fun AccountScreen(state: AppUiState, actions: AppActions) {
                         Spacer(Modifier.width(14.dp))
                         Column(Modifier.weight(1f)) {
                             Text(account?.name ?: "匿名听众", style = MaterialTheme.typography.titleLarge)
-                            Text(if (account != null) "已连接哔哩哔哩账号" else "公开音频，直接聆听", style = MaterialTheme.typography.bodyMedium,
+                            if (account != null) Text("哔哩哔哩账号", style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
@@ -224,28 +231,23 @@ internal fun AccountScreen(state: AppUiState, actions: AppActions) {
         item {
             Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.surface) {
                 Column(Modifier.padding(vertical = 8.dp).selectableGroup()) {
-                    ModeRow("匿名模式", "解析允许匿名访问的视频", state.session.mode == SessionMode.ANONYMOUS) { actions.sessionMode(SessionMode.ANONYMOUS) }
+                    ModeRow("匿名模式", "访问公开视频", state.session.mode == SessionMode.ANONYMOUS) { actions.sessionMode(SessionMode.ANONYMOUS) }
                     HorizontalDivider(Modifier.padding(horizontal = 20.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
-                    ModeRow("登录模式", if (account != null) "使用当前账号访问视频和收藏夹" else "登录后访问自己的收藏夹", state.session.mode == SessionMode.ACCOUNT) {
+                    ModeRow("登录模式", "访问账号收藏夹", state.session.mode == SessionMode.ACCOUNT) {
                         if (account == null) actions.login() else actions.sessionMode(SessionMode.ACCOUNT)
                     }
                 }
             }
         }
         item {
-            Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.surface) {
-                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Icon(Icons.Rounded.PlaylistPlay, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
-                    Text("让收藏夹变成播放列表", style = MaterialTheme.typography.titleMedium)
-                    Text("复制收藏夹链接，在“解析”中打开。可以点播，也可以选择需要下载的条目。",
-                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    TextButton(onClick = { actions.tab(0) }) { Text("导入收藏夹链接") }
-                }
+            OutlinedButton(onClick = {
+                actions.chooseLinkSource(MusicSource.BILIBILI)
+                actions.tab(AppTab.PARSE)
+            }) {
+                Icon(Icons.Rounded.PlaylistPlay, contentDescription = null)
+                Spacer(Modifier.width(6.dp))
+                Text("导入收藏夹链接")
             }
-        }
-        item {
-            Text("登录会话仅保存在本机。退出登录会清除会话和私密列表，已下载的音频仍然保留。",
-                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         item(key = "download_folder") { DownloadFolderCard(state, actions) }
         item(key = "app_update") { AppUpdateCard() }
@@ -279,6 +281,10 @@ internal fun AccountScreen(state: AppUiState, actions: AppActions) {
             }
         }
     }
+    if (guideVisible) UsageGuide(onDismiss = { guideVisible = false }, onParse = {
+        guideVisible = false
+        actions.tab(AppTab.PARSE)
+    })
     if (confirmLogout) {
         AlertDialog(onDismissRequest = { confirmLogout = false }, title = { Text("退出哔哩哔哩账号？") },
             text = { Text("当前登录会话和私密列表将被清除。已下载的音乐会保留，你仍然可以匿名使用。") },

@@ -57,19 +57,19 @@ internal fun PlayerDialog(state: AppUiState, actions: AppActions) {
 }
 
 @Composable
-private fun PlayerContent(state: AppUiState, actions: AppActions) {
+internal fun PlayerContent(state: AppUiState, actions: AppActions, embedded: Boolean = false) {
     val player = state.playback
     val track = player.track
     val local = state.library.any { it.track.id == track?.id }
     val pendingDownload = state.downloads.any { it.track.id == track?.id && it.status in listOf(DownloadStatus.QUEUED, DownloadStatus.DOWNLOADING, DownloadStatus.SAVING) }
     var lyricsVisible by rememberSaveable(track?.id) { mutableStateOf(false) }
     BoxWithConstraints(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(TingYuColors.PlayerSurface, TingYuColors.Ink)))
-        .statusBarsPadding().navigationBarsPadding()) {
+        .then(if (embedded) Modifier else Modifier.statusBarsPadding().navigationBarsPadding())) {
         val compact = maxHeight < 500.dp
         val wideControls = compact && maxWidth >= 600.dp
         Column(Modifier.fillMaxSize()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                ActionIcon(Icons.Rounded.KeyboardArrowDown, "收起播放器") { actions.showPlayer(false) }
+                if (!embedded) ActionIcon(Icons.Rounded.KeyboardArrowDown, "收起播放器") { actions.showPlayer(false) }
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(if (lyricsVisible) track?.title.orEmpty() else "正在播放", style = MaterialTheme.typography.titleMedium,
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -79,6 +79,7 @@ private fun PlayerContent(state: AppUiState, actions: AppActions) {
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 if (compact && track != null) PlayerTabs(lyricsVisible) { lyricsVisible = it }
+                if (track != null) ActionIcon(Icons.Rounded.Share, "分享音乐") { actions.shareMusic(track) }
                 ActionIcon(Icons.Rounded.Edit, "编辑歌曲信息", enabled = track != null) { actions.showMusicEditor(true) }
             }
             if (track == null) {
@@ -124,7 +125,6 @@ private fun PlayerContent(state: AppUiState, actions: AppActions) {
                                 Text(track.title, style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
                                 Text(track.artist.ifBlank { "歌手待补充" }, style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
-                                TextButton(onClick = { actions.showMusicEditor(true) }) { Text("编辑歌曲信息") }
                             }
                         }
                         if (player.error != null) {

@@ -28,6 +28,8 @@ data class ParseResult(
     val tracks: List<Track>,
     val favoriteId: Long? = null,
     val nextPage: Int? = null,
+    val collectionUrl: String? = null,
+    val hasMoreInCollection: Boolean = false,
 )
 
 data class AudioStream(

@@ -24,6 +24,124 @@ class BilibiliRepositoryTest {
     private val nav = """{"code":-101,"data":{"isLogin":false,"wbi_img":{"img_url":"https://i0.hdslb.com/bfs/wbi/7cd084941338484aae1ad9425b84077c.png","sub_url":"https://i0.hdslb.com/bfs/wbi/4932caff0ff746eab6f01bf08b70ac45.png"}}}"""
     private val audio = """{"code":0,"data":{"timelength":60000,"dash":{"audio":[{"baseUrl":"https://a.bilivideo.com/audio.m4s","codecs":"mp4a.40.2","mimeType":"audio/mp4","bandwidth":192000}]}}}"""
 
+    @Test fun albumShortLinkWithDefaultFirstPageReturnsEverySongInOrder() = runTest {
+        val id = "BV1sp4y1B7bH"
+        val pages = listOf(275493414, 275493613, 275493824, 275493926, 275494031, 275494143, 275494227,
+            275494313, 275494392, 275494484, 275494549, 275494662, 275494767).mapIndexed { i, cid ->
+            """{"page":${i + 1},"cid":$cid,"part":"录音 ${i + 1}","duration":60}"""
+        }
+        val metadata = """{"code":0,"data":{"bvid":"$id","title":"【黑胶试听合輯】周杰伦_葉惠美","pages":[${pages.joinToString()}]}}"""
+        val calls = mutableListOf<String>()
+        val repo = BilibiliRepository({ "" }, BiliTransport { url, _ ->
+            calls += url.encodedPath
+            when (url.host) {
+                "bili2233.cn" -> BiliResponse(302, "", "https://www.bilibili.com/video/$id?p=1&share_from=ugc")
+                else -> BiliResponse(200, metadata)
+            }
+        })
+        val album = repo.parse("【黑胶试听合輯】周杰伦_葉惠美 https\\://bili2233.cn/SrmWssU\u00a0")
+        assertEquals((1..13).toList(), album.tracks.map(Track::page))
+        assertEquals(275494767L, album.tracks.last().cid)
+        assertEquals(listOf("/SrmWssU", "/x/web-interface/view"), calls)
+        val wholeAlbum = "https://www.bilibili.com/video/$id"
+        assertEquals(wholeAlbum, album.collectionUrl)
+        assertFalse(album.hasMoreInCollection)
+        assertEquals(album, repo.parse(wholeAlbum))
+        val first = repo.parse("$wholeAlbum?p=1")
+        assertEquals(275493414L, first.tracks.single().cid)
+        assertEquals(wholeAlbum, first.collectionUrl)
+        assertTrue(first.hasMoreInCollection)
+    }
+
+    @Test fun ugcSeasonFlattensSectionsAndResolvesTheChosenArchiveAndPartOnly() = runTest {
+        val first = "BV1xx411c7mD"
+        val second = "BV1sVtw6JEeq"
+        val albumUrl = "https://space.bilibili.com/72/lists/53?type=season"
+        val pages = """[{"page":1,"cid":21,"part":"上","duration":60},{"page":2,"cid":22,"part":"下","duration":60}]"""
+        val season = """{"id":53,"mid":72,"ep_count":2,"title":"专辑","sections":[
+            {"episodes":[{"bvid":"$first","cid":11,"title":"序曲","page":{"cid":11,"page":1,"duration":60}}]},
+            {"episodes":[{"bvid":"$second","cid":21,"title":"终章","pages":$pages}]}]}"""
+        val calls = mutableListOf<String>()
+        val repo = BilibiliRepository({ "" }, BiliTransport { url, _ ->
+            calls += url.encodedPath
+            when (url.encodedPath) {
+                "/x/web-interface/view" -> BiliResponse(200, if (url.queryParameter("bvid") == second)
+                    """{"code":0,"data":{"bvid":"$second","title":"终章","pages":$pages,"ugc_season":$season}}"""
+                    else """{"code":0,"data":{"bvid":"$first","cid":11,"duration":60,"ugc_season":$season}}""")
+                "/x/web-interface/nav" -> BiliResponse(200, nav)
+                "/x/player/wbi/playurl" -> {
+                    assertEquals(second, url.queryParameter("bvid"))
+                    assertEquals("22", url.queryParameter("cid"))
+                    BiliResponse(200, audio)
+                }
+                "/x/polymer/web-space/seasons_archives_list" -> {
+                    assertEquals("72", url.queryParameter("mid"))
+                    assertEquals("53", url.queryParameter("season_id"))
+                    BiliResponse(200, """{"code":0,"data":{"page":{"total":2},"archives":[{"bvid":"$first"},{"bvid":"$second"}]}}""")
+                }
+                else -> error("Unexpected endpoint")
+            }
+        })
+        val album = repo.parse(second)
+        assertEquals("专辑", album.title)
+        assertEquals(albumUrl, album.collectionUrl)
+        assertEquals(listOf(11L, 21L, 22L), album.tracks.map(Track::cid))
+        assertEquals(listOf("序曲", "上", "下"), album.tracks.map(Track::title))
+        assertEquals(1, calls.size)
+        assertEquals(album, repo.parse(albumUrl))
+        assertEquals(3, calls.size)
+        val selected = repo.parse("https://www.bilibili.com/video/$second?p=2")
+        assertTrue(selected.hasMoreInCollection)
+        assertEquals(albumUrl, selected.collectionUrl)
+        assertEquals(album.tracks.last(), selected.tracks.single())
+        assertEquals("https://www.bilibili.com/video/$second?p=2", repo.resolveAudio(selected.tracks.single()).headers["Referer"])
+    }
+
+    @Test fun incompleteSeasonUsesSpacePaginationAndKeepsEveryArchivesParts() = runTest {
+        val first = "BV1xx411c7mD"
+        val second = "BV1sVtw6JEeq"
+        val partial = """{"id":53,"mid":72,"ep_count":2,"title":"专辑","sections":[
+            {"episodes":[{"bvid":"$first","cid":42,"title":"序曲"}]}]}"""
+        val calls = mutableListOf<String>()
+        val repo = BilibiliRepository({ "" }, BiliTransport { url, _ ->
+            val page = url.queryParameter("page_num")
+            val bvid = url.queryParameter("bvid")
+            when {
+                bvid == first -> { calls += first; BiliResponse(200, """{"code":0,"data":{"bvid":"$first","title":"序曲","cid":42,"ugc_season":$partial}}""") }
+                bvid == second -> { calls += second; BiliResponse(200, """{"code":0,"data":{"bvid":"$second","pages":[{"cid":21,"page":1},{"cid":22,"page":2}]}}""") }
+                page == "1" || page == "2" -> {
+                    calls += "page$page"
+                    val archive = if (page == "1") first else second
+                    BiliResponse(200, """{"code":0,"data":{"page":{"page_num":$page,"total":2},"archives":[{"bvid":"$archive"}]}}""")
+                }
+                else -> error("Unexpected endpoint")
+            }
+        })
+        val album = repo.parse(first)
+        assertEquals(listOf(42L, 21L, 22L), album.tracks.map(Track::cid))
+        assertEquals(listOf(first, "page1", "page2", second), calls)
+    }
+
+    @Test fun restrictedSeasonApiStopsWithoutRequestingArchives() = runTest {
+        var calls = 0
+        val repo = BilibiliRepository({ "" }, BiliTransport { _, _ ->
+            calls++
+            BiliResponse(200, """{"code":-352}""")
+        })
+        try { repo.parse("https://space.bilibili.com/72/lists/53?type=season"); fail("Expected request restriction") }
+        catch (error: BiliException) { assertEquals(-352, error.code); assertEquals("api", error.stage) }
+        assertEquals(1, calls)
+    }
+
+    @Test fun explicitPartStillLinksToSeasonWhenViewOmitsItsSize() = runTest {
+        val response = """{"code":0,"data":{"season_id":53,"owner":{"mid":72},"bvid":"BV1xx411c7mD","cid":42}}"""
+        val repo = BilibiliRepository({ "" }, BiliTransport { _, _ -> BiliResponse(200, response) })
+        val track = repo.parse("https://www.bilibili.com/video/BV1xx411c7mD?p=1")
+        assertEquals(42L, track.tracks.single().cid)
+        assertEquals("https://space.bilibili.com/72/lists/53?type=season", track.collectionUrl)
+        assertTrue(track.hasMoreInCollection)
+    }
+
     @Test fun defaultApiAndAudioRequestsUseTheVerifiedDesktopProfile() = runTest {
         val repository = BilibiliRepository({ "" }, BiliTransport { url, headers ->
             assertEquals(UserAgentProfile.DESKTOP.value, headers["User-Agent"])

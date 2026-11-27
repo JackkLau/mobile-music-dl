@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.tingyu.model.AppTab
 import app.tingyu.model.AppActions
 import app.tingyu.model.AppUiState
 import app.tingyu.model.MusicLoginMethod
@@ -35,13 +36,18 @@ fun TingYuApp(state: AppUiState, actions: AppActions) {
             snackbarHost = { SnackbarHost(snackbar) },
             bottomBar = {
                 Column {
-                    if (state.playback.track != null) MiniPlayer(state, actions)
+                    if (state.tab != AppTab.PLAYER && state.playback.track != null) MiniPlayer(state, actions)
                     NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
-                        val labels = listOf("解析", "音乐库", "下载", "我的")
-                        val icons = listOf(Icons.Rounded.Link, Icons.Rounded.LibraryMusic, Icons.Rounded.Download, Icons.Rounded.PersonOutline)
-                        labels.forEachIndexed { index, label ->
-                            NavigationBarItem(selected = state.tab == index, onClick = { actions.tab(index) },
-                                icon = { Icon(icons[index], contentDescription = null) }, label = { Text(label) })
+                        for (tab in AppTab.entries) {
+                            val icon = when (tab) {
+                                AppTab.PLAYER -> Icons.Rounded.PlayCircle
+                                AppTab.PARSE -> Icons.Rounded.Link
+                                AppTab.LIBRARY -> Icons.Rounded.LibraryMusic
+                                AppTab.DOWNLOADS -> Icons.Rounded.Download
+                                AppTab.MINE -> Icons.Rounded.PersonOutline
+                            }
+                            NavigationBarItem(selected = state.tab == tab, onClick = { actions.tab(tab) },
+                                icon = { Icon(icon, contentDescription = null) }, label = { Text(tab.label) })
                         }
                     }
                 }
@@ -50,12 +56,13 @@ fun TingYuApp(state: AppUiState, actions: AppActions) {
             Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
                 if (developerOpen) {
                     DeveloperToolsScreen(state, actions)
-                } else tabState.SaveableStateProvider(state.tab) {
+                } else tabState.SaveableStateProvider(state.tab.name) {
                     when (state.tab) {
-                        1 -> LibraryScreen(state, actions)
-                        2 -> DownloadsScreen(state, actions)
-                        3 -> AccountScreen(state, actions)
-                        else -> ParseScreen(state, actions)
+                        AppTab.PLAYER -> if (!state.playerVisible) PlaybackHome(state, actions)
+                        AppTab.LIBRARY -> LibraryScreen(state, actions)
+                        AppTab.DOWNLOADS -> DownloadsScreen(state, actions)
+                        AppTab.MINE -> AccountScreen(state, actions)
+                        AppTab.PARSE -> ParseScreen(state, actions)
                     }
                 }
             }

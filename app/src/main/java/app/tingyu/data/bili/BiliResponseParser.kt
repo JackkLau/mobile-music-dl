@@ -49,32 +49,68 @@ internal object BiliResponseParser {
     }, code)
 
     fun video(data: JsonObject, requestedPage: Int?): ParseResult {
-        val bvid = data.string("bvid").takeIf { Regex("BV[0-9A-Za-z]{10}").matches(it) }
+        val bvid = data.string("bvid").takeIf(BiliLinkParser.bv::matches)
             ?: throw BiliException("未找到有效的视频编号")
         if (data.int("state") < 0) throw BiliException("此视频当前不可访问")
         val title = data.string("title").ifBlank { bvid }
         val owner = data.obj("owner").string("name")
         val cover = secureImageUrl(data.string("pic"))
-        val pages = data.array("pages").mapNotNull { it.asObject() }
-        val all = pages.mapNotNull { part ->
-            val cid = part.long("cid")
-            if (cid <= 0) return@mapNotNull null
-            val page = part.int("page").coerceAtLeast(1)
-            MusicMetadata.normalize(Track(
-                bvid = bvid, cid = cid,
-                title = if (pages.size > 1) MusicMetadata.partTitle(title, part.string("part"), page) else title,
-                artist = owner, coverUrl = cover,
-                durationMs = part.long("duration") * 1000L,
-                page = page,
-                sourceTitle = title,
-            ))
-        }.ifEmpty {
-            val cid = data.long("cid")
-            if (cid > 0) listOf(MusicMetadata.normalize(Track(bvid, cid, title, owner, cover, data.long("duration") * 1000))) else emptyList()
-        }
+        val all = parts(bvid, title, owner, cover, data.array("pages").mapNotNull { it.asObject() },
+            data.long("cid"), data.long("duration"))
         val selected = if (requestedPage != null) all.filter { it.page == requestedPage } else all
         if (selected.isEmpty()) throw BiliException("未找到此视频的分 P 或可用音轨信息")
-        return ParseResult(title, selected)
+        val albumUrl = if (all.size > 1) "https://www.bilibili.com/video/$bvid" else null
+        return ParseResult(title, selected, collectionUrl = albumUrl, hasMoreInCollection = selected.size < all.size)
+    }
+
+    private fun parts(
+        bvid: String, title: String, owner: String, cover: String, pages: List<JsonObject>,
+        fallbackCid: Long, duration: Long,
+    ): List<Track> = pages.mapNotNull { part ->
+        val cid = part.long("cid")
+        if (cid <= 0) return@mapNotNull null
+        val page = part.int("page").coerceAtLeast(1)
+        MusicMetadata.normalize(Track(
+            bvid = bvid, cid = cid,
+            title = if (pages.size > 1) MusicMetadata.partTitle(title, part.string("part"), page) else title,
+            artist = owner, coverUrl = cover,
+            durationMs = part.long("duration") * 1000L,
+            page = page,
+            sourceTitle = title,
+        ))
+    }.ifEmpty {
+        if (fallbackCid > 0) listOf(MusicMetadata.normalize(Track(bvid, fallbackCid, title, owner, cover, duration * 1000))) else emptyList()
+    }
+
+    fun seasonOf(video: JsonObject): BiliLink.Season? {
+        val season = video.obj("ugc_season")
+        val id = season.long("id").takeIf { it > 0 } ?: video.long("season_id")
+        val mid = season.long("mid").takeIf { it > 0 } ?: video.obj("owner").long("mid")
+        return if (id > 0 && mid > 0) BiliLink.Season(mid, id) else null
+    }
+
+    /** The view API often includes the complete ordered collection in the same response. */
+    fun embeddedSeason(video: JsonObject, link: BiliLink.Season): ParseResult? {
+        if (seasonOf(video) != link) return null
+        val season = video.obj("ugc_season")
+        val episodes = season.array("sections").mapNotNull { it.asObject() }.flatMap { it.array("episodes") }
+        if (episodes.isEmpty() || episodes.size < season.int("ep_count")) return null
+        val tracks = mutableListOf<Track>()
+        for (entry in episodes) {
+            val episode = entry.asObject() ?: return null
+            val arc = episode.obj("arc")
+            if (arc.int("state") < 0) continue
+            val bvid = episode.string("bvid").takeIf(BiliLinkParser.bv::matches) ?: return null
+            val title = episode.string("title").ifBlank { arc.string("title").ifBlank { bvid } }
+            val pages = episode.array("pages").mapNotNull { it.asObject() }
+                .ifEmpty { listOfNotNull(episode["page"] as? JsonObject) }
+            if (arc.int("videos") > pages.size && arc.int("videos") > 1) return null
+            val items = parts(bvid, title, arc.obj("author").string("name"), secureImageUrl(arc.string("pic")),
+                pages, episode.long("cid"), arc.long("duration"))
+            if (items.isEmpty()) return null
+            tracks += items
+        }
+        return ParseResult(season.string("title").ifBlank { "B 站合集" }, tracks.distinctBy(Track::id), collectionUrl = link.url)
     }
 
     fun favorites(data: JsonObject, id: Long, page: Int): ParseResult {

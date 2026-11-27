@@ -5,6 +5,21 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class BiliMusicMetadataTest {
+    @Test fun albumAndPartNumberMustBothMatchBeforeExtractingArtistAndSong() {
+        val title = "【黑胶试听合輯】周杰伦_葉惠美"
+        val data = BiliResponseParser.root("""{"bvid":"BV1sp4y1B7bH","title":"$title","owner":{"name":"上传者"},
+            "pages":[{"cid":275493414,"page":1,"part":"葉惠美_01_以父之名"},
+                     {"cid":2,"page":2,"part":"别的专辑_02_未确认"},
+                     {"cid":3,"page":3,"part":"葉惠美_08_未确认"}]}""")
+        val tracks = BiliResponseParser.video(data, null).tracks
+        assertEquals("以父之名", tracks.first().title)
+        assertEquals("周杰伦", tracks.first().artist)
+        assertEquals(title, tracks.first().sourceTitle)
+        assertEquals("上传者", tracks.first().sourceArtist)
+        assertEquals(listOf("别的专辑_02_未确认", "葉惠美_08_未确认"), tracks.drop(1).map { it.title })
+        assertEquals(listOf("", ""), tracks.drop(1).map { it.artist })
+    }
+
     @Test fun singleVideoUsesSongAndSingerWithoutVideoArtwork() {
         val data = BiliResponseParser.root("""{"bvid":"BV1xx411c7mD","cid":42,
             "title":"【4K】林间客《归舟》官方MV","owner":{"name":"音乐搬运站"},

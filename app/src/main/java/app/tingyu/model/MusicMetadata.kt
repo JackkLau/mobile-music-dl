@@ -11,6 +11,8 @@ object MusicMetadata {
     private val quotes = Regex("《([^《》]+)》")
     private val compound = Regex("(?i)(串烧|合集|歌单|精选|全专辑|完整专辑|\\bmedley\\b|\\bcompilation\\b)")
     private val split = Regex("\\s+[-–—]\\s+")
+    private val albumHeading = Regex("""^【[^】]*(?:合[輯辑集]|[專专][輯辑])[^】]*】\s*([^_]+)_([^_]+)$""")
+    private val numberedPart = Regex("""^([^_]+)_([0-9]{1,3})_(.+)$""")
     private val version = Regex("(?i)^(?:[（(【\\[][^）)】\\]]*(?:live|cover|remix|伴奏|翻唱|现场|纯音乐|演奏)[^）)】\\]]*[）)】\\]]|(?:live|remix|伴奏|现场版|翻唱版|纯音乐))$")
     private val songThenSinger = Regex("^(?:歌名|歌曲|曲名)\\s*[:：]\\s*(.+?)\\s*[|｜;；,，]?\\s*(?:歌手|演唱者?|艺人)\\s*[:：]\\s*(.+)$")
     private val singerThenSong = Regex("^(?:歌手|演唱者?|艺人)\\s*[:：]\\s*(.+?)\\s*[|｜;；,，]?\\s*(?:歌名|歌曲|曲名)\\s*[:：]\\s*(.+)$")
@@ -37,6 +39,15 @@ object MusicMetadata {
     /** Avoid using a container video title when a useful per-song part name is present. */
     fun partTitle(videoTitle: String, partTitle: String, page: Int): String {
         val part = partTitle.trim()
+        val numbered = numberedPart.matchEntire(part)
+        if (numbered != null && numbered.groupValues[2].toInt() == page) {
+            val album = albumHeading.matchEntire(videoTitle.trim())
+            if (album != null && album.groupValues[2].trim() == numbered.groupValues[1].trim()) {
+                val singer = performer(album.groupValues[1])
+                val song = numbered.groupValues[3].trim()
+                if (singer != null && song.isNotEmpty()) return "$singer - $song"
+            }
+        }
         return if (part.isEmpty() || Regex("(?i)(?:P|分P|第)?\\s*0*$page(?:集|部分)?").matches(part)) videoTitle else part
     }
 

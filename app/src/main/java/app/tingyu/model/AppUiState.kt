@@ -12,6 +12,10 @@ enum class MusicLoginMethod(val label: String) { QR("二维码登录"), PHONE("�
 @kotlinx.serialization.Serializable
 data class MusicLoginChallenge(val source: MusicSource, val id: String, val title: String? = null, val parseUrl: String? = null)
 
+enum class AppTab(val label: String) {
+    PLAYER("播放"), PARSE("解析"), LIBRARY("音乐库"), DOWNLOADS("下载"), MINE("我的"),
+}
+
 data class AppUiState(
     val input: String = "",
     val linkSource: MusicSource = MusicSource.BILIBILI,
@@ -34,7 +38,7 @@ data class AppUiState(
     val folderError: String? = null,
     val downloads: List<DownloadTask> = emptyList(),
     val playback: PlaybackState = PlaybackState(),
-    val tab: Int = 0,
+    val tab: AppTab = AppTab.PLAYER,
     val playerVisible: Boolean = false,
     val queueVisible: Boolean = false,
     val lyrics: LyricsDocument? = null,
@@ -78,10 +82,11 @@ interface AppActions {
     fun input(value: String)
     fun chooseLinkSource(source: MusicSource)
     fun openMusicPage(track: Track) {}
+    fun shareMusic(track: Track) {}
     fun clearParse()
     fun parse()
     fun loadMore()
-    fun tab(index: Int)
+    fun tab(destination: AppTab)
     fun play(track: Track, queue: List<Track>)
     fun download(tracks: List<Track>)
     fun togglePlayback()

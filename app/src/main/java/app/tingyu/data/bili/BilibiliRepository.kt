@@ -7,6 +7,7 @@ import app.tingyu.model.Track
 import java.io.IOException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.intOrNull
@@ -47,8 +48,23 @@ class BilibiliRepository internal constructor(
         catch (error: BiliException) { throw error.atStage("link") }
         val link = expand(initial, profile, requestId)
         val result = when (link) {
-            is BiliLink.Video -> video(link, cookie, profile, requestId)
+            is BiliLink.Video -> {
+                val data = videoDetails(link, cookie, profile, requestId)
+                // The phone share sheet appends p=1 even when sharing a whole album.
+                val page = if (initial is BiliLink.Short && link.page == 1) null else link.page
+                val parts = BiliResponseParser.video(data, page)
+                val collection = BiliResponseParser.seasonOf(data)
+                when {
+                    collection == null -> parts
+                    page == null -> BiliResponseParser.embeddedSeason(data, collection)
+                        ?: season(collection, data, cookie, profile, requestId)
+                    // If only the season ID is present, the space page can still reveal more entries.
+                    else -> parts.copy(collectionUrl = collection.url, hasMoreInCollection = parts.hasMoreInCollection ||
+                        data.obj("ugc_season").int("ep_count") != 1)
+                }
+            }
             is BiliLink.Favorite -> favorites(link.id, 1, cookie, profile, requestId)
+            is BiliLink.Season -> season(link, null, cookie, profile, requestId)
             is BiliLink.Short -> throw BiliException("短链接未能转换为视频或收藏夹链接")
         }
         checkSession(cookie)
@@ -66,7 +82,8 @@ class BilibiliRepository internal constructor(
         val cookie = cookies()
         // Refresh authoritative part metadata, even for favorites with first_cid.
         // This catches deleted/changed content and supplies an independent duration.
-        val current = video(BiliLink.Video(bvid = track.bvid, page = track.page), cookie, profile, requestId).tracks.first()
+        val data = videoDetails(BiliLink.Video(bvid = track.bvid), cookie, profile, requestId)
+        val current = BiliResponseParser.video(data, track.page).tracks.single()
         checkSession(cookie)
         val parameters = mapOf(
             "bvid" to current.bvid,
@@ -77,9 +94,9 @@ class BilibiliRepository internal constructor(
             "fourk" to "1",
             "platform" to "pc",
         )
-        val data = playInfo(parameters, cookie, profile, requestId)
+        val playData = playInfo(parameters, cookie, profile, requestId)
         checkSession(cookie)
-        val stream = BiliResponseParser.audio(data, current.durationMs, current.sourceUrl) { fields ->
+        val stream = BiliResponseParser.audio(playData, current.durationMs, current.sourceUrl) { fields ->
             log(profile, requestId, fields + mapOf("stage" to "audio_select", "parse_ua" to profile.parseUa.id))
         }.let {
             it.copy(headers = it.headers + ("User-Agent" to profile.audioUa.value))
@@ -101,13 +118,62 @@ class BilibiliRepository internal constructor(
             .takeIf { it.mid > 0 }
     }
 
-    private suspend fun video(link: BiliLink.Video, cookie: String, profile: NetworkProfile, requestId: String): ParseResult {
+    private suspend fun videoDetails(link: BiliLink.Video, cookie: String, profile: NetworkProfile, requestId: String): JsonObject {
         val parameters = when {
-            link.bvid != null && Regex("BV[0-9A-Za-z]{10}").matches(link.bvid) -> mapOf("bvid" to link.bvid)
+            link.bvid != null && BiliLinkParser.bv.matches(link.bvid) -> mapOf("bvid" to link.bvid)
             link.aid != null && link.aid > 0 -> mapOf("aid" to link.aid.toString())
             else -> throw BiliException("视频编号不正确")
         }
-        return BiliResponseParser.video(api("/x/web-interface/view", parameters, cookie, profile, requestId), link.page)
+        val data = api("/x/web-interface/view", parameters, cookie, profile, requestId)
+        if (link.bvid != null && data.string("bvid") != link.bvid) throw BiliException("B 站返回的视频与链接不一致")
+        return data
+    }
+
+    private suspend fun season(
+        link: BiliLink.Season, seed: JsonObject?, cookie: String, profile: NetworkProfile, requestId: String,
+    ): ParseResult {
+        val seen = mutableSetOf<String>()
+        val tracks = mutableListOf<Track>()
+        var title = seed?.obj("ugc_season")?.string("title").orEmpty()
+        var page = 1
+        var listed = 0L
+        do {
+            val data = api("/x/polymer/web-space/seasons_archives_list", mapOf(
+                "mid" to link.mid.toString(), "season_id" to link.id.toString(), "page_num" to page.toString(), "page_size" to "30",
+            ), cookie, profile, requestId)
+            val meta = data.obj("meta")
+            if (meta.long("mid").let { it > 0 && it != link.mid } ||
+                meta.long("season_id").let { it > 0 && it != link.id }) throw BiliException("B 站返回的合集与链接不一致")
+            if (title.isBlank()) title = meta.string("name")
+            val archives = data["archives"] as? JsonArray
+                ?: throw BiliException("未找到合集曲目")
+            val pagination = data.obj("page")
+            val total = (pagination["total"] as? JsonPrimitive)?.intOrNull?.takeIf { it >= 0 }
+                ?: throw BiliException("未找到合集分页信息")
+            val returnedPage = pagination.int("page_num")
+            if (returnedPage > 0 && returnedPage != page) throw BiliException("合集分页不完整，请重新解析")
+            val before = seen.size
+            for (item in archives) {
+                val archive = item.asObject() ?: throw BiliException("合集曲目格式不正确")
+                if (archive.int("state") < 0) continue
+                val bvid = archive.string("bvid").takeIf(BiliLinkParser.bv::matches)
+                    ?: throw BiliException("合集曲目缺少视频编号")
+                if (!seen.add(bvid)) continue
+                val details = if (seed != null && seed.string("bvid") == bvid) seed
+                    else videoDetails(BiliLink.Video(bvid = bvid), cookie, profile, requestId)
+                // A space link only needs its first archive if that view contains all episodes.
+                if (before == 0 && seen.size == 1) BiliResponseParser.embeddedSeason(details, link)?.let { return it }
+                tracks += BiliResponseParser.video(details, null).tracks
+            }
+            listed += archives.size
+            if (archives.isNotEmpty() && before == seen.size && archives.any { it.asObject()?.int("state") == 0 }) {
+                throw BiliException("合集返回了重复页，请重新解析")
+            }
+            if (listed >= total) break
+            if (archives.isEmpty()) throw BiliException("合集分页不完整，请重新解析")
+            page++
+        } while (true)
+        return ParseResult(title.ifBlank { "B 站合集" }, tracks, collectionUrl = link.url)
     }
 
     private suspend fun favorites(id: Long, page: Int, cookie: String, profile: NetworkProfile, requestId: String): ParseResult {

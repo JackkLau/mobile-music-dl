@@ -71,12 +71,14 @@ internal fun Cover(track: Track?, size: Dp, modifier: Modifier = Modifier) {
 }
 
 @Composable
-internal fun PageTitle(title: String, description: String, trailing: (@Composable () -> Unit)? = null) {
+internal fun PageTitle(title: String, description: String? = null, trailing: (@Composable () -> Unit)? = null) {
     Row(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.headlineLarge)
-            Spacer(Modifier.height(6.dp))
-            Text(description, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (!description.isNullOrBlank()) {
+                Spacer(Modifier.height(6.dp))
+                Text(description, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
         trailing?.invoke()
     }
@@ -86,7 +88,7 @@ internal fun PageTitle(title: String, description: String, trailing: (@Composabl
 internal fun StatePanel(
     icon: ImageVector,
     title: String,
-    description: String,
+    description: String? = null,
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
     error: Boolean = false,
@@ -97,9 +99,10 @@ internal fun StatePanel(
                 tint = if (error) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
             Spacer(Modifier.height(16.dp))
             Text(title, style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(8.dp))
-            Text(description, style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (!description.isNullOrBlank()) {
+                Spacer(Modifier.height(8.dp))
+                Text(description, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             if (actionLabel != null && onAction != null) {
                 Spacer(Modifier.height(8.dp))
                 TextButton(onClick = onAction) { Text(actionLabel) }
@@ -132,10 +135,11 @@ internal fun TrackRow(
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(track.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(track.artist.ifBlank { "歌手待补充" }, style = MaterialTheme.typography.labelMedium,
+                if (track.artist.isNotBlank()) Text(track.artist, style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(listOfNotNull(track.durationMs.takeIf { it > 0 }?.let(::formatTime), if (saved) "已下载" else null).joinToString(" · "),
-                    style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                val details = listOfNotNull(track.durationMs.takeIf { it > 0 }?.let(::formatTime),
+                    if (!saved) null else if (track.localOnly) "本地文件" else "已下载").joinToString(" · ")
+                if (details.isNotEmpty()) Text(details, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             trailing?.invoke()
         }

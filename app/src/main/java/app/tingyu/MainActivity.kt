@@ -29,6 +29,7 @@ import app.tingyu.data.music.MusicShareLink
 import app.tingyu.download.DownloadFolders
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import app.tingyu.model.Track
+import app.tingyu.sharing.musicShareIntent
 import app.tingyu.ui.TingYuApp
 import kotlinx.coroutines.launch
 
@@ -143,6 +144,23 @@ class MainActivity : ComponentActivity() {
                 }
                 try { localFiles.launch(picker) }
                 catch (_: Exception) { model.localPickerUnavailable() }
+            }
+            override fun shareMusic(track: Track) {
+                val local = model.state.value.library.find { it.track.id == track.id }
+                lifecycleScope.launch {
+                    val message = try {
+                        val chooser = musicShareIntent(this@MainActivity, track, local)
+                        if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) startActivity(chooser)
+                        null
+                    } catch (e: java.io.IOException) {
+                        e.localizedMessage ?: "无法分享这首歌"
+                    } catch (_: android.content.ActivityNotFoundException) {
+                        "未找到可以接收分享的应用"
+                    } catch (_: SecurityException) {
+                        "无法读取音频，请重新导入后分享"
+                    }
+                    if (message != null) android.widget.Toast.makeText(this@MainActivity, message, android.widget.Toast.LENGTH_SHORT).show()
+                }
             }
             override fun openMusicPage(track: Track) {
                 val url = track.sourceUrl.toHttpUrlOrNull() ?: return

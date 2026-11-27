@@ -208,23 +208,73 @@ class TingYuUiTest {
     @Test fun anonymousEntryDoesNotRequireLogin() {
         val actions = RecordingActions()
         compose.setContent { TingYuApp(AppUiState(), actions) }
-        compose.onNodeWithText("匿名模式").assertExists()
-        compose.onNodeWithText("解析链接").assertIsNotEnabled()
-        compose.onNodeWithText("从一个链接开始").assertExists()
+        compose.onNodeWithText("播放").assertIsSelected()
+        captureScreenshot("playback-home")
+        val play = compose.onNodeWithText("播放").fetchSemanticsNode().boundsInRoot
+        val parse = compose.onNodeWithText("解析").fetchSemanticsNode().boundsInRoot
+        assertTrue(play.left < parse.left)
+        compose.onNodeWithText("使用说明").performClick()
+        compose.onNodeWithText("去解析链接").performClick()
+        assertEquals(AppTab.PARSE, actions.destination)
+        compose.onNodeWithText("从链接添加歌曲").performClick()
+        assertEquals(AppTab.PARSE, actions.destination)
+        compose.onNodeWithText("导入本地音频").performClick()
+        assertEquals(AppTab.LIBRARY, actions.destination)
+        assertEquals(1, actions.imports)
         assertEquals(0, actions.loginCount)
+    }
+
+    @Test fun playbackTabSharesCurrentSongAndKeepsControlsAboveNavigation() {
+        val actions = RecordingActions()
+        compose.setContent { TingYuApp(AppUiState(playback = PlaybackState(track = track, queue = listOf(track))), actions) }
+        compose.onNodeWithContentDescription("分享音乐").assertIsDisplayed().performClick()
+        assertEquals(track, actions.shared)
+        compose.onNodeWithTag("player_toggle").assertIsDisplayed().performClick()
+        assertEquals(1, actions.toggleCount)
+        captureScreenshot("playback-tab")
+        val controls = compose.onNodeWithTag("player_controls").fetchSemanticsNode().boundsInRoot
+        val tab = compose.onNodeWithText("播放").fetchSemanticsNode().boundsInRoot
+        assertTrue(controls.bottom <= tab.top)
+    }
+
+    @Test fun localLibrarySharesSelectedSongWithoutStartingPlayback() {
+        val actions = RecordingActions()
+        compose.setContent { TingYuApp(AppUiState(tab = AppTab.LIBRARY,
+            library = listOf(LocalTrack(track, "content://test/audio/101"))), actions) }
+        compose.onNodeWithTag("library_list").performScrollToNode(hasContentDescription("分享 ${track.title}"))
+        compose.onNodeWithContentDescription("分享 ${track.title}").performClick()
+        assertEquals(track, actions.shared)
     }
 
     @Test fun nonemptyLinkCanBeClearedWithoutReadingClipboard() {
         val actions = RecordingActions()
-        compose.setContent { TingYuApp(AppUiState(input = "https://www.bilibili.com/video/BV1test000001"), actions) }
+        compose.setContent { TingYuApp(AppUiState(tab = AppTab.PARSE, input = "https://www.bilibili.com/video/BV1test000001"), actions) }
         compose.onNodeWithContentDescription("清空链接").performClick()
         assertEquals("", actions.inputValue)
         assertEquals(0, actions.parseCount)
     }
 
+    @Test fun collectionResultOffersTheCleanLinkAndOpensAllParts() {
+        val actions = RecordingActions()
+        val full = "https://www.bilibili.com/video/BV1sp4y1B7bH"
+        val result = ParseResult("葉惠美", listOf(track), collectionUrl = full, hasMoreInCollection = true)
+        compose.setContent { TingYuApp(AppUiState(tab = AppTab.PARSE, result = result), actions) }
+        compose.onNodeWithTag("parse_list").performScrollToNode(hasText("复制合集链接"))
+        compose.onNodeWithText("复制合集链接").performClick()
+        compose.onNodeWithText("已复制合集链接").assertExists()
+        compose.runOnIdle {
+            val context = InstrumentationRegistry.getInstrumentation().targetContext
+            val clipboard = context.getSystemService(android.content.ClipboardManager::class.java)
+            assertEquals(full, clipboard.primaryClip?.getItemAt(0)?.text?.toString())
+        }
+        compose.onNodeWithText("查看完整合集").performClick()
+        assertEquals(full, actions.inputValue)
+        assertEquals(1, actions.parseCount)
+    }
+
     @Test fun selectedDownloadsRequireExplicitConfirmation() {
         val actions = RecordingActions()
-        compose.setContent { TingYuApp(AppUiState(result = ParseResult("测试收藏夹", listOf(track))), actions) }
+        compose.setContent { TingYuApp(AppUiState(tab = AppTab.PARSE, result = ParseResult("测试收藏夹", listOf(track))), actions) }
         compose.onNodeWithTag("parse_list").performScrollToNode(hasContentDescription("选择 测试钢琴曲"))
         compose.onNodeWithContentDescription("选择 测试钢琴曲").performClick()
         compose.onNodeWithTag("parse_list").performScrollToNode(hasText("下载所选 1 个条目"))
@@ -236,7 +286,7 @@ class TingYuUiTest {
 
     @Test fun librarySearchClearRestoresLocalResults() {
         val actions = RecordingActions()
-        compose.setContent { TingYuApp(AppUiState(tab = 1, library = listOf(LocalTrack(track, "content://test/101"))), actions) }
+        compose.setContent { TingYuApp(AppUiState(tab = AppTab.LIBRARY, library = listOf(LocalTrack(track, "content://test/101"))), actions) }
         compose.onNodeWithText("搜索歌名或歌手").performTextInput("不存在的曲目")
         compose.onNodeWithText("没有找到匹配的音频").assertExists()
         compose.onNodeWithContentDescription("清空搜索").performClick()
@@ -246,7 +296,7 @@ class TingYuUiTest {
     @Test fun deletingLocalMusicWaitsForConfirmation() {
         val actions = RecordingActions()
         val local = LocalTrack(track, "content://test/101")
-        compose.setContent { TingYuApp(AppUiState(tab = 1, library = listOf(local)), actions) }
+        compose.setContent { TingYuApp(AppUiState(tab = AppTab.LIBRARY, library = listOf(local)), actions) }
         compose.onNodeWithTag("library_list").performScrollToNode(hasContentDescription("删除 测试钢琴曲"))
         compose.onNodeWithContentDescription("删除 测试钢琴曲").performClick()
         assertNull(actions.deleted)
@@ -259,7 +309,7 @@ class TingYuUiTest {
 
     @Test fun localLibraryOffersScanAndFileImportWithoutLogin() {
         val actions = RecordingActions()
-        compose.setContent { TingYuApp(AppUiState(tab = 1), actions) }
+        compose.setContent { TingYuApp(AppUiState(tab = AppTab.LIBRARY), actions) }
         compose.onNodeWithText("扫描已下载音乐").performClick()
         compose.onNodeWithText("导入本地音频").performClick()
         assertEquals(1, actions.scans)
@@ -270,7 +320,7 @@ class TingYuUiTest {
     @Test fun localDiscoveryProgressBlocksDuplicateActionsAndFailureKeepsFiles() {
         val actions = RecordingActions()
         val local = LocalTrack(track, "content://test/101")
-        val state = mutableStateOf(AppUiState(tab = 1, library = listOf(local), libraryWorking = true))
+        val state = mutableStateOf(AppUiState(tab = AppTab.LIBRARY, library = listOf(local), libraryWorking = true))
         compose.setContent { TingYuApp(state.value, actions) }
         compose.onNodeWithTag("library_progress").assertExists()
         compose.onNodeWithText("扫描已下载音乐").assertIsNotEnabled()
@@ -284,7 +334,7 @@ class TingYuUiTest {
     @Test fun localDeleteKeepsDialogUntilConfirmedResultAndAllowsRetry() {
         val actions = RecordingActions()
         val local = LocalTrack(track, "content://test/101")
-        val state = mutableStateOf(AppUiState(tab = 1, library = listOf(local)))
+        val state = mutableStateOf(AppUiState(tab = AppTab.LIBRARY, library = listOf(local)))
         compose.setContent { TingYuApp(state.value, actions) }
         compose.onNodeWithTag("library_list").performScrollToNode(hasContentDescription("删除 ${track.title}"))
         compose.onNodeWithContentDescription("删除 ${track.title}").performClick()
@@ -315,7 +365,7 @@ class TingYuUiTest {
         val actions = RecordingActions()
         val song = track.copy(bvid = "netease-3463213367", title = "污点证人 (Live)", artist = "薛之谦", source = MusicSource.NETEASE)
         compose.setContent {
-            TingYuApp(AppUiState(linkSource = MusicSource.NETEASE, result = ParseResult(song.title,listOf(song))), actions)
+            TingYuApp(AppUiState(tab = AppTab.PARSE, linkSource = MusicSource.NETEASE, result = ParseResult(song.title,listOf(song))), actions)
         }
         compose.onNodeWithText("QQ音乐").performClick()
         assertEquals(MusicSource.QQ,actions.chosenSource)
@@ -328,7 +378,7 @@ class TingYuUiTest {
     @Test fun failedDownloadKeepsErrorAndOffersTargetedRetry() {
         val actions = RecordingActions()
         val failure = DownloadTask(track, status = DownloadStatus.FAILED, error = "网络连接已断开")
-        compose.setContent { TingYuApp(AppUiState(tab = 2, downloads = listOf(failure)), actions) }
+        compose.setContent { TingYuApp(AppUiState(tab = AppTab.DOWNLOADS, downloads = listOf(failure)), actions) }
         compose.onNodeWithText("网络连接已断开").assertExists()
         compose.onNodeWithContentDescription("重试下载 测试钢琴曲").performClick()
         assertEquals(track.id, actions.retried)
@@ -352,7 +402,7 @@ class TingYuUiTest {
 
     @Test fun bufferingCanBePausedFromMiniPlayer() {
         val actions = RecordingActions()
-        compose.setContent { TingYuApp(AppUiState(playback = PlaybackState(track = track, queue = listOf(track), isLoading = true)), actions) }
+        compose.setContent { TingYuApp(AppUiState(tab = AppTab.LIBRARY, playback = PlaybackState(track = track, queue = listOf(track), isLoading = true)), actions) }
         compose.onNodeWithContentDescription("暂停缓冲").assertIsEnabled().performClick()
         assertEquals(1, actions.toggleCount)
     }
@@ -365,7 +415,7 @@ class TingYuUiTest {
 
     @Test fun accountProvidesUpdatesWithoutLoginOrDeveloperMode() {
         val actions = RecordingActions()
-        compose.setContent { TingYuApp(AppUiState(tab = 3), actions) }
+        compose.setContent { TingYuApp(AppUiState(tab = AppTab.MINE), actions) }
         compose.onNodeWithText("登录哔哩哔哩").performClick()
         assertEquals(1, actions.loginCount)
         compose.onNodeWithTag("account_list").performScrollToNode(hasText("检查更新"))
@@ -374,7 +424,7 @@ class TingYuUiTest {
 
     @Test fun developerToolsAreHiddenUntilDebugModeEnabled() {
         val actions = RecordingActions()
-        compose.setContent { TingYuApp(AppUiState(tab = 3, debugAvailable = true), actions) }
+        compose.setContent { TingYuApp(AppUiState(tab = AppTab.MINE, debugAvailable = true), actions) }
         compose.onNodeWithText("开发者工具").assertDoesNotExist()
         compose.onNodeWithText("解析 UA").assertDoesNotExist()
         compose.onNodeWithTag("account_list").performScrollToNode(hasTestTag("app_version"))
@@ -384,7 +434,7 @@ class TingYuUiTest {
 
     @Test fun enabledModeExposesOneDeveloperDestination() {
         val actions = RecordingActions()
-        compose.setContent { TingYuApp(AppUiState(tab = 3, debugAvailable = true,
+        compose.setContent { TingYuApp(AppUiState(tab = AppTab.MINE, debugAvailable = true,
             debugSettings = DebugSettings(enabled = true)), actions) }
         compose.onNodeWithTag("account_list").performScrollToNode(hasText("开发者工具"))
         compose.onNodeWithText("开发者工具").performClick()
@@ -394,7 +444,7 @@ class TingYuUiTest {
 
     @Test fun debugBuildProvidesDirectNetworkDebugEntry() {
         val actions = RecordingActions()
-        compose.setContent { TingYuApp(AppUiState(tab = 3, debugAvailable = true), actions) }
+        compose.setContent { TingYuApp(AppUiState(tab = AppTab.MINE, debugAvailable = true), actions) }
         compose.onNodeWithTag("account_list").performScrollToNode(hasText("网络调试"))
         compose.onNodeWithText("网络调试").performClick()
         assertTrue(actions.developerOpened)
@@ -402,7 +452,7 @@ class TingYuUiTest {
 
     @Test fun probeNeedsAParsedTrackAndOffersNavigation() {
         val actions = RecordingActions()
-        compose.setContent { TingYuApp(AppUiState(tab = 3, debugAvailable = true,
+        compose.setContent { TingYuApp(AppUiState(tab = AppTab.MINE, debugAvailable = true,
             debugSettings = DebugSettings(enabled = true), developerVisible = true), actions) }
         compose.onNodeWithTag("developer_list").performScrollToNode(hasText("开始同地址 UA 对照"))
         compose.onNodeWithText("开始同地址 UA 对照").assertIsNotEnabled()
@@ -411,7 +461,7 @@ class TingYuUiTest {
 
     @Test fun runningComparisonCanBeCancelled() {
         val actions = RecordingActions()
-        compose.setContent { TingYuApp(AppUiState(tab = 3, debugAvailable = true,
+        compose.setContent { TingYuApp(AppUiState(tab = AppTab.MINE, debugAvailable = true,
             debugSettings = DebugSettings(enabled = true), developerVisible = true,
             result = ParseResult("测试", listOf(track)), probeRunning = true), actions) }
         compose.onNodeWithTag("developer_list").performScrollToNode(hasText("取消对照"))
@@ -421,7 +471,7 @@ class TingYuUiTest {
 
     @Test fun releaseStateCannotDisplayDeveloperScreen() {
         val actions = RecordingActions()
-        compose.setContent { TingYuApp(AppUiState(tab = 3, debugAvailable = false,
+        compose.setContent { TingYuApp(AppUiState(tab = AppTab.MINE, debugAvailable = false,
             debugSettings = DebugSettings(enabled = true), developerVisible = true), actions) }
         compose.onNodeWithTag("developer_list").assertDoesNotExist()
         compose.onNodeWithTag("app_version").assertDoesNotExist()
@@ -495,7 +545,10 @@ class TingYuUiTest {
         override fun input(value: String) { inputValue = value }
         override fun parse() { parseCount++ }
         override fun loadMore() {}
-        override fun tab(index: Int) {}
+        var destination: AppTab? = null
+        var shared: Track? = null
+        override fun shareMusic(track: Track) { shared = track }
+        override fun tab(destination: AppTab) { this.destination = destination }
         override fun play(track: Track, queue: List<Track>) {}
         override fun download(tracks: List<Track>) { downloaded = tracks }
         override fun togglePlayback() { toggleCount++ }

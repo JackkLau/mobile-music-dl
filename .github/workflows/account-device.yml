@@ -13,6 +13,11 @@ on:
       - 'app/src/main/java/app/tingyu/data/music/**'
       - 'app/src/main/java/app/tingyu/download/**'
       - 'app/src/main/java/app/tingyu/ui/ParseScreen.kt'
+      - 'app/src/main/java/app/tingyu/ui/PlaybackHome.kt'
+      - 'app/src/main/java/app/tingyu/ui/PlayerScreen.kt'
+      - 'app/src/main/java/app/tingyu/ui/TingYuApp.kt'
+      - 'app/src/main/java/app/tingyu/sharing/**'
+      - 'app/src/androidTest/java/app/tingyu/sharing/**'
       - 'app/src/androidTest/java/app/tingyu/download/**'
       - 'app/src/androidTest/java/app/tingyu/ui/BrandResourcesTest.kt'
       - 'app/src/androidTest/java/app/tingyu/ui/LoginScreenTest.kt'
@@ -43,7 +48,7 @@ jobs:
       - name: Run brand, login and update checks on a disposable Android device
         env:
           TINGYU_TEST_DEVICE: emulator-5554
-          TINGYU_TEST_CLASSES: app.tingyu.data.local.LocalMusicIntegrationTest#completedMediaScanIsRepeatableAndPreservesExistingMetadata,app.tingyu.download.DownloadFolderDeviceTest,app.tingyu.download.MusicDownloadIntegrationTest,app.tingyu.ui.TingYuUiTest#musicLoginDialogOffersBothMethodsForTheExactRequest,app.tingyu.ui.TingYuUiTest#sharedSongHasPlatformOptionsAndDownloadAction,app.tingyu.ui.TingYuUiTest#failedDownloadKeepsErrorAndOffersTargetedRetry,app.tingyu.ui.BrandResourcesTest,app.tingyu.ui.LoginScreenTest,app.tingyu.ui.TingYuUiTest#accountProvidesUpdatesWithoutLoginOrDeveloperMode
+          TINGYU_TEST_CLASSES: app.tingyu.data.local.LocalMusicIntegrationTest#completedMediaScanIsRepeatableAndPreservesExistingMetadata,app.tingyu.download.DownloadFolderDeviceTest,app.tingyu.download.MusicDownloadIntegrationTest,app.tingyu.sharing.MusicSharingDeviceTest,app.tingyu.ui.PlaybackNavigationTest,app.tingyu.ui.TingYuUiTest#anonymousEntryDoesNotRequireLogin,app.tingyu.ui.TingYuUiTest#playbackTabSharesCurrentSongAndKeepsControlsAboveNavigation,app.tingyu.ui.TingYuUiTest#localLibrarySharesSelectedSongWithoutStartingPlayback,app.tingyu.ui.TingYuUiTest#collectionResultOffersTheCleanLinkAndOpensAllParts,app.tingyu.ui.TingYuUiTest#musicLoginDialogOffersBothMethodsForTheExactRequest,app.tingyu.ui.TingYuUiTest#sharedSongHasPlatformOptionsAndDownloadAction,app.tingyu.ui.TingYuUiTest#failedDownloadKeepsErrorAndOffersTargetedRetry,app.tingyu.ui.BrandResourcesTest,app.tingyu.ui.LoginScreenTest,app.tingyu.ui.TingYuUiTest#accountProvidesUpdatesWithoutLoginOrDeveloperMode
         run: |
           set -euo pipefail
           sudo apt-get install -y libpulse0 libxkbcommon-x11-0 libxcb-cursor0
@@ -93,4 +98,14 @@ jobs:
             fi
           }
           TINGYU_TEST_CLASSES=app.tingyu.update.UpdatePackageIntegrationTest run_device_checks
-          run_device_checks
+          TINGYU_TEST_SCREENSHOTS=true run_device_checks
+          mkdir -p "$RUNNER_TEMP/playback-screens"
+          for screen in playback-home playback-tab; do
+            adb -s "$TINGYU_TEST_DEVICE" exec-out run-as app.tingyu --user "$TINGYU_TEST_USER" cat "cache/song-ui/$screen.png" > "$RUNNER_TEMP/playback-screens/$screen.png"
+            test -s "$RUNNER_TEMP/playback-screens/$screen.png"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: playback-screens
+          path: ${{ runner.temp }}/playback-screens
+          retention-days: 7

@@ -20,6 +20,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import app.tingyu.data.bili.UserAgentProfile
 import app.tingyu.debug.AudioUaMode
+import app.tingyu.model.AppTab
 import app.tingyu.model.AppActions
 import app.tingyu.model.AppUiState
 
@@ -78,7 +79,7 @@ internal fun DeveloperToolsScreen(state: AppUiState, actions: AppActions) {
                     style = MaterialTheme.typography.bodyMedium)
                 if (selected == null) {
                     Text("先到解析页打开视频，再选择要测试的音轨。", style = MaterialTheme.typography.bodyMedium)
-                    TextButton(onClick = { actions.tab(0) }) { Text("去解析链接") }
+                    TextButton(onClick = { actions.tab(AppTab.PARSE) }) { Text("去解析链接") }
                 } else {
                     Text("测试音轨：${selected.title}", style = MaterialTheme.typography.titleMedium)
                     if (tracks.size > 1) OutlinedButton(onClick = { chooseTrack = true }, enabled = !state.probeRunning) {
