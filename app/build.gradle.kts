@@ -18,7 +18,8 @@ fun signingValue(name: String): String = releaseSigning.getProperty(name)
     ?: error("Missing $name in signing.properties; see signing.properties.example")
 
 val giteeRepository = providers.gradleProperty("giteeRepository")
-    .orElse(providers.environmentVariable("GITEE_REPOSITORY")).orElse("").get()
+    .orElse(providers.environmentVariable("GITEE_REPOSITORY").filter { it.isNotEmpty() })
+    .orElse(providers.gradleProperty("officialGiteeRepository")).get()
 val repositoryPart = "[A-Za-z0-9][A-Za-z0-9._-]*"
 require(giteeRepository.isEmpty() || giteeRepository.matches(Regex("$repositoryPart/$repositoryPart"))) {
     "GITEE_REPOSITORY must be owner/repo, for example music-team/mobile-music-dl"

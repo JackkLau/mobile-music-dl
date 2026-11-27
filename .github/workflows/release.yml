@@ -135,7 +135,6 @@ jobs:
 
   mirror:
     needs: publish
-    if: vars.GITEE_REPOSITORY != ''
     uses: ./.github/workflows/mirror-gitee.yml
     with:
       tag: ${{ github.ref_name }}

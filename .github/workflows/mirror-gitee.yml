@@ -48,7 +48,7 @@ jobs:
           gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG" > mirror-input/github.json
           gh release download "$RELEASE_TAG" --dir mirror-input \
             --pattern release.json --pattern "weile-${RELEASE_TAG#v}-release.apk"
-      - name: Mirror and anonymously verify the APK
+      - name: Prepare the public mirror and anonymously verify the APK
         env:
           GITEE_REPOSITORY: ${{ vars.GITEE_REPOSITORY }}
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}

@@ -15,9 +15,20 @@ from urllib.request import build_opener, HTTPRedirectHandler, Request
 from release_common import CERTIFICATE_SHA256, PACKAGE
 
 GITHUB = "https://github.com/JackkLau/mobile-music-dl/releases/download"
+GITEE_API = "https://gitee.com/api/v5"
 COMPONENT = r"[A-Za-z0-9][A-Za-z0-9._-]*"
 NUMBER = r"(?:0|[1-9][0-9]{0,8})"
 MAX_JSON = 1024 * 1024
+
+
+def configured_repository(project, env):
+    if override := env.get("GITEE_REPOSITORY"):
+        return override
+    config = (project / "gradle.properties").read_text(encoding="utf-8")
+    values = re.findall(r"^officialGiteeRepository=(\S+)$", config, re.MULTILINE)
+    if len(values) != 1:
+        raise ValueError("Expected one officialGiteeRepository in gradle.properties")
+    return values[0]
 
 
 def version(tag):
@@ -88,14 +99,15 @@ class Gitee:
         if not token or any(c.isspace() for c in token):
             raise ValueError("Configure the GITEE_TOKEN secret for the mirror")
         self.repository = repository
-        self.root = "https://gitee.com/api/v5/repos/" + repository
+        self.project_path = "/repos/" + repository
         self.token = token
         self.opener = build_opener(NoRedirect())
 
-    def request(self, path="", payload=None, optional=False):
-        request = Request(self.root + path, headers={"Accept": "application/json"})
-        if payload is not None:
+    def request(self, path, payload=None, optional=False, authenticated=False):
+        request = Request(GITEE_API + path, headers={"Accept": "application/json"})
+        if authenticated or payload is not None:
             request.add_header("Authorization", "Bearer " + self.token)
+        if payload is not None:
             request.add_header("Content-Type", "application/json")
             request.data = json.dumps(payload).encode()
         try:
@@ -109,6 +121,32 @@ class Gitee:
             raise ValueError("Unexpectedly large API response")
         return json.loads(raw)
 
+    def public_branch(self):
+        project = self.request(self.project_path, optional=True)
+        if project is None:
+            if self.repository != "iamjacky/mobile-music-dl":
+                raise ValueError("Configure an initialized, publicly readable Gitee repository")
+            owner, name = self.repository.split("/")
+            if self.request("/user", authenticated=True).get("login") != owner:
+                raise ValueError("First-time repository creation requires a GITEE_TOKEN owned by iamjacky")
+            if self.request(self.project_path, authenticated=True, optional=True) is not None:
+                raise ValueError("Gitee repository exists but is not publicly readable; check its public review status")
+            try:
+                self.request("/user/repos", payload={"name": name, "path": name, "public": 1, "auto_init": True})
+            except HTTPError as error:
+                # Concurrent creation can yield a conflict. Gitee may also require website review.
+                if error.code not in (400, 403, 409, 422):
+                    raise
+                project = self.request(self.project_path, optional=True)
+                if project is None:
+                    raise ValueError(f"Gitee declined public repository creation (HTTP {error.code}); "
+                                     "complete repository creation/public review on Gitee, then rerun") from None
+            else:
+                project = self.request(self.project_path, optional=True)
+        if not project or project.get("private") is not False or not project.get("default_branch"):
+            raise ValueError("Gitee needs a publicly readable initialized repository; check its review status and default branch")
+        return project["default_branch"]
+
     def upload(self, release_id, apk):
         if type(release_id) is not int or release_id <= 0:
             raise ValueError("Invalid Gitee release id")
@@ -116,7 +154,7 @@ class Gitee:
         subprocess.run(["curl", "--silent", "--show-error", "--fail", "--proto", "=https",
                         "--max-time", "450", "--header", "@-", "--output", os.devnull,
                         "--form", f"file=@{apk};type=application/vnd.android.package-archive",
-                        f"{self.root}/releases/{release_id}/attach_files"],
+                        f"{GITEE_API}{self.project_path}/releases/{release_id}/attach_files"],
                        input=f"Authorization: Bearer {self.token}\n".encode(), check=True)
 
     def public_url(self, tag, filename):
@@ -154,17 +192,15 @@ class Gitee:
 
 
 def publish(gitee, tag, apk, body, artifact):
-    project = gitee.request()  # Anonymous visibility is also required by the Android updater.
-    branch = project["default_branch"]
-    if project.get("private") is not False or not branch:
-        raise ValueError("Gitee needs an initialized, publicly readable repository")
-    latest = gitee.request("/releases/latest", optional=True)
+    branch = gitee.public_branch()
+    releases = gitee.project_path + "/releases"
+    latest = gitee.request(releases + "/latest", optional=True)
     if latest and version(latest["tag_name"]) > version(tag):
         raise ValueError("A newer release is already on Gitee; refusing to change latest")
-    release_path = "/releases/tags/" + tag
+    release_path = releases + "/tags/" + tag
     release = gitee.request(release_path, optional=True)
     if release is None:
-        release = gitee.request("/releases", payload={
+        release = gitee.request(releases, payload={
             "tag_name": tag, "target_commitish": branch, "name": "微乐 " + tag[1:],
             "prerelease": False, "body": body,
         })
@@ -174,7 +210,7 @@ def publish(gitee, tag, apk, body, artifact):
     if not any(item.get("name") == apk.name for item in release["assets"]):
         gitee.upload(release["id"], apk)
     # Read the identical endpoints used by Android, without the publisher credential.
-    current = gitee.request("/releases/latest")
+    current = gitee.request(releases + "/latest")
     if (current["tag_name"] != tag or current["prerelease"] is not False
             or json.loads(current["body"]) != json.loads(body)):
         raise ValueError("Public Gitee latest does not match the intended release")
@@ -191,7 +227,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     try:
         apk, body, artifact = verify_source(args.directory, args.tag)
-        client = Gitee(os.environ.get("GITEE_REPOSITORY", ""), os.environ.get("GITEE_TOKEN", ""))
+        repository = configured_repository(Path(__file__).resolve().parents[1], os.environ)
+        client = Gitee(repository, os.environ.get("GITEE_TOKEN", ""))
         publish(client, args.tag, apk, body, artifact)
         print(f"Verified public Gitee mirror: {client.public_url(args.tag, apk.name)}")
     except HTTPError as error:

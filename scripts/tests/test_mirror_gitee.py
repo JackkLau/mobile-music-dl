@@ -6,7 +6,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, call
 from urllib.error import HTTPError
 
 SCRIPTS = Path(__file__).resolve().parents[1]
@@ -70,6 +70,51 @@ class MirrorTest(unittest.TestCase):
                 mirror.Gitee(repo, "testing")
         with self.assertRaisesRegex(ValueError, "secret"):
             mirror.Gitee("owner/repo", "")
+
+    def test_release_build_and_publisher_share_the_same_default(self):
+        (self.root / "gradle.properties").write_text("officialGiteeRepository=team/mirror\n")
+        self.assertEqual("team/mirror", mirror.configured_repository(self.root, {"GITEE_REPOSITORY": ""}))
+        self.assertEqual("team/alternative", mirror.configured_repository(self.root, {"GITEE_REPOSITORY": "team/alternative"}))
+
+    def test_bootstrap_verifies_owner_and_absence_then_requests_public_initialized_repo(self):
+        client = mirror.Gitee("iamjacky/mobile-music-dl", "testing")
+        client.request = Mock(side_effect=[None, {"login": "iamjacky"}, None, self.repo, self.repo])
+        self.assertEqual("main", client.public_branch())
+        path = "/repos/iamjacky/mobile-music-dl"
+        self.assertEqual([
+            call(path, optional=True), call("/user", authenticated=True),
+            call(path, authenticated=True, optional=True),
+            call("/user/repos", payload={"name": "mobile-music-dl", "path": "mobile-music-dl", "public": 1, "auto_init": True}),
+            call(path, optional=True),
+        ], client.request.call_args_list)
+
+    def test_wrong_account_private_repo_and_other_namespace_are_never_modified(self):
+        cases = [
+            ("iamjacky/mobile-music-dl", [None, {"login": "other-account"}]),
+            ("iamjacky/mobile-music-dl", [None, {"login": "iamjacky"}, {"private": True}]),
+            ("iamjacky/other", [None]), ("other/mobile-music-dl", [None]),
+            ("iamjacky/mobile-music-dl", [{"private": False, "default_branch": None}]),
+        ]
+        for repo, responses in cases:
+            with self.subTest(repo=repo, responses=responses):
+                client = mirror.Gitee(repo, "testing")
+                client.request = Mock(side_effect=responses)
+                with self.assertRaises(ValueError):
+                    client.public_branch()
+                self.assertTrue(all("payload" not in c.kwargs for c in client.request.call_args_list))
+
+    def test_public_review_or_create_failure_blocks_release_until_readable(self):
+        client = mirror.Gitee("iamjacky/mobile-music-dl", "testing")
+        unavailable = HTTPError("", 422, "", {}, None)
+        client.request = Mock(side_effect=[None, {"login": "iamjacky"}, None, unavailable, None])
+        with self.assertRaisesRegex(ValueError, "public review"):
+            client.public_branch()
+        client.request = Mock(side_effect=[None, {"login": "iamjacky"}, None, {"private": True}, None])
+        with self.assertRaisesRegex(ValueError, "review status"):
+            client.public_branch()
+        client.request = Mock(side_effect=[self.repo])
+        self.assertEqual("main", client.public_branch())
+        client.request.assert_called_once_with("/repos/iamjacky/mobile-music-dl", optional=True)
 
     def prepare_api(self, *responses):
         self.client.request = Mock(side_effect=responses)

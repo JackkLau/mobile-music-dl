@@ -6,10 +6,11 @@
 
 ## Gitee 下载镜像
 
-1. 准备一个自己管理、允许匿名访问且已有默认分支的 Gitee 仓库。
-2. 在 GitHub 的 Actions 仓库变量中设置 `GITEE_REPOSITORY`，值为 Gitee 的 `所有者/仓库名`。本地构建可设置同名环境变量，或向 Gradle 传入 `-PgiteeRepository=所有者/仓库名`。仓库地址在构建时写入应用，留空会使用 GitHub。[配置仓库变量](https://github.com/JackkLau/mobile-music-dl/settings/variables/actions)
-3. 在 Actions 仓库 Secrets 中添加 `GITEE_TOKEN`，使用有目标仓库发行版权限的 Gitee 账号。此令牌仅供发布任务使用，手机匿名下载。签名仍由原有发布流程完成。[配置发布凭据](https://github.com/JackkLau/mobile-music-dl/settings/secrets/actions)
-4. 发布新的正式标签。GitHub 发布完成后，镜像任务将同一份品牌 APK 上传到对应版本的 Gitee 发行版，发行说明使用 GitHub 的 `release.json`。镜像任务会匿名回读安装包并核对大小和 SHA-256。补发时在 `master` 上运行镜像工作流并填入已公开的 GitHub 标签，例如 `v0.1.14`。已有更新镜像版本时，任务会拒绝回退。[运行镜像工作流](https://github.com/JackkLau/mobile-music-dl/actions/workflows/mirror-gitee.yml)
+1. 微乐的官方镜像是 `iamjacky/mobile-music-dl`。首次同步时，若该仓库尚未创建，发布任务会确认令牌属于 `iamjacky` 再申请创建并初始化公开仓库。若 Gitee 要求账号本人在网页上申请公开或完成审核，请在仓库可被匿名访问后重新运行镜像任务。已有私有仓库的可见性由仓库所有者管理。
+2. 在 Actions 仓库 Secrets 中添加 `GITEE_TOKEN`。首次建仓使用有仓库创建权限的 `iamjacky` 账号，后续同步使用有目标仓库发行版权限的账号。令牌仅供发布任务使用，手机匿名下载。签名仍由原有发布流程完成。[配置发布凭据](https://github.com/JackkLau/mobile-music-dl/settings/secrets/actions)
+3. 发布新的正式标签。GitHub 发布完成后，镜像任务将同一份品牌 APK 上传到对应版本的 Gitee 发行版，发行说明使用 GitHub 的 `release.json`。镜像任务会匿名回读安装包并核对大小和 SHA-256。补发时在 `master` 上运行镜像工作流并填入已公开的 GitHub 标签，例如 `v0.1.14`。已有更新镜像版本时，任务会拒绝回退。[运行镜像工作流](https://github.com/JackkLau/mobile-music-dl/actions/workflows/mirror-gitee.yml)
+
+构建其他分发版本时，可通过 `GITEE_REPOSITORY=所有者/仓库名` 指定一个已初始化的公开镜像。GitHub Actions 使用同名仓库变量。本地也可用 `-PgiteeRepository=所有者/仓库名` 覆盖，或用 `-PgiteeRepository=` 构建仅使用 GitHub 的版本。[配置仓库变量](https://github.com/JackkLau/mobile-music-dl/settings/variables/actions)
 
 0.1.14 及以前的更新器只访问 GitHub。首次迁移时，可以从已同步的 Gitee 发行版手动下载带镜像配置的新版 APK 并覆盖安装。以后在「我的 → 应用更新」操作即可。
 
