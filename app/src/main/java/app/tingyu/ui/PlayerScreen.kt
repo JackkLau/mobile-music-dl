@@ -68,7 +68,8 @@ internal fun PlayerContent(state: AppUiState, actions: AppActions, embedded: Boo
         val compact = maxHeight < 500.dp
         val wideControls = compact && maxWidth >= 600.dp
         Column(Modifier.fillMaxSize()) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically) {
                 if (!embedded) ActionIcon(Icons.Rounded.KeyboardArrowDown, "收起播放器") { actions.showPlayer(false) }
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(if (lyricsVisible) track?.title.orEmpty() else "正在播放", style = MaterialTheme.typography.titleMedium,

@@ -1,6 +1,12 @@
 package app.tingyu.ui
 
+import android.graphics.Color.TRANSPARENT
+import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -24,6 +30,13 @@ fun TingYuApp(state: AppUiState, actions: AppActions) {
         val snackbar = remember { SnackbarHostState() }
         val tabState = rememberSaveableStateHolder()
         val developerOpen = state.debugAvailable && state.debugSettings.enabled && state.developerVisible
+        val playbackTab = state.tab == AppTab.PLAYER && !developerOpen
+        val activity = LocalActivity.current as? ComponentActivity
+        LaunchedEffect(activity, playbackTab) {
+            val bars = if (playbackTab) SystemBarStyle.dark(TRANSPARENT)
+                else SystemBarStyle.light(TRANSPARENT, TRANSPARENT)
+            activity?.enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
+        }
         BackHandler(enabled = developerOpen) { actions.showDeveloperTools(false) }
         LaunchedEffect(state.message) {
             state.message?.let {
@@ -32,28 +45,35 @@ fun TingYuApp(state: AppUiState, actions: AppActions) {
             }
         }
         Scaffold(
-            containerColor = MaterialTheme.colorScheme.background,
+            containerColor = if (playbackTab) TingYuColors.PlayerSurface else MaterialTheme.colorScheme.background,
+            contentColor = MaterialTheme.colorScheme.onBackground,
             snackbarHost = { SnackbarHost(snackbar) },
             bottomBar = {
                 Column {
                     if (state.tab != AppTab.PLAYER && state.playback.track != null) MiniPlayer(state, actions)
-                    NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
+                    NavigationBar(containerColor = if (playbackTab) TingYuColors.PlayerSurface else MaterialTheme.colorScheme.surface,
+                        tonalElevation = 0.dp) {
+                        val colors = if (playbackTab) NavigationBarItemDefaults.colors(
+                            indicatorColor = TingYuColors.PlayerAccent, selectedIconColor = TingYuColors.Ink,
+                            selectedTextColor = TingYuColors.PlayerAccent, unselectedIconColor = TingYuColors.PlayerMuted,
+                            unselectedTextColor = TingYuColors.PlayerMuted,
+                        ) else NavigationBarItemDefaults.colors()
                         for (tab in AppTab.entries) {
                             val icon = when (tab) {
                                 AppTab.PLAYER -> Icons.Rounded.PlayCircle
-                                AppTab.PARSE -> Icons.Rounded.Link
+                                AppTab.PARSE -> parseLinkIcon()
                                 AppTab.LIBRARY -> Icons.Rounded.LibraryMusic
                                 AppTab.DOWNLOADS -> Icons.Rounded.Download
                                 AppTab.MINE -> Icons.Rounded.PersonOutline
                             }
-                            NavigationBarItem(selected = state.tab == tab, onClick = { actions.tab(tab) },
+                            NavigationBarItem(selected = state.tab == tab, onClick = { actions.tab(tab) }, colors = colors,
                                 icon = { Icon(icon, contentDescription = null) }, label = { Text(tab.label) })
                         }
                     }
                 }
             },
         ) { padding ->
-            Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
+            Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).background(MaterialTheme.colorScheme.background)) {
                 if (developerOpen) {
                     DeveloperToolsScreen(state, actions)
                 } else tabState.SaveableStateProvider(state.tab.name) {

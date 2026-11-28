@@ -3,6 +3,8 @@ package app.tingyu.ui
 import androidx.compose.ui.test.*
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.tingyu.model.*
 import app.tingyu.debug.AudioUaMode
@@ -209,6 +211,7 @@ class TingYuUiTest {
         val actions = RecordingActions()
         compose.setContent { TingYuApp(AppUiState(), actions) }
         compose.onNodeWithText("播放").assertIsSelected()
+        assertPlaybackChrome("微乐")
         captureScreenshot("playback-home")
         val play = compose.onNodeWithText("播放").fetchSemanticsNode().boundsInRoot
         val parse = compose.onNodeWithText("解析").fetchSemanticsNode().boundsInRoot
@@ -231,6 +234,7 @@ class TingYuUiTest {
         assertEquals(track, actions.shared)
         compose.onNodeWithTag("player_toggle").assertIsDisplayed().performClick()
         assertEquals(1, actions.toggleCount)
+        assertPlaybackChrome("正在播放")
         captureScreenshot("playback-tab")
         val controls = compose.onNodeWithTag("player_controls").fetchSemanticsNode().boundsInRoot
         val tab = compose.onNodeWithText("播放").fetchSemanticsNode().boundsInRoot
@@ -477,6 +481,15 @@ class TingYuUiTest {
         compose.onNodeWithTag("app_version").assertDoesNotExist()
         compose.onNodeWithText("开发者工具").assertDoesNotExist()
         compose.onNodeWithText("网络调试").assertDoesNotExist()
+    }
+
+    private fun assertPlaybackChrome(heading: String) {
+        val header = compose.onNodeWithText(heading).fetchSemanticsNode().boundsInRoot
+        val menu = compose.onNodeWithText("解析").fetchSemanticsNode().boundsInRoot
+        val pixels = compose.onRoot().captureToImage().toPixelMap()
+        // Sample the unoccupied left edge at each control's height, clear of labels and icons.
+        assertEquals(TingYuColors.PlayerSurface.toArgb(), pixels[1, header.center.y.toInt()].toArgb())
+        assertEquals(TingYuColors.PlayerSurface.toArgb(), pixels[1, menu.center.y.toInt()].toArgb())
     }
 
     private fun captureScreenshot(name: String) {

@@ -67,6 +67,8 @@ components:
 
 浅色主界面使用 `background` 与 `surface`。播放器使用固定暗色配色：`ink` 背景、`player-surface` 层、白色正文、`player-muted` 辅助文字、`player-accent` 主操作。两种配色是产品场景变体，并非系统深色模式承诺。输入框、滑块、按钮由 Material3 渲染焦点、按下、不可用等状态。
 
+播放页的标题栏、状态栏和底部导航共用暖棕色 `player-surface`。当前菜单以浅珊瑚色 `player-accent` 标记，其他菜单使用 `player-muted`。切换到解析、音乐库等浅色页面时，系统栏图标随背景切回深色。解析入口采用带星芒的斜向链环图标。
+
 ## Typography
 
 使用 Android 系统 SansSerif 及其中文 fallback，避免在线字体造成闪动或字体下载。标题 32/40sp、播放标题 26/34sp、区块标题 22/30sp、曲目标题 16/24sp、正文 16/25sp；时间和文件大小使用紧凑数字样式。封面标题和作者优先阅读完整内容，列表可截断，打开播放页可看完整标题。

@@ -67,7 +67,7 @@ internal fun ParseScreen(state: AppUiState, actions: AppActions) {
                         actions.parse()
                     }, enabled = !state.parsing, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                         if (state.parsing) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                        else Icon(if (needsPaste) Icons.Rounded.ContentPaste else Icons.Rounded.Search,
+                        else Icon(parseLinkIcon(),
                             contentDescription = null, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(if (state.parsing) "解析中" else if (needsPaste) "粘贴并解析" else "解析链接")

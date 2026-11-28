@@ -28,7 +28,7 @@ internal fun UsageGuide(onDismiss: () -> Unit, onParse: () -> Unit) {
         title = { Text("使用说明") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-                GuideStep(Icons.Rounded.ContentPaste, "从分享链接添加",
+                GuideStep(parseLinkIcon(), "从分享链接添加",
                     "在音乐平台点「分享」并复制链接，再回到微乐点「粘贴并解析」。")
                 GuideStep(Icons.Rounded.Headphones, "听歌",
                     "哔哩哔哩曲目可点歌名试听。网易云和 QQ 音乐单曲下载后，到「音乐库」播放。")

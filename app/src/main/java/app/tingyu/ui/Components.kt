@@ -26,6 +26,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.vectorResource
 import app.tingyu.R
 import android.content.Intent
 import androidx.compose.ui.platform.LocalContext
@@ -34,6 +35,9 @@ import app.tingyu.model.MusicSource
 import app.tingyu.model.Track
 import coil.compose.AsyncImage
 import java.util.Locale
+
+@Composable
+internal fun parseLinkIcon() = ImageVector.vectorResource(R.drawable.ic_parse_link)
 
 @Composable
 internal fun Cover(track: Track?, size: Dp, modifier: Modifier = Modifier) {
